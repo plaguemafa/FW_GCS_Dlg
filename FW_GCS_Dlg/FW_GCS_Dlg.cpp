@@ -16,7 +16,6 @@
 
 BEGIN_MESSAGE_MAP(CFWGCSDlgApp, CWinApp)
 	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
-	ON_BN_CLICKED(IDC_UDPlink, &CFWGCSDlgApp::OnBnClickedUdplink)
 END_MESSAGE_MAP()
 
 
@@ -101,12 +100,5 @@ BOOL CFWGCSDlgApp::InitInstance()
 	// 由于对话框已关闭，所以将返回 FALSE 以便退出应用程序，
 	//  而不是启动应用程序的消息泵。
 	return FALSE;
-}
-
-
-
-void CFWGCSDlgApp::OnBnClickedUdplink()
-{
-	// TODO: 在此添加控件通知处理程序代码
 }
 
