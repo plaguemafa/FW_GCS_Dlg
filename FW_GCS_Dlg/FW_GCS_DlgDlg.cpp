@@ -34,8 +34,6 @@
 
 // CFWGCSDlgDlg 对话框
 
-
-
 CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_FW_GCS_DLG_DIALOG, pParent)
 {
