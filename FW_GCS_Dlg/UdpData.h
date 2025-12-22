@@ -1,3 +1,6 @@
+// #include <stdint.h>
+// #include <string.h>
+
 // UdpDataProtocol.h: UDP通信协议数据结构定义
 //
 
@@ -14,10 +17,16 @@ struct UdpRecvDataPacket
 	float data5;  // 数据5
 };
 
+struct UdpSendDataPacket
+{
+	float data1;  // 数据1
+	float data2;  // 数据2
+	float data3;  // 数据3
+};
+
 // 握手数据包结构
 struct UdpHandshakePacket
 {
 	char magic[4];      // 握手标识 "GCS\0"
 	unsigned int version;     // 协议版本（使用unsigned int替代UINT32）
 };
-

@@ -38,6 +38,14 @@ protected:
 	CWinThread* m_pUdpRecvThread;         // UDP接收线程指针
 	BOOL m_bUdpThreadRunning;             // 线程运行标志
 	
+	// 串口通信相关成员变量
+	HANDLE m_hSerialPort;                  // 串口句柄
+	BOOL m_bSerialConnected;                // 串口连接状态标志
+	CWinThread* m_pSerialRecvThread;       // 串口接收线程指针
+	BOOL m_bSerialThreadRunning;           // 串口线程运行标志
+	BYTE m_serialBuffer[2048];             // 串口接收缓冲区（用于处理不完整数据包，增大到2048避免溢出）
+	int m_nSerialBufferSize;               // 缓冲区中已有数据大小
+	
 	// UI控件变量
 	CEdit m_editData1;                     // data1数据显示控件（IDC_Display）
 	CEdit m_editData2;                     // data2数据显示控件（IDC_Display1）
@@ -53,6 +61,13 @@ protected:
 	BOOL SendHandshake();                  // 发送握手数据包
 	void ProcessReceivedData(const UdpRecvDataPacket* pPacket);  // 处理接收到的数据包
 	static UINT UdpRecvThread(LPVOID pParam);  // UDP接收线程函数（静态）
+	
+	// 串口通信相关函数
+	BOOL OpenSerialPort();                 // 打开串口
+	void CloseSerialPort();                // 关闭串口
+	BOOL SendSerialData(const void* pData, int nSize);  // 发送串口数据
+	void ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket);  // 处理串口接收到的数据包
+	static UINT SerialRecvThread(LPVOID pParam);  // 串口接收线程函数（静态）
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -61,6 +76,7 @@ protected:
 	afx_msg void OnBnClickedUdplink();
 	afx_msg void OnDestroy();
 	afx_msg LRESULT OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam);  // 自定义消息：UDP数据接收
+	afx_msg LRESULT OnSerialDataReceivedMsg(WPARAM wParam, LPARAM lParam);  // 自定义消息：串口数据接收
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedSeriallink();
