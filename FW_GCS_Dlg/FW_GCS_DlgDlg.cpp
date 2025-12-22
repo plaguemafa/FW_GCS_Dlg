@@ -15,15 +15,13 @@
 #define new DEBUG_NEW
 #endif
 
-// UDP配置参数（写死在代码中）
+// UDP配置参数宏
 #define UDP_REMOTE_IP      "127.0.0.1"  // 远程IP地址
 #define UDP_REMOTE_PORT    14551             // 远程端口
 #define UDP_LOCAL_PORT     14550             // 本地端口
 
-// ============================================================================
-// 串口配置参数（写死在代码中，不支持运行时修改）
-// ============================================================================
-#define SERIAL_PORT_NAME   "COM21"        // 串口名称（RS422串口，格式：COM1-COM256）
+// 串口配置参数宏
+#define SERIAL_PORT_NAME   "COM21"        // 目标串口名称（RS422串口，格式：COM1-COM256）
 #define SERIAL_BAUD_RATE   115200        // 波特率（常用值：9600, 19200, 38400, 57600, 115200）
 
 // 自定义消息：UDP数据接收
@@ -34,8 +32,7 @@
 
 // CFWGCSDlgDlg 对话框
 
-CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_FW_GCS_DLG_DIALOG, pParent)
+CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/):CDialogEx(IDD_FW_GCS_DLG_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	
@@ -57,10 +54,8 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 
 CFWGCSDlgDlg::~CFWGCSDlgDlg()
 {
-	// 确保断开UDP连接
-	DisconnectUdp();
-	// 确保关闭串口
-	CloseSerialPort();
+	DisconnectUdp();	// 断开UDP连接
+	CloseSerialPort();	// 关闭串口
 }
 
 void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
@@ -73,38 +68,38 @@ void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_Display4, m_editData5);  // 绑定data5显示控件
 }
 
-BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx)
-	ON_WM_PAINT()
-	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_UDPlink, &CFWGCSDlgDlg::OnBnClickedUdplink)
-	ON_WM_DESTROY()
-	ON_MESSAGE(WM_UDP_DATA_RECEIVED, &CFWGCSDlgDlg::OnUdpDataReceivedMsg)
-	ON_MESSAGE(WM_SERIAL_DATA_RECEIVED, &CFWGCSDlgDlg::OnSerialDataReceivedMsg)
-	ON_BN_CLICKED(IDC_SerialLink, &CFWGCSDlgDlg::OnBnClickedSeriallink)
+BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
+	ON_WM_PAINT() // 绘制消息处理
+	ON_WM_QUERYDRAGICON() // 查询拖动图标消息处理
+	ON_BN_CLICKED(IDC_UDPlink, &CFWGCSDlgDlg::OnBnClickedUdplink) // UDP连接按钮事件处理
+	ON_WM_DESTROY() // 销毁消息处理
+	ON_MESSAGE(WM_UDP_DATA_RECEIVED, &CFWGCSDlgDlg::OnUdpDataReceivedMsg) // UDP数据接收消息处理
+	ON_MESSAGE(WM_SERIAL_DATA_RECEIVED, &CFWGCSDlgDlg::OnSerialDataReceivedMsg) // 串口数据接收消息处理
+	ON_BN_CLICKED(IDC_SerialLink, &CFWGCSDlgDlg::OnBnClickedSeriallink) // 串口连接按钮事件处理
 END_MESSAGE_MAP()
 
 
 // CFWGCSDlgDlg 消息处理程序
 
-BOOL CFWGCSDlgDlg::OnInitDialog()
+BOOL CFWGCSDlgDlg::OnInitDialog() // 对话框初始化
 {
-	CDialogEx::OnInitDialog();
+	CDialogEx::OnInitDialog(); // 调用基类对话框初始化
 
 	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
-	//  执行此操作
-	SetIcon(m_hIcon, TRUE);			// 设置大图标
+	// 执行此操作
+	SetIcon(m_hIcon, TRUE);		// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// 初始化Winsock库
 	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) // 初始化Winsock库
 	{
-		MessageBox(_T("Winsock初始化失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+		MessageBox(_T("Winsock初始化失败！"), _T("错误"), MB_OK | MB_ICONERROR); // 显示错误消息
 		return FALSE;
 	}
 
 	// 初始化UDP Socket（但不连接）
-	InitUdpSocket();
+	InitUdpSocket(); // 初始化UDP Socket
 
 	// 初始化显示控件
 	m_editData1.SetWindowText(_T("0.00"));  // 初始化data1显示
@@ -122,68 +117,68 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 //  来绘制该图标。  对于使用文档/视图模型的 MFC 应用程序，
 //  这将由框架自动完成。
 
-void CFWGCSDlgDlg::OnPaint()
+void CFWGCSDlgDlg::OnPaint() // 绘制消息处理
 {
-	if (IsIconic())
+	if (IsIconic()) // 如果窗口最小化
 	{
 		CPaintDC dc(this); // 用于绘制的设备上下文
 
-		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
+		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0); // 发送图标擦除背景消息
 
 		// 使图标在工作区矩形中居中
-		int cxIcon = GetSystemMetrics(SM_CXICON);
-		int cyIcon = GetSystemMetrics(SM_CYICON);
-		CRect rect;
-		GetClientRect(&rect);
-		int x = (rect.Width() - cxIcon + 1) / 2;
-		int y = (rect.Height() - cyIcon + 1) / 2;
+		int cxIcon = GetSystemMetrics(SM_CXICON); // 获取图标宽度
+		int cyIcon = GetSystemMetrics(SM_CYICON); // 获取图标高度
+		CRect rect; // 矩形区域
+		GetClientRect(&rect); // 获取客户区矩形
+		int x = (rect.Width() - cxIcon + 1) / 2; // 计算图标左上角坐标
+		int y = (rect.Height() - cyIcon + 1) / 2; // 计算图标左上角坐标
 
 		// 绘制图标
-		dc.DrawIcon(x, y, m_hIcon);
+		dc.DrawIcon(x, y, m_hIcon); // 绘制图标
 	}
 	else
 	{
-		CDialogEx::OnPaint();
+		CDialogEx::OnPaint(); // 调用基类绘制
 	}
 }
 
 //当用户拖动最小化窗口时系统调用此函数取得光标
 //显示。
-HCURSOR CFWGCSDlgDlg::OnQueryDragIcon()
+HCURSOR CFWGCSDlgDlg::OnQueryDragIcon() // 查询拖动图标消息处理
 {
-	return static_cast<HCURSOR>(m_hIcon);
+	return static_cast<HCURSOR>(m_hIcon); // 返回图标句柄
 }
 
-void CFWGCSDlgDlg::OnBnClickedUdplink()
+void CFWGCSDlgDlg::OnBnClickedUdplink() // UDP连接按钮事件处理
 {
-	if (!m_bUdpConnected)
+	if (!m_bUdpConnected) // 如果未连接
 	{
 		// 当前未连接，执行连接操作
-		if (ConnectUdp())
+		if (ConnectUdp()) // 连接UDP
 		{
-			CString strMsg;
-			strMsg.Format(_T("UDP连接成功！\n\n本地端口: %d\n远程地址: %s:%d"), 
-				UDP_LOCAL_PORT, _T(UDP_REMOTE_IP), UDP_REMOTE_PORT);
-			MessageBox(strMsg, _T("UDP回报窗口"), MB_OK | MB_ICONINFORMATION);
+			CString strMsg; // 消息字符串
+			strMsg.Format(_T("UDP连接成功！\n\n本地端口: %d\n远程地址: %s:%d"),  
+				UDP_LOCAL_PORT, _T(UDP_REMOTE_IP), UDP_REMOTE_PORT); // 格式化消息字符串
+			MessageBox(strMsg, _T("UDP回报窗口"), MB_OK | MB_ICONINFORMATION); // 显示消息
 		}
 		else
 		{
-			int nError = WSAGetLastError();
-			CString strError;
+			int nError = WSAGetLastError(); // 获取错误代码
+			CString strError; // 错误字符串
 			strError.Format(_T("UDP连接失败！\n\n错误代码: %d\n\n请检查：\n1. 端口%d是否被占用\n2. Winsock是否正常初始化\n3. 查看调试输出获取详细信息"), 
-				nError, UDP_LOCAL_PORT);
-			MessageBox(strError, _T("错误"), MB_OK | MB_ICONERROR);
+				nError, UDP_LOCAL_PORT); // 格式化错误字符串
+			MessageBox(strError, _T("错误"), MB_OK | MB_ICONERROR); // 显示错误消息
 		}
 	}
 	else
 	{
 		// 当前已连接，执行断开操作
-		DisconnectUdp();
-		MessageBox(_T("UDP已断开！"), _T("UDP回报窗口"), MB_OK | MB_ICONINFORMATION);
+		DisconnectUdp(); // 断开UDP连接
+		MessageBox(_T("UDP已断开！"), _T("UDP回报窗口"), MB_OK | MB_ICONINFORMATION); // 显示消息
 	}
 }
 
-void CFWGCSDlgDlg::OnDestroy()
+void CFWGCSDlgDlg::OnDestroy() // 销毁消息处理
 {
 	// 断开UDP连接
 	DisconnectUdp();
@@ -199,38 +194,38 @@ void CFWGCSDlgDlg::OnDestroy()
 // 初始化UDP Socket
 BOOL CFWGCSDlgDlg::InitUdpSocket()
 {
-	if (m_udpSocket != INVALID_SOCKET)
+	if (m_udpSocket != INVALID_SOCKET) // 如果UDP Socket有效
 	{
-		closesocket(m_udpSocket);
-		m_udpSocket = INVALID_SOCKET;
+		closesocket(m_udpSocket); // 关闭UDP Socket
+		m_udpSocket = INVALID_SOCKET; // 将UDP Socket设置为无效
 	}
 
 	// 创建UDP Socket
-	m_udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (m_udpSocket == INVALID_SOCKET)
+	m_udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); // 创建UDP Socket
+	if (m_udpSocket == INVALID_SOCKET) // 如果UDP Socket创建失败
 	{
-		int nError = WSAGetLastError();
-		TRACE(_T("UDP Socket创建失败，错误代码: %d\n"), nError);
-		return FALSE;
+		int nError = WSAGetLastError(); // 获取错误代码
+		TRACE(_T("UDP Socket创建失败，错误代码: %d\n"), nError); // 输出错误信息
+		return FALSE; // 返回失败
 	}
 
 	// 绑定本地端口（用于接收数据）
-	sockaddr_in localAddr;
-	memset(&localAddr, 0, sizeof(localAddr));
-	localAddr.sin_family = AF_INET;
-	localAddr.sin_addr.s_addr = INADDR_ANY;
-	localAddr.sin_port = htons(UDP_LOCAL_PORT);
+	sockaddr_in localAddr; // 本地地址结构
+	memset(&localAddr, 0, sizeof(localAddr)); // 清空本地地址结构
+	localAddr.sin_family = AF_INET; // 设置地址族为IPv4
+	localAddr.sin_addr.s_addr = INADDR_ANY; // 设置地址为任意IP地址
+	localAddr.sin_port = htons(UDP_LOCAL_PORT); // 设置端口
 	
-	if (bind(m_udpSocket, (sockaddr*)&localAddr, sizeof(localAddr)) == SOCKET_ERROR)
+	if (bind(m_udpSocket, (sockaddr*)&localAddr, sizeof(localAddr)) == SOCKET_ERROR) // 绑定本地端口
 	{
-		int nError = WSAGetLastError();
-		TRACE(_T("UDP端口绑定失败 (端口%d)，错误代码: %d\n"), UDP_LOCAL_PORT, nError);
+		int nError = WSAGetLastError(); // 获取错误代码
+		TRACE(_T("UDP端口绑定失败 (端口%d)，错误代码: %d\n"), UDP_LOCAL_PORT, nError); // 输出错误信息
 		// 如果端口被占用，尝试不绑定（UDP可以发送但不一定能接收）
 		// 这里不返回错误，继续执行，但接收可能失败
 	}
 	else
 	{
-		TRACE(_T("UDP Socket初始化成功，本地端口: %d\n"), UDP_LOCAL_PORT);
+		TRACE(_T("UDP Socket初始化成功，本地端口: %d\n"), UDP_LOCAL_PORT); // 输出成功信息
 	}
 
 	return TRUE;
@@ -245,9 +240,9 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	}
 
 	// 初始化Socket（如果还未初始化）
-	if (m_udpSocket == INVALID_SOCKET)
+	if (m_udpSocket == INVALID_SOCKET) // 如果UDP Socket无效
 	{
-		if (!InitUdpSocket())
+		if (!InitUdpSocket()) // 初始化UDP Socket
 		{
 			TRACE(_T("UDP连接失败: Socket初始化失败\n"));
 			return FALSE;
@@ -255,28 +250,28 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	}
 
 	// 设置远程地址
-	memset(&m_udpRemoteAddr, 0, sizeof(m_udpRemoteAddr));
-	m_udpRemoteAddr.sin_family = AF_INET;
-	m_udpRemoteAddr.sin_port = htons(UDP_REMOTE_PORT);
+	memset(&m_udpRemoteAddr, 0, sizeof(m_udpRemoteAddr)); // 清空远程地址结构
+	m_udpRemoteAddr.sin_family = AF_INET; // 设置地址族为IPv4
+	m_udpRemoteAddr.sin_port = htons(UDP_REMOTE_PORT); // 设置端口
 	
 	// 使用 inet_pton() 替代已弃用的 inet_addr()
-	if (inet_pton(AF_INET, UDP_REMOTE_IP, &m_udpRemoteAddr.sin_addr) != 1)
+	if (inet_pton(AF_INET, UDP_REMOTE_IP, &m_udpRemoteAddr.sin_addr) != 1) // 转换IP地址
 	{
 		// IP地址转换失败
-		TRACE(_T("UDP连接失败: IP地址转换失败 (%s)\n"), UDP_REMOTE_IP);
+		TRACE(_T("UDP连接失败: IP地址转换失败 (%s)\n"), UDP_REMOTE_IP); // 输出错误信息
 		return FALSE;
 	}
 
 	// 启动接收线程（先启动线程，再发送握手）
-	m_bUdpThreadRunning = TRUE;
+	m_bUdpThreadRunning = TRUE; // 设置线程运行标志
 	m_pUdpRecvThread = AfxBeginThread(UdpRecvThread, this, THREAD_PRIORITY_NORMAL, 0, CREATE_SUSPENDED);
-	if (m_pUdpRecvThread == NULL)
+	if (m_pUdpRecvThread == NULL) // 如果接收线程创建失败
 	{
-		m_bUdpThreadRunning = FALSE;
-		TRACE(_T("UDP连接失败: 接收线程创建失败\n"));
+		m_bUdpThreadRunning = FALSE; // 设置线程运行标志
+		TRACE(_T("UDP连接失败: 接收线程创建失败\n")); // 输出错误信息
 		return FALSE;
 	}
-	m_pUdpRecvThread->ResumeThread();
+	m_pUdpRecvThread->ResumeThread(); // 启动接收线程
 
 	// 设置连接标志（在发送握手之前设置，因为SendUdpData需要）
 	m_bUdpConnected = TRUE;
@@ -288,9 +283,9 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 }
 
 // 断开UDP连接
-void CFWGCSDlgDlg::DisconnectUdp()
+void CFWGCSDlgDlg::DisconnectUdp() // 断开UDP连接
 {
-	if (!m_bUdpConnected)
+	if (!m_bUdpConnected) // 如果未连接
 	{
 		return;
 	}
