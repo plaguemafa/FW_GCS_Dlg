@@ -36,6 +36,12 @@
     <ClInclude Include="UdpData.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Page1Dlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Page2Dlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FW_GCS_Dlg.cpp">
@@ -45,6 +51,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Page1Dlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Page2Dlg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

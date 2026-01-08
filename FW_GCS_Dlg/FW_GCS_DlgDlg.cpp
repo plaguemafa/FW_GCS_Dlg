@@ -6,10 +6,12 @@
 #include "framework.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>  // 用于 inet_pton()
+#include "UdpData.h"   // 必须在其他头文件之前包含，确保类型定义完整
 #include "FW_GCS_Dlg.h"
 #include "FW_GCS_DlgDlg.h"
 #include "afxdialogex.h"
-#include "UdpData.h"
+#include "Page1Dlg.h"
+#include "Page2Dlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -26,14 +28,14 @@
 //   Simulink 远程地址 = 127.0.0.1 (程序所在地址)
 //   Simulink 远程端口 = UDP_LOCAL_PORT (5001) - Simulink发送数据的目标端口
 //
-// #define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
-#define UDP_REMOTE_IP      "127.0.0.1"         // Simulink的本地IP（用于本地测试）
-#define UDP_REMOTE_PORT    5000                // Simulink的本地端口（用于本地测试）地面站远程端口
-#define UDP_LOCAL_PORT    5001                 // 本程序监听端口（接收Simulink发送的数据）
+ #define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
+//#define UDP_REMOTE_IP      "127.0.0.1"         // Simulink的本地IP（用于本地测试）
+#define UDP_REMOTE_PORT     50000                // Simulink的本地端口（用于本地测试）地面站远程端口
+#define UDP_LOCAL_PORT      50001                 // 本程序监听端口（接收Simulink发送的数据）
 
 // 串口配置参数宏
 #define SERIAL_PORT_NAME   "COM20"        // 目标串口名称（RS422串口，格式：COM1-COM256）
-#define SERIAL_BAUD_RATE   115200        // 波特率（常用值：9600, 19200, 38400, 57600, 115200）
+#define SERIAL_BAUD_RATE   115200         // 波特率（常用值：9600, 19200, 38400, 57600, 115200）
 
 // 自定义消息：UDP数据接收
 #define WM_UDP_DATA_RECEIVED  (WM_USER + 200)
@@ -63,6 +65,11 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_bSerialThreadRunning = FALSE;             // 串口线程运行标志：未运行
 	m_nSerialBufferSize = 0;                    // 串口接收缓冲区大小：空
 	memset(m_serialBuffer, 0, sizeof(m_serialBuffer));  // 清空接收缓冲区
+	
+	// 子对话框初始化
+	m_pPage1Dlg = NULL;
+	m_pPage2Dlg = NULL;
+	m_nCurrentPage = 0;                         // 默认显示第一页
 }
 
 CFWGCSDlgDlg::~CFWGCSDlgDlg()
@@ -71,19 +78,21 @@ CFWGCSDlgDlg::~CFWGCSDlgDlg()
 	DisconnectUdp();
 	// 确保关闭串口
 	CloseSerialPort();
+	// 销毁子对话框
+	DestroyChildDialogs();
 }
 
 void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_Display, m_editData1);   // 绑定data1显示控件
+	DDX_Control(pDX, IDC_Display0, m_editData1);   // 绑定data1显示控件
 	DDX_Control(pDX, IDC_Display1, m_editData2);  // 绑定data2显示控件
 	DDX_Control(pDX, IDC_Display2, m_editData3);  // 绑定data3显示控件
 	DDX_Control(pDX, IDC_Display3, m_editData4);  // 绑定data4显示控件
 	DDX_Control(pDX, IDC_Display4, m_editData5);  // 绑定data5显示控件
 }
 
-BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx)
+BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_UDPlink, &CFWGCSDlgDlg::OnBnClickedUdplink)
@@ -91,6 +100,9 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx)
 	ON_MESSAGE(WM_UDP_DATA_RECEIVED, &CFWGCSDlgDlg::OnUdpDataReceivedMsg)
 	ON_MESSAGE(WM_SERIAL_DATA_RECEIVED, &CFWGCSDlgDlg::OnSerialDataReceivedMsg)
 	ON_BN_CLICKED(IDC_SerialLink, &CFWGCSDlgDlg::OnBnClickedSeriallink)
+	ON_BN_CLICKED(IDC_BTN_PAGE1, &CFWGCSDlgDlg::OnBnClickedPage1)
+	ON_BN_CLICKED(IDC_BTN_PAGE2, &CFWGCSDlgDlg::OnBnClickedPage2)
+	ON_WM_SIZE()
 END_MESSAGE_MAP()
 
 // CFWGCSDlgDlg 消息处理程序
@@ -114,7 +126,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	// 初始化UDP Socket（但不连接）
 	InitUdpSocket();
 
-	// 初始化显示控件
+	// 初始化显示控件（保留用于兼容）
 	m_editData1.SetWindowText(_T("0.00"));  // 初始化data1显示
 	m_editData2.SetWindowText(_T("0.00"));  // 初始化data2显示
 	m_editData3.SetWindowText(_T("0.00"));  // 初始化data3显示
@@ -122,6 +134,16 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	m_editData5.SetWindowText(_T("0.00"));  // 初始化data5显示
 	
 	TRACE(_T("OnInitDialog: 所有数据显示控件已初始化\n"));
+	
+	// 创建子对话框
+	if (!CreateChildDialogs())
+	{
+		MessageBox(_T("创建子对话框失败！"), _T("错误"), MB_OK | MB_ICONERROR);
+		return FALSE;
+	}
+	
+	// 显示第一页
+	ShowPage(0);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -197,6 +219,8 @@ void CFWGCSDlgDlg::OnDestroy()
 	DisconnectUdp();
 	// 关闭串口
 	CloseSerialPort();
+	// 销毁子对话框
+	DestroyChildDialogs();
 	
 	// 清理Winsock库
 	WSACleanup();
@@ -520,68 +544,31 @@ void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
 	TRACE(_T("原始值: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
 		pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
 	
-	// 格式化并更新所有数据显示控件
-	// 注意：int16_t值需要转换为浮点数显示（假设单位是1度）
-	CString strData1, strData2, strData3, strData4, strData5;
-	strData1.Format(_T("%.2f"), pPacket->pitchAngle / 1.0f);
-	strData2.Format(_T("%.2f"), pPacket->rollAngle/ 1.0f);
-	strData3.Format(_T("%.2f"), pPacket->yawAngle/ 1.0f);
-	strData4.Format(_T("%.2f"), pPacket->attackAngle/ 1.0f);
-	strData5.Format(_T("%.2f"), pPacket->sideslipAngle/ 1.0f);
-	
-	// 更新data1显示控件（IDC_Display）
-	if (m_editData1.GetSafeHwnd() != NULL) // 如果data1显示控件有效
-	{	
-		m_editData1.SetWindowText(strData1); // 设置data1显示控件文本
+	// 更新子对话框显示（优先使用子对话框）
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		m_pPage1Dlg->UpdateDisplay(pPacket);
 	}
-	else
-	{	
-		CWnd* pWnd = GetDlgItem(IDC_Display);// 控件未绑定，使用GetDlgItem获取控件
-		if (pWnd != NULL) pWnd->SetWindowText(strData1); // 设置data1显示控件文本
+	if (m_pPage2Dlg != NULL && m_pPage2Dlg->GetSafeHwnd() != NULL)
+	{
+		m_pPage2Dlg->UpdateDisplay(pPacket);
 	}
 	
-	// 更新data2显示控件（IDC_Display1）
-	if (m_editData2.GetSafeHwnd() != NULL)
+	// 兼容旧代码：如果子对话框未创建，更新主对话框控件
+	if (m_pPage1Dlg == NULL || m_pPage1Dlg->GetSafeHwnd() == NULL)
 	{
-		m_editData2.SetWindowText(strData2);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display1);
-		if (pWnd != NULL) pWnd->SetWindowText(strData2);
-	}
-	
-	// 更新data3显示控件（IDC_Display2）
-	if (m_editData3.GetSafeHwnd() != NULL)
-	{
-		m_editData3.SetWindowText(strData3);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display2);
-		if (pWnd != NULL) pWnd->SetWindowText(strData3);
-	}
-	
-	// 更新data4显示控件（IDC_Display3）
-	if (m_editData4.GetSafeHwnd() != NULL)
-	{
-		m_editData4.SetWindowText(strData4);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display3);
-		if (pWnd != NULL) pWnd->SetWindowText(strData4);
-	}
-	
-	// 更新data5显示控件（IDC_Display4）
-	if (m_editData5.GetSafeHwnd() != NULL)
-	{
-		m_editData5.SetWindowText(strData5);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display4);
-		if (pWnd != NULL) pWnd->SetWindowText(strData5);
+		CString strData1, strData2, strData3, strData4, strData5;
+		strData1.Format(_T("%.2f"), pPacket->pitchAngle / 1.0f);
+		strData2.Format(_T("%.2f"), pPacket->rollAngle / 1.0f);
+		strData3.Format(_T("%.2f"), pPacket->yawAngle / 1.0f);
+		strData4.Format(_T("%.2f"), pPacket->attackAngle / 1.0f);
+		strData5.Format(_T("%.2f"), pPacket->sideslipAngle / 1.0f);
+		
+		if (m_editData1.GetSafeHwnd() != NULL) m_editData1.SetWindowText(strData1);
+		if (m_editData2.GetSafeHwnd() != NULL) m_editData2.SetWindowText(strData2);
+		if (m_editData3.GetSafeHwnd() != NULL) m_editData3.SetWindowText(strData3);
+		if (m_editData4.GetSafeHwnd() != NULL) m_editData4.SetWindowText(strData4);
+		if (m_editData5.GetSafeHwnd() != NULL) m_editData5.SetWindowText(strData5);
 	}
 	
 	TRACE(_T("ProcessReceivedData: 已更新所有控件显示\n"));
@@ -904,9 +891,9 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 	
 	TRACE(_T("串口接收线程启动，数据包大小: %d 字节\n"), nPacketSize);
 
-	// ============================================================
+	// =============================================================
 	// 主循环：持续接收数据直到线程停止标志为FALSE
-	// ============================================================
+	// =============================================================
 	while (pDlg->m_bSerialThreadRunning)
 	{
 		// ============================================================
@@ -1147,7 +1134,7 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	else
 	{
 		// 控件未绑定，使用GetDlgItem获取控件
-		CWnd* pWnd = GetDlgItem(IDC_Display);
+		CWnd* pWnd = GetDlgItem(IDC_Display0);
 		if (pWnd != NULL) pWnd->SetWindowText(strData1);
 	}
 
@@ -1194,6 +1181,16 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 		CWnd* pWnd = GetDlgItem(IDC_Display4);
 		if (pWnd != NULL) pWnd->SetWindowText(strData5);
 	}
+	
+	// 更新子对话框显示（优先使用子对话框）
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		m_pPage1Dlg->UpdateDisplay(pPacket);
+	}
+	if (m_pPage2Dlg != NULL && m_pPage2Dlg->GetSafeHwnd() != NULL)
+	{
+		m_pPage2Dlg->UpdateDisplay(pPacket);
+	}
 		
 	TRACE(_T("ProcessSerialReceivedData: 已更新所有控件显示\n"));
 }
@@ -1207,3 +1204,147 @@ uint8_t CFWGCSDlgDlg::calculateChecksum(const void* data, size_t len) {
     }
     return sum;
 }
+
+// ============================================================================
+// 子对话框分页功能实现
+// ============================================================================
+
+// 创建子对话框
+BOOL CFWGCSDlgDlg::CreateChildDialogs()
+{
+	// 检查资源是否存在（避免断言失败）
+	HINSTANCE hInst = AfxGetResourceHandle();
+	HRSRC hResource1 = FindResource(hInst, MAKEINTRESOURCE(IDD_PAGE1_DIALOG), RT_DIALOG);
+	HRSRC hResource2 = FindResource(hInst, MAKEINTRESOURCE(IDD_PAGE2_DIALOG), RT_DIALOG);
+	
+	if (hResource1 == NULL || hResource2 == NULL)
+	{
+		// 资源不存在，显示提示信息
+		TRACE(_T("警告：子对话框资源不存在！请在资源编辑器中创建 IDD_PAGE1_DIALOG 和 IDD_PAGE2_DIALOG\n"));
+		MessageBox(_T("子对话框资源未创建！\n\n请在资源编辑器中创建以下对话框资源：\n- IDD_PAGE1_DIALOG (ID: 130)\n- IDD_PAGE2_DIALOG (ID: 131)\n\n程序将继续运行，但分页功能不可用。"), 
+			_T("资源缺失警告"), MB_OK | MB_ICONWARNING);
+		// 不返回FALSE，让程序继续运行（使用主对话框的控件）
+		return TRUE;  // 返回TRUE但不创建子对话框
+	}
+	
+	// 创建第一页子对话框（独立弹窗，无模态）
+	m_pPage1Dlg = new CPage1Dlg(this);  // 传入this作为父窗口，对话框独立
+	if (!m_pPage1Dlg->Create(IDD_PAGE1_DIALOG, this))
+	{
+		TRACE(_T("创建第一页子对话框失败，错误代码: %d\n"), GetLastError());
+		delete m_pPage1Dlg;
+		m_pPage1Dlg = NULL;
+		// 不返回FALSE，让程序继续运行
+		return TRUE;
+	}
+	// 设置为独立窗口，居中显示在主窗口（只设置位置，大小使用资源中的设置）
+	CRect rectMain, rectDlg;
+	GetWindowRect(&rectMain);
+	m_pPage1Dlg->GetWindowRect(&rectDlg);
+	int x = rectMain.left + (rectMain.Width() - rectDlg.Width()) / 2;
+	int y = rectMain.top + (rectMain.Height() - rectDlg.Height()) / 2;
+	m_pPage1Dlg->SetWindowPos(NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_HIDEWINDOW);
+	m_pPage1Dlg->SetWindowText(_T("第一页"));
+	
+	// 创建第二页子对话框（独立弹窗，无模态）
+	m_pPage2Dlg = new CPage2Dlg(this);  // 传入this作为父窗口，对话框独立
+	if (!m_pPage2Dlg->Create(IDD_PAGE2_DIALOG, this))
+	{
+		TRACE(_T("创建第二页子对话框失败，错误代码: %d\n"), GetLastError());
+		delete m_pPage2Dlg;
+		m_pPage2Dlg = NULL;
+		// 如果第一页创建成功但第二页失败，销毁第一页
+		if (m_pPage1Dlg != NULL)
+		{
+			m_pPage1Dlg->DestroyWindow();
+			delete m_pPage1Dlg;
+			m_pPage1Dlg = NULL;
+		}
+		// 不返回FALSE，让程序继续运行
+		return TRUE;
+	}
+	// 设置为独立窗口，居中显示在主窗口（只设置位置，大小使用资源中的设置）
+	m_pPage2Dlg->GetWindowRect(&rectDlg);
+	x = rectMain.left + (rectMain.Width() - rectDlg.Width()) / 2;
+	y = rectMain.top + (rectMain.Height() - rectDlg.Height()) / 2;
+	m_pPage2Dlg->SetWindowPos(NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_HIDEWINDOW);
+	m_pPage2Dlg->SetWindowText(_T("第二页"));
+	
+	TRACE(_T("子对话框创建成功\n"));
+	return TRUE;
+}
+
+// 显示指定页面，隐藏其他页面（如果只想显示一个）
+// 或者切换指定页面的显示/隐藏状态（允许同时显示多个）
+void CFWGCSDlgDlg::ShowPage(int nPage)
+{
+	if (nPage < 0 || nPage > 1)
+		return;
+	
+	m_nCurrentPage = nPage;
+	
+	if (nPage == 0)
+	{
+		// 切换第一页的显示/隐藏状态（不隐藏第二页）
+		if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+		{
+			BOOL bVisible = (m_pPage1Dlg->GetStyle() & WS_VISIBLE) != 0;
+			m_pPage1Dlg->ShowWindow(bVisible ? SW_HIDE : SW_SHOW);
+		}
+	}
+	else if (nPage == 1)
+	{
+		// 切换第二页的显示/隐藏状态（不隐藏第一页）
+		if (m_pPage2Dlg != NULL && m_pPage2Dlg->GetSafeHwnd() != NULL)
+		{
+			BOOL bVisible = (m_pPage2Dlg->GetStyle() & WS_VISIBLE) != 0;
+			m_pPage2Dlg->ShowWindow(bVisible ? SW_HIDE : SW_SHOW);
+		}
+	}
+}
+
+// 销毁子对话框
+void CFWGCSDlgDlg::DestroyChildDialogs()
+{
+	if (m_pPage1Dlg != NULL)
+	{
+		if (m_pPage1Dlg->GetSafeHwnd() != NULL)
+		{
+			m_pPage1Dlg->DestroyWindow();
+		}
+		delete m_pPage1Dlg;
+		m_pPage1Dlg = NULL;
+	}
+	
+	if (m_pPage2Dlg != NULL)
+	{
+		if (m_pPage2Dlg->GetSafeHwnd() != NULL)
+		{
+			m_pPage2Dlg->DestroyWindow();
+		}
+		delete m_pPage2Dlg;
+		m_pPage2Dlg = NULL;
+	}
+}
+
+// 切换到第一页
+void CFWGCSDlgDlg::OnBnClickedPage1()
+{
+	ShowPage(0);
+}
+
+// 切换到第二页
+void CFWGCSDlgDlg::OnBnClickedPage2()
+{
+	ShowPage(1);
+}
+
+// 窗口大小改变时调整子对话框位置（独立弹窗不需要调整位置）
+void CFWGCSDlgDlg::OnSize(UINT nType, int cx, int cy)
+{
+	CDialogEx::OnSize(nType, cx, cy);
+	
+	// 独立弹窗不需要跟随主窗口调整位置
+	// 如果需要让弹窗始终居中，可以在这里实现
+}
+

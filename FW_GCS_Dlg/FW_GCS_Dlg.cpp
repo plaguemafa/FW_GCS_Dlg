@@ -11,13 +11,11 @@
 #define new DEBUG_NEW
 #endif
 
-
 // CFWGCSDlgApp
 
 BEGIN_MESSAGE_MAP(CFWGCSDlgApp, CWinApp)
 	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
 END_MESSAGE_MAP()
-
 
 // CFWGCSDlgApp 构造
 

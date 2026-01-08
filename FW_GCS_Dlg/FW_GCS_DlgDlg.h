@@ -10,6 +10,8 @@
 #include "UdpData.h"
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
+#include "Page1Dlg.h"
+#include "Page2Dlg.h"
 
 // CFWGCSDlgDlg 对话框
 class CFWGCSDlgDlg : public CDialogEx
@@ -49,12 +51,22 @@ protected:
 	BYTE m_serialBuffer[2048];             // 串口接收缓冲区（用于处理不完整数据包，增大到2048避免溢出）
 	int m_nSerialBufferSize;               // 缓冲区中已有数据大小
 	
-	// UI控件变量
-	CEdit m_editData1;                     // data1数据显示控件（IDC_Display）
+	// UI控件变量（保留用于兼容，但数据将显示在子对话框中）
+	CEdit m_editData1;                     // data1数据显示控件（IDC_Display0）
 	CEdit m_editData2;                     // data2数据显示控件（IDC_Display1）
 	CEdit m_editData3;                     // data3数据显示控件（IDC_Display2）
 	CEdit m_editData4;                     // data4数据显示控件（IDC_Display3）
 	CEdit m_editData5;                     // data5数据显示控件（IDC_Display4）
+	
+	// 子对话框（分页）
+	CPage1Dlg* m_pPage1Dlg;                // 第一页子对话框指针
+	CPage2Dlg* m_pPage2Dlg;                // 第二页子对话框指针
+	int m_nCurrentPage;                    // 当前显示的页面（0=第一页，1=第二页）
+	
+	// 子对话框管理函数
+	BOOL CreateChildDialogs();             // 创建子对话框
+	void ShowPage(int nPage);              // 显示指定页面，隐藏其他页面
+	void DestroyChildDialogs();            // 销毁子对话框
 
 	uint8_t calculateChecksum(const void* data, size_t len);  // 计算校验和函数
 	
@@ -82,7 +94,11 @@ protected:
 	afx_msg void OnDestroy();
 	afx_msg LRESULT OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam);  // 自定义消息：UDP数据接收
 	afx_msg LRESULT OnSerialDataReceivedMsg(WPARAM wParam, LPARAM lParam);  // 自定义消息：串口数据接收
+	afx_msg void OnBnClickedPage1();      // 切换到第一页
+	afx_msg void OnBnClickedPage2();      // 切换到第二页
+	afx_msg void OnSize(UINT nType, int cx, int cy);  // 窗口大小改变时调整子对话框位置
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedSeriallink();
+	afx_msg void OnBnClickedButton1();
 };
