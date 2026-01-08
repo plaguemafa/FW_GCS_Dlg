@@ -53,7 +53,7 @@ class CFWGCSDlgDlg : public CDialogEx
 BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx)
     ON_WM_PAINT()
     ON_WM_QUERYDRAGICON()
-    ON_BN_CLICKED(IDC_BUTTON_DISPLAY, &CFWGCSDlgDlg::OnBnClickedButtonDisplay)  // 添加这行
+    ON_BN_CLICKED(IDC_BUTTON_DISPLAY, &CFWGCSDlgDlg::OnBnClickedButtonDisplay)
 END_MESSAGE_MAP()
 
 // 实现函数
@@ -105,7 +105,7 @@ void CFWGCSDlgDlg::OnBnClickedButtonDisplay()
     UpdateData(FALSE);  // 将变量值更新到控件
     
     // 方法2：直接操作控件
-    m_ctrlDisplay.SetWindowText(_T("显示内容"));
+    m_ctrlDisplay.SetWindowText(_T("显示内容")); //推荐使用此方式
     
     // 方法3：使用GetDlgItem
     GetDlgItem(IDC_EDIT_DISPLAY)->SetWindowText(_T("显示内容"));

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <afxwin.h>      // MFC基础类型
+#include <afxmt.h>       // MFC同步对象（CCriticalSection, CSingleLock）
 #include <afxdialogex.h> // CDialogEx
 #include "UdpData.h"
 #include <winsock2.h>
@@ -37,6 +38,8 @@ protected:
 	sockaddr_in m_udpRemoteAddr;           // 远程地址结构
 	CWinThread* m_pUdpRecvThread;         // UDP接收线程指针
 	BOOL m_bUdpThreadRunning;             // 线程运行标志
+	BOOL m_bUdpRemoteResponded;           // 远程地址响应标志（用于验证连接）
+	CCriticalSection m_csUdpResponse;      // 保护响应标志的临界区
 	
 	// 串口通信相关成员变量
 	HANDLE m_hSerialPort;                  // 串口句柄
@@ -52,6 +55,8 @@ protected:
 	CEdit m_editData3;                     // data3数据显示控件（IDC_Display2）
 	CEdit m_editData4;                     // data4数据显示控件（IDC_Display3）
 	CEdit m_editData5;                     // data5数据显示控件（IDC_Display4）
+
+	uint8_t calculateChecksum(const void* data, size_t len);  // 计算校验和函数
 	
 	// UDP通信相关函数
 	BOOL InitUdpSocket();                  // 初始化UDP Socket

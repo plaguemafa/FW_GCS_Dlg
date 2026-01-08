@@ -15,15 +15,24 @@
 #define new DEBUG_NEW
 #endif
 
-// UDP配置参数（写死在代码中）
-#define UDP_REMOTE_IP      "127.0.0.1"  // 远程IP地址
-#define UDP_REMOTE_PORT    14551             // 远程端口
-#define UDP_LOCAL_PORT     14550             // 本地端口
+// UDP配置参数宏
+// 注意：UDP_REMOTE_IP 和 UDP_REMOTE_PORT 对应 Simulink（发送端）的本地地址和端口，用于：
+//   1. 接收验证：检查收到的数据包是否来自这个地址（Simulink的源地址）
+//   2. 发送目标：程序发送数据时发送到这个地址（Simulink的监听地址）
+//
+// Simulink 配置对应关系：
+//   Simulink 本地地址 = UDP_REMOTE_IP (127.0.0.1)
+//   Simulink 本地端口 = UDP_REMOTE_PORT (5000) - Simulink需要监听此端口接收程序发送的数据
+//   Simulink 远程地址 = 127.0.0.1 (程序所在地址)
+//   Simulink 远程端口 = UDP_LOCAL_PORT (5001) - Simulink发送数据的目标端口
+//
+// #define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
+#define UDP_REMOTE_IP      "127.0.0.1"         // Simulink的本地IP（用于本地测试）
+#define UDP_REMOTE_PORT    5000                // Simulink的本地端口（用于本地测试）地面站远程端口
+#define UDP_LOCAL_PORT    5001                 // 本程序监听端口（接收Simulink发送的数据）
 
-// ============================================================================
-// 串口配置参数（写死在代码中，不支持运行时修改）
-// ============================================================================
-#define SERIAL_PORT_NAME   "COM21"        // 串口名称（RS422串口，格式：COM1-COM256）
+// 串口配置参数宏
+#define SERIAL_PORT_NAME   "COM20"        // 目标串口名称（RS422串口，格式：COM1-COM256）
 #define SERIAL_BAUD_RATE   115200        // 波特率（常用值：9600, 19200, 38400, 57600, 115200）
 
 // 自定义消息：UDP数据接收
@@ -40,14 +49,15 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	
 	// UDP初始化
-	m_udpSocket = INVALID_SOCKET;
-	m_bUdpConnected = FALSE;
-	m_pUdpRecvThread = NULL;
-	m_bUdpThreadRunning = FALSE;
-	memset(&m_udpRemoteAddr, 0, sizeof(m_udpRemoteAddr));
+	m_udpSocket = INVALID_SOCKET;				// 初始化UDP Socket为无效句柄
+	m_bUdpConnected = FALSE; 					// 初始化UDP连接状态标志为未连接
+	m_pUdpRecvThread = NULL; 					// 初始化UDP接收线程指针为空
+	m_bUdpThreadRunning = FALSE; 				// 初始化UDP线程运行标志为未运行
+	m_bUdpRemoteResponded = FALSE; 				// 初始化远程响应标志为未响应
+	memset(&m_udpRemoteAddr, 0, sizeof(m_udpRemoteAddr)); // 清空远程地址结构
 	
 	// 串口初始化
-	m_hSerialPort = INVALID_HANDLE_VALUE;      // 串口句柄初始化为无效值
+	m_hSerialPort = INVALID_HANDLE_VALUE;       // 串口句柄初始化为无效值
 	m_bSerialConnected = FALSE;                 // 串口连接状态标志：未连接
 	m_pSerialRecvThread = NULL;                 // 串口接收线程指针：未创建
 	m_bSerialThreadRunning = FALSE;             // 串口线程运行标志：未运行
@@ -66,7 +76,7 @@ CFWGCSDlgDlg::~CFWGCSDlgDlg()
 void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_Display, m_editData1);    // 绑定data1显示控件
+	DDX_Control(pDX, IDC_Display, m_editData1);   // 绑定data1显示控件
 	DDX_Control(pDX, IDC_Display1, m_editData2);  // 绑定data2显示控件
 	DDX_Control(pDX, IDC_Display2, m_editData3);  // 绑定data3显示控件
 	DDX_Control(pDX, IDC_Display3, m_editData4);  // 绑定data4显示控件
@@ -83,16 +93,14 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_SerialLink, &CFWGCSDlgDlg::OnBnClickedSeriallink)
 END_MESSAGE_MAP()
 
-
 // CFWGCSDlgDlg 消息处理程序
 
 BOOL CFWGCSDlgDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
-	//  执行此操作
-	SetIcon(m_hIcon, TRUE);			// 设置大图标
+	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动执行此操作
+	SetIcon(m_hIcon, TRUE);		// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// 初始化Winsock库
@@ -168,11 +176,11 @@ void CFWGCSDlgDlg::OnBnClickedUdplink()
 		}
 		else
 		{
-			int nError = WSAGetLastError();
-			CString strError;
-			strError.Format(_T("UDP连接失败！\n\n错误代码: %d\n\n请检查：\n1. 端口%d是否被占用\n2. Winsock是否正常初始化\n3. 查看调试输出获取详细信息"), 
-				nError, UDP_LOCAL_PORT);
-			MessageBox(strError, _T("错误"), MB_OK | MB_ICONERROR);
+			int nError = WSAGetLastError(); // 获取错误代码
+			CString strError; // 错误字符串
+			strError.Format(_T("UDP连接失败！\n\n远程地址: %s:%d\n错误代码: %d\n\n可能的原因：\n1. 远程设备(%s)不存在或无法访问\n2. 远程设备未运行或未监听端口%d\n3. 本地端口%d是否被占用\n4. 网络连接问题\n5. 防火墙阻止了连接\n\n请检查网络连接和远程设备状态，查看调试输出获取详细信息"), 
+				_T(UDP_REMOTE_IP), UDP_REMOTE_PORT, nError, _T(UDP_REMOTE_IP), UDP_REMOTE_PORT, UDP_LOCAL_PORT); // 格式化错误字符串
+			MessageBox(strError, _T("错误"), MB_OK | MB_ICONERROR); // 显示错误消息
 		}
 	}
 	else
@@ -267,10 +275,18 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 		return FALSE;
 	}
 
+	// 重置响应标志
+	{
+		CSingleLock lock(&m_csUdpResponse);
+		lock.Lock();
+		m_bUdpRemoteResponded = FALSE;
+		lock.Unlock();
+	}
+
 	// 启动接收线程（先启动线程，再发送握手）
-	m_bUdpThreadRunning = TRUE;
-	m_pUdpRecvThread = AfxBeginThread(UdpRecvThread, this, THREAD_PRIORITY_NORMAL, 0, CREATE_SUSPENDED);
-	if (m_pUdpRecvThread == NULL)
+	m_bUdpThreadRunning = TRUE; // 设置线程运行标志
+	m_pUdpRecvThread = AfxBeginThread(UdpRecvThread, this, THREAD_PRIORITY_NORMAL, 0, CREATE_SUSPENDED); // 创建UDP接收线程
+	if (m_pUdpRecvThread == NULL) // 如果接收线程创建失败
 	{
 		m_bUdpThreadRunning = FALSE;
 		TRACE(_T("UDP连接失败: 接收线程创建失败\n"));
@@ -278,11 +294,57 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	}
 	m_pUdpRecvThread->ResumeThread();
 
-	// 设置连接标志（在发送握手之前设置，因为SendUdpData需要）
-	m_bUdpConnected = TRUE;
+	// 发送握手数据包
+	if (!SendHandshake())
+	{
+		TRACE(_T("UDP连接失败: 握手包发送失败\n"));
+		m_bUdpThreadRunning = FALSE;
+		if (m_udpSocket != INVALID_SOCKET)
+		{
+			closesocket(m_udpSocket);
+			m_udpSocket = INVALID_SOCKET;
+		}
+		return FALSE;
+	}
 
-	// 发送握手数据包（可选，UDP是无连接的，发送失败不影响接收）
-	SendHandshake();  // 不检查返回值，因为UDP发送可能失败但不影响接收
+	// 等待远程地址响应（最多等待3秒）
+	BOOL bReceived = FALSE;
+	const int nWaitTimeMs = 3000;  // 等待3秒
+	const int nCheckIntervalMs = 50;  // 每50ms检查一次
+	int nElapsedMs = 0;
+
+	while (nElapsedMs < nWaitTimeMs)
+	{
+		Sleep(nCheckIntervalMs);
+		nElapsedMs += nCheckIntervalMs;
+
+		CSingleLock lock(&m_csUdpResponse);
+		lock.Lock();
+		if (m_bUdpRemoteResponded)
+		{
+			bReceived = TRUE;
+			lock.Unlock();
+			break;
+		}
+		lock.Unlock();
+	}
+
+	if (!bReceived)
+	{
+		// 超时未收到响应，连接失败
+		TRACE(_T("UDP连接失败: 等待远程地址响应超时 (%s:%d)\n"), UDP_REMOTE_IP, UDP_REMOTE_PORT);
+		m_bUdpThreadRunning = FALSE;
+		if (m_udpSocket != INVALID_SOCKET)
+		{
+			closesocket(m_udpSocket);
+			m_udpSocket = INVALID_SOCKET;
+		}
+		return FALSE;
+	}
+
+	// 设置连接标志（只有在收到响应后才设置）
+	m_bUdpConnected = TRUE;
+	TRACE(_T("UDP连接成功: 已收到远程地址响应 (%s:%d)\n"), UDP_REMOTE_IP, UDP_REMOTE_PORT);
 
 	return TRUE;
 }
@@ -318,8 +380,8 @@ void CFWGCSDlgDlg::DisconnectUdp()
 // 发送握手数据包
 BOOL CFWGCSDlgDlg::SendHandshake()
 {
-	UdpHandshakePacket handshake;
-	memcpy(handshake.magic, "GCS", 3);
+	UdpHandshakePacket handshake;	//
+	memcpy(handshake.magic, "GCS", 3); // 将"GCS"复制到handshake.magic中
 	handshake.magic[3] = '\0';
 	handshake.version = 1;
 
@@ -333,9 +395,9 @@ BOOL CFWGCSDlgDlg::SendUdpData(const void* pData, int nSize)
 	{
 		return FALSE;
 	}
-
+	// 发送数据到远程地址，函数参数依序为：Socket句柄、数据、数据长度、标志、远程地址、远程地址长度。返回值为发送的字节数，如果发送失败返回SOCKET_ERROR。
 	int nSent = sendto(m_udpSocket, (const char*)pData, nSize, 0, 
-		(sockaddr*)&m_udpRemoteAddr, sizeof(m_udpRemoteAddr));
+		(sockaddr*)&m_udpRemoteAddr, sizeof(m_udpRemoteAddr)); 
 
 	if (nSent == SOCKET_ERROR)
 	{
@@ -353,7 +415,7 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 	sockaddr_in fromAddr;
 	int nFromLen = sizeof(fromAddr);
 
-	while (pDlg->m_bUdpThreadRunning)
+	while (pDlg->m_bUdpThreadRunning)//判断UDP线程是否运行
 	{
 		// 阻塞等待接收数据
 		int nReceived = recvfrom(pDlg->m_udpSocket, buffer, sizeof(buffer), 0,
@@ -361,18 +423,52 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 
 		if (nReceived > 0)
 		{
-			TRACE(_T("UDP接收线程: 收到 %d 字节数据\n"), nReceived);
+			// 使用 inet_ntop() 替代已弃用的 inet_ntoa()
+			char szIpAddr[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &fromAddr.sin_addr, szIpAddr, INET_ADDRSTRLEN);
+			TRACE(_T("UDP接收线程: 收到 %d 字节数据，来源: %s:%d\n"), 
+				nReceived, CString(szIpAddr), ntohs(fromAddr.sin_port));
+			
+			// 检查数据包是否来自远程地址（用于验证连接）
+			if (fromAddr.sin_addr.s_addr == pDlg->m_udpRemoteAddr.sin_addr.s_addr &&
+				fromAddr.sin_port == pDlg->m_udpRemoteAddr.sin_port)
+			{
+				// 收到来自远程地址的数据，设置响应标志
+				CSingleLock lock(&pDlg->m_csUdpResponse);
+				lock.Lock();
+				if (!pDlg->m_bUdpRemoteResponded)
+				{
+					pDlg->m_bUdpRemoteResponded = TRUE;
+					TRACE(_T("UDP接收线程: 检测到远程地址响应，连接验证成功\n"));
+				}
+				lock.Unlock();
+			}
 			
 			// 检查数据包大小是否匹配
 			if (nReceived == sizeof(UdpRecvDataPacket))
 			{
-				// 分配内存保存数据包（通过消息传递）
+				// 动态分配内存保存数据包，注意堆栈释放
 				UdpRecvDataPacket* pPacket = new UdpRecvDataPacket;
 				memcpy(pPacket, buffer, sizeof(UdpRecvDataPacket));
 				
-				// 调试输出：显示接收到的数据
-				TRACE(_T("UDP接收: data1=%.2f, data2=%.2f, data3=%.2f, data4=%.2f, data5=%.2f\n"),
-					pPacket->data1, pPacket->data2, pPacket->data3, pPacket->data4, pPacket->data5);
+				// 字节序转换（UDP网络数据通常是大端字节序，需要转换）
+				// Windows是小端系统，如果发送端也是小端，则不需要转换
+				// 如果发送端是大端，需要取消下面注释来启用字节序转换
+				// pPacket->pitchAngle = ntohs(pPacket->pitchAngle);
+				// pPacket->rollAngle = ntohs(pPacket->rollAngle);
+				// pPacket->yawAngle = ntohs(pPacket->yawAngle);
+				// pPacket->attackAngle = ntohs(pPacket->attackAngle);
+				// pPacket->sideslipAngle = ntohs(pPacket->sideslipAngle);
+				
+				// 调试输出：显示接收到的数据（原始int16_t值）
+				TRACE(_T("UDP接收: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
+					pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
+				
+				// 调试输出：显示原始字节值（用于诊断字节序问题）
+				BYTE* pBytes = (BYTE*)pPacket;
+				TRACE(_T("UDP接收原始字节[前10字节]: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n"),
+					pBytes[0], pBytes[1], pBytes[2], pBytes[3], pBytes[4], 
+					pBytes[5], pBytes[6], pBytes[7], pBytes[8], pBytes[9]);
 				
 				// 发送消息到主线程处理
 				pDlg->PostMessage(WM_UDP_DATA_RECEIVED, (WPARAM)pPacket, 0);
@@ -421,26 +517,27 @@ void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
 	}
 
 	TRACE(_T("ProcessReceivedData: 开始处理数据包\n"));
-	TRACE(_T("  data1=%.6f, data2=%.6f, data3=%.6f, data4=%.6f, data5=%.6f\n"),
-		pPacket->data1, pPacket->data2, pPacket->data3, pPacket->data4, pPacket->data5);
+	TRACE(_T("原始值: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
+		pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
 	
 	// 格式化并更新所有数据显示控件
+	// 注意：int16_t值需要转换为浮点数显示（假设单位是1度）
 	CString strData1, strData2, strData3, strData4, strData5;
-	strData1.Format(_T("%.2f"), pPacket->data1);
-	strData2.Format(_T("%.2f"), pPacket->data2);
-	strData3.Format(_T("%.2f"), pPacket->data3);
-	strData4.Format(_T("%.2f"), pPacket->data4);
-	strData5.Format(_T("%.2f"), pPacket->data5);
+	strData1.Format(_T("%.2f"), pPacket->pitchAngle / 1.0f);
+	strData2.Format(_T("%.2f"), pPacket->rollAngle/ 1.0f);
+	strData3.Format(_T("%.2f"), pPacket->yawAngle/ 1.0f);
+	strData4.Format(_T("%.2f"), pPacket->attackAngle/ 1.0f);
+	strData5.Format(_T("%.2f"), pPacket->sideslipAngle/ 1.0f);
 	
 	// 更新data1显示控件（IDC_Display）
-	if (m_editData1.GetSafeHwnd() != NULL)
-	{
-		m_editData1.SetWindowText(strData1);
+	if (m_editData1.GetSafeHwnd() != NULL) // 如果data1显示控件有效
+	{	
+		m_editData1.SetWindowText(strData1); // 设置data1显示控件文本
 	}
 	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display);
-		if (pWnd != NULL) pWnd->SetWindowText(strData1);
+	{	
+		CWnd* pWnd = GetDlgItem(IDC_Display);// 控件未绑定，使用GetDlgItem获取控件
+		if (pWnd != NULL) pWnd->SetWindowText(strData1); // 设置data1显示控件文本
 	}
 	
 	// 更新data2显示控件（IDC_Display1）
@@ -791,16 +888,12 @@ BOOL CFWGCSDlgDlg::SendSerialData(const void* pData, int nSize)
 // 返回值：
 //   - 0：线程正常退出
 // 工作流程：
-//   1. 循环读取串口数据（ReadFile阻塞等待）
+//   1. 循环读取串口数据，ReadFile阻塞等待，流式接收
 //   2. 将新数据追加到接收缓冲区（处理不完整数据包）
 //   3. 从缓冲区中提取完整的数据包
-//   4. 只处理最后一个完整数据包（避免UI频繁刷新）
+//   4. 只处理最后一个完整数据包，避免消息队列积压，以及UI频繁刷新
 //   5. 通过PostMessage发送到主线程处理
 //   6. 保留不完整数据到下次接收时拼接
-// 注意事项：
-//   - 串口数据是流式的，可能一次接收多个数据包或部分数据包
-//   - 需要缓冲区管理，确保数据包边界正确
-//   - 只处理最后一个数据包，避免消息队列积压
 // ============================================================================
 UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 {
@@ -872,15 +965,30 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 				// 原因：避免UI频繁刷新，只显示最新的数据
 				if (nPacketCount > 0)
 				{
-					// 分配内存保存最后一个数据包（通过消息传递到主线程）
-					UdpRecvDataPacket* pPacket = new UdpRecvDataPacket;
-					// 复制最后一个完整数据包
-					memcpy(pPacket, pDlg->m_serialBuffer + (nPacketCount - 1) * nPacketSize, nPacketSize);
+				// 分配内存保存最后一个数据包（通过消息传递到主线程）
+				UdpRecvDataPacket* pPacket = new UdpRecvDataPacket;
+				// 复制最后一个完整数据包
+				memcpy(pPacket, pDlg->m_serialBuffer + (nPacketCount - 1) * nPacketSize, nPacketSize);
 
-					// 调试输出：显示接收到的最后一个数据包内容
-					TRACE(_T("串口接收[最后/%d]: data1=%.2f, data2=%.2f, data3=%.2f, data4=%.2f, data5=%.2f\n"),
-						nPacketCount,
-						pPacket->data1, pPacket->data2, pPacket->data3, pPacket->data4, pPacket->data5);
+				// 字节序转换（如果串口数据是大端字节序，需要转换）
+				// Windows是小端系统，如果发送端也是小端，则不需要转换
+				// 如果发送端是大端，需要取消下面注释来启用字节序转换
+				// pPacket->pitchAngle = _byteswap_ushort(pPacket->pitchAngle);
+				// pPacket->rollAngle = _byteswap_ushort(pPacket->rollAngle);
+				// pPacket->yawAngle = _byteswap_ushort(pPacket->yawAngle);
+				// pPacket->attackAngle = _byteswap_ushort(pPacket->attackAngle);
+				// pPacket->sideslipAngle = _byteswap_ushort(pPacket->sideslipAngle);
+
+				// 调试输出：显示接收到的最后一个数据包内容（原始int16_t值）
+				TRACE(_T("串口接收[最后/%d]: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
+					nPacketCount,
+					pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
+				
+				// 调试输出：显示原始字节值（用于诊断字节序问题）
+				BYTE* pBytes = (BYTE*)pPacket;
+				TRACE(_T("串口接收原始字节[前10字节]: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n"),
+					pBytes[0], pBytes[1], pBytes[2], pBytes[3], pBytes[4], 
+					pBytes[5], pBytes[6], pBytes[7], pBytes[8], pBytes[9]);
 
 					// 发送消息到主线程处理（只发送最后一个数据包）
 					// 主线程会在OnSerialDataReceivedMsg中清除队列中的旧消息
@@ -1006,9 +1114,9 @@ LRESULT CFWGCSDlgDlg::OnSerialDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 // ============================================================================
 void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 {
-	// ============================================================
+	// ========================================================================
 	// 步骤1：验证数据包指针有效性
-	// ============================================================
+	// ========================================================================
 	if (pPacket == NULL)
 	{
 		TRACE(_T("ProcessSerialReceivedData: 数据包指针为空！\n"));
@@ -1018,12 +1126,13 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	// ============================================================
 	// 步骤2：格式化数据为字符串（保留2位小数）
 	// ============================================================
+	// 注意：int16_t值需要转换为浮点数显示（单位1度）
 	CString strData1, strData2, strData3, strData4, strData5;
-	strData1.Format(_T("%.2f"), pPacket->data1);  // data1：保留2位小数
-	strData2.Format(_T("%.2f"), pPacket->data2);  // data2：保留2位小数
-	strData3.Format(_T("%.2f"), pPacket->data3);  // data3：保留2位小数
-	strData4.Format(_T("%.2f"), pPacket->data4);  // data4：保留2位小数
-	strData5.Format(_T("%.2f"), pPacket->data5);  // data5：保留2位小数
+	strData1.Format(_T("%.2f"), pPacket->pitchAngle / 1.0f);   // 转换为度（0.01度单位）
+	strData2.Format(_T("%.2f"), pPacket->rollAngle / 1.0f);
+	strData3.Format(_T("%.2f"), pPacket->yawAngle / 1.0f);
+	strData4.Format(_T("%.2f"), pPacket->attackAngle / 1.0f);
+	strData5.Format(_T("%.2f"), pPacket->sideslipAngle / 1.0f);
 
 	// ============================================================
 	// 步骤3：更新所有数据显示控件
@@ -1031,9 +1140,9 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	// 使用双重检查：先检查控件句柄是否有效，失败则使用GetDlgItem获取控件
 	
 	// 更新data1显示控件（IDC_Display）
-	if (m_editData1.GetSafeHwnd() != NULL)
+	if (m_editData1.GetSafeHwnd() != NULL) // 如果data1显示控件有效
 	{
-		m_editData1.SetWindowText(strData1);
+		m_editData1.SetWindowText(strData1); // 设置data1显示控件文本
 	}
 	else
 	{
@@ -1087,4 +1196,14 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	}
 		
 	TRACE(_T("ProcessSerialReceivedData: 已更新所有控件显示\n"));
+}
+
+// 计算校验和函数 (非必须，仅用于数据完整性校验)
+uint8_t CFWGCSDlgDlg::calculateChecksum(const void* data, size_t len) {
+    const uint8_t *bytes = (const uint8_t*)data;
+    uint8_t sum = 0;
+    for(size_t i = 0; i < len; i++) {
+        sum += bytes[i];
+    }
+    return sum;
 }
