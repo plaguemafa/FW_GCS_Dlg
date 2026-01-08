@@ -33,5 +33,6 @@ public:
 	
 	// 更新数据显示
 	void UpdateDisplay(const UdpRecvDataPacket* pPacket);
+	afx_msg void OnBnClickedButton1();
 };
 

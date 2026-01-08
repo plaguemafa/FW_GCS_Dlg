@@ -42,24 +42,49 @@ BOOL CPage1Dlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 	
-	// 尝试绑定控件（如果控件存在）
-	CWnd* pWnd = GetDlgItem(IDC_Display0);
+	// 绑定视窗组9相关控件（自检结果）
+	CWnd* pWnd = GetDlgItem(IDC_Display66);
 	if (pWnd != NULL)
-		m_editData1.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display1);
+		m_editDisplay66.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_Display67);
 	if (pWnd != NULL)
-		m_editData2.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display2);
+		m_editDisplay67.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_Display68);
 	if (pWnd != NULL)
-		m_editData3.SubclassWindow(pWnd->GetSafeHwnd());
+		m_editDisplay68.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_Display69);
+	if (pWnd != NULL)
+		m_editDisplay69.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_Display70);
+	if (pWnd != NULL)
+		m_editDisplay70.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_Display71);
+	if (pWnd != NULL)
+		m_editDisplay71.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_Display72);
+	if (pWnd != NULL)
+		m_editDisplay72.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_Display73);
+	if (pWnd != NULL)
+		m_editDisplay73.SubclassWindow(pWnd->GetSafeHwnd());
 	
-	// 初始化显示控件（如果控件存在）
-	if (m_editData1.GetSafeHwnd() != NULL)
-		m_editData1.SetWindowText(_T("0.00"));
-	if (m_editData2.GetSafeHwnd() != NULL)
-		m_editData2.SetWindowText(_T("0.00"));
-	if (m_editData3.GetSafeHwnd() != NULL)
-		m_editData3.SetWindowText(_T("0.00"));
+	// 初始化视窗组9相关控件（自检结果）
+	if (m_editDisplay66.GetSafeHwnd() != NULL)
+		m_editDisplay66.SetWindowText(_T("0"));
+	if (m_editDisplay67.GetSafeHwnd() != NULL)
+		m_editDisplay67.SetWindowText(_T("0"));
+	if (m_editDisplay68.GetSafeHwnd() != NULL)
+		m_editDisplay68.SetWindowText(_T("0"));
+	if (m_editDisplay69.GetSafeHwnd() != NULL)
+		m_editDisplay69.SetWindowText(_T("0"));
+	if (m_editDisplay70.GetSafeHwnd() != NULL)
+		m_editDisplay70.SetWindowText(_T("0"));
+	if (m_editDisplay71.GetSafeHwnd() != NULL)
+		m_editDisplay71.SetWindowText(_T("0"));
+	if (m_editDisplay72.GetSafeHwnd() != NULL)
+		m_editDisplay72.SetWindowText(_T("0"));
+	if (m_editDisplay73.GetSafeHwnd() != NULL)
+		m_editDisplay73.SetWindowText(_T("0"));
 	
 	return TRUE;
 }
@@ -70,16 +95,32 @@ void CPage1Dlg::UpdateDisplay(const UdpRecvDataPacket* pPacket)
 	if (pPacket == NULL)
 		return;
 	
-	CString strData1, strData2, strData3;
-	strData1.Format(_T("%.2f"), pPacket->pitchAngle / 1.0f);
-	strData2.Format(_T("%.2f"), pPacket->rollAngle / 1.0f);
-	strData3.Format(_T("%.2f"), pPacket->yawAngle / 1.0f);
+	// 更新视窗组9相关字段（自检结果）
+	CString strData66, strData67, strData68, strData69, strData70, strData71, strData72, strData73;
+	strData66.Format(_T("%u"), pPacket->YIS100A_result);
+	strData67.Format(_T("%u"), pPacket->HP5804_result);
+	strData68.Format(_T("%u"), pPacket->MS4525D_result);
+	strData69.Format(_T("%u"), pPacket->M401_result);
+	strData70.Format(_T("%u"), pPacket->GPS_result);
+	strData71.Format(_T("%u"), pPacket->PAC1931_result1);
+	strData72.Format(_T("%u"), pPacket->can_to_pw_result);
+	strData73.Format(_T("%u"), pPacket->SBUS_result);
 	
-	if (m_editData1.GetSafeHwnd() != NULL)
-		m_editData1.SetWindowText(strData1);
-	if (m_editData2.GetSafeHwnd() != NULL)
-		m_editData2.SetWindowText(strData2);
-	if (m_editData3.GetSafeHwnd() != NULL)
-		m_editData3.SetWindowText(strData3);
+	if (m_editDisplay66.GetSafeHwnd() != NULL)
+		m_editDisplay66.SetWindowText(strData66);
+	if (m_editDisplay67.GetSafeHwnd() != NULL)
+		m_editDisplay67.SetWindowText(strData67);
+	if (m_editDisplay68.GetSafeHwnd() != NULL)
+		m_editDisplay68.SetWindowText(strData68);
+	if (m_editDisplay69.GetSafeHwnd() != NULL)
+		m_editDisplay69.SetWindowText(strData69);
+	if (m_editDisplay70.GetSafeHwnd() != NULL)
+		m_editDisplay70.SetWindowText(strData70);
+	if (m_editDisplay71.GetSafeHwnd() != NULL)
+		m_editDisplay71.SetWindowText(strData71);
+	if (m_editDisplay72.GetSafeHwnd() != NULL)
+		m_editDisplay72.SetWindowText(strData72);
+	if (m_editDisplay73.GetSafeHwnd() != NULL)
+		m_editDisplay73.SetWindowText(strData73);
 }
 

@@ -27,10 +27,16 @@ protected:
 
 public:
 	virtual BOOL OnInitDialog();
-	// 数据显示控件
-	CEdit m_editData1;   // Display0 (Pitch)
-	CEdit m_editData2;   // Display1 (Roll)
-	CEdit m_editData3;   // Display2 (Yaw)
+	
+	// 视窗组9相关控件（自检结果）
+	CEdit m_editDisplay66;   // IMU自检结果（IDC_Display66）
+	CEdit m_editDisplay67;   // 气压计自检结果（IDC_Display67）
+	CEdit m_editDisplay68;   // 空速计自检结果（IDC_Display68）
+	CEdit m_editDisplay69;   // 温度计自检结果（IDC_Display69）
+	CEdit m_editDisplay70;   // GPS自检结果（IDC_Display70）
+	CEdit m_editDisplay71;   // 电压自检结果（IDC_Display71）
+	CEdit m_editDisplay72;   // PWM自检结果（IDC_Display72）
+	CEdit m_editDisplay73;   // SBUS自检结果（IDC_Display73）
 	
 	// 更新数据显示
 	void UpdateDisplay(const UdpRecvDataPacket* pPacket);

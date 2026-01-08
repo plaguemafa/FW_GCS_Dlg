@@ -75,6 +75,14 @@ typedef struct {
     uint8_t  payloadType;         // 载荷类型 (58)             视窗组8-0 IDC_Display59
     uint8_t  ammoRemaining;       // 剩余弹量 (59)             视窗组8-1 IDC_Display60
     uint8_t  selfTestResult;      // 自检结果 (60)             视窗组8-2 IDC_Display61
+    uint8_t  YIS100A_result;      //IMU自检结果            视窗组9-0 IDC_Display66
+    uint8_t  HP5804_result;       //气压计自检结果         视窗组9-1 IDC_Display67
+    uint8_t  MS4525D_result;      // 空速计自检结果        视窗组9-2 IDC_Display68
+    uint8_t  M401_result;         // 温度计自检结果        视窗组9-3 IDC_Display69
+    uint8_t  GPS_result;          // GPS自检结果          视窗组9-4 IDC_Display70
+    uint8_t  PAC1931_result1;     // 电压自检结果         视窗组9-5 IDC_Display71
+    uint8_t  can_to_pw_result;    // PWM自检结果          视窗组9-6 IDC_Display72
+    uint8_t  SBUS_result;         // SBUS自检结果         视窗组9-7 IDC_Display73
     uint8_t  batteryVoltage;      // 电池电压 (61)             视窗组8-3 IDC_Display62
     uint8_t  workflowStatus;      // 工作流程 (62)             视窗组8-4 IDC_Display63
     uint8_t  alarmStatus;         // 报警状态字 (63)           视窗组8-5 IDC_Display64
@@ -84,10 +92,12 @@ typedef struct {
     int16_t  targetAltitude;      // 目标高度 (67)           视窗组7-2 IDC_Display56
     int8_t   targetSpeed;         // 目标速度 (68)           视窗组7-3 IDC_Display57
     int16_t  targetCourse;        // 目标航向 (69)           视窗组7-4 IDC_Display58
-    // int32_t  reserved1;           // 预留1 (70)             视窗组9-0 IDC_Display66
-    // int32_t  reserved2;           // 预留2 (71)             视窗组9-1 IDC_Display67
-    // int32_t  reserved3;           // 预留3 (72)             视窗组9-2 IDC_Display68
-    // int32_t  reserved4;           // 预留4 (73)             视窗组9-3 IDC_Display69
+    // int32_t  reserved1;           // 预留1 (70)             
+    // int32_t  reserved2;           // 预留2 (71)
+    // int32_t  reserved3;           // 预留3 (72)
+    // int32_t  reserved4;           // 预留4 (73)
+
+
     
     // 校验和 (序号74)
     // uint8_t checksum; 

@@ -1271,6 +1271,8 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	CString strData44, strData45, strData46, strData47, strData48, strData49, strData50, strData51, strData52, strData53;
 	CString strData54, strData55, strData56, strData57, strData58;
 	CString strData59, strData60, strData61, strData62, strData63, strData64, strData65;
+	CString strData66;
+	CString strData67, strData68, strData69, strData70, strData71, strData72, strData73;
 	
 	// 视窗组1相关字段
 	strData6.Format(_T("%.2f"), pPacket->pitchRate / 1.0f);
@@ -1347,8 +1349,18 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	strData63.Format(_T("%u"), pPacket->batteryVoltage);
 	strData64.Format(_T("%u"), pPacket->workflowStatus);
 	strData65.Format(_T("%u"), pPacket->alarmStatus);
-	CString strData66;
 	strData66.Format(_T("%u"), pPacket->switchStatus);
+	
+	// 视窗组9相关字段（自检结果）
+	strData67.Format(_T("%u"), pPacket->YIS100A_result);
+	strData68.Format(_T("%u"), pPacket->HP5804_result);
+	strData69.Format(_T("%u"), pPacket->MS4525D_result);
+	strData70.Format(_T("%u"), pPacket->M401_result);
+	strData71.Format(_T("%u"), pPacket->GPS_result);
+	strData72.Format(_T("%u"), pPacket->PAC1931_result1);
+	strData73.Format(_T("%u"), pPacket->can_to_pw_result);
+	CString strData74;
+	strData74.Format(_T("%u"), pPacket->SBUS_result);
 
 	// ============================================================
 	// 步骤3：更新所有数据显示控件
@@ -2080,6 +2092,62 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	{
 		CWnd* pWnd = GetDlgItem(IDC_Display65);
 		if (pWnd != NULL) pWnd->SetWindowText(strData66);
+	}
+
+	// 更新data67显示控件（IDC_Display66）- 在子对话框中
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(IDC_Display66);
+		if (pWnd != NULL) pWnd->SetWindowText(strData67);
+	}
+
+	// 更新data68显示控件（IDC_Display67）- 在子对话框中
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(IDC_Display67);
+		if (pWnd != NULL) pWnd->SetWindowText(strData68);
+	}
+
+	// 更新data69显示控件（IDC_Display68）- 在子对话框中
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(IDC_Display68);
+		if (pWnd != NULL) pWnd->SetWindowText(strData69);
+	}
+
+	// 更新data70显示控件（IDC_Display69）- 在子对话框中
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(IDC_Display69);
+		if (pWnd != NULL) pWnd->SetWindowText(strData70);
+	}
+
+	// 更新data71显示控件（IDC_Display70）- 在子对话框中
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(IDC_Display70);
+		if (pWnd != NULL) pWnd->SetWindowText(strData71);
+	}
+
+	// 更新data72显示控件（IDC_Display71）- 在子对话框中
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(IDC_Display71);
+		if (pWnd != NULL) pWnd->SetWindowText(strData72);
+	}
+
+	// 更新data73显示控件（IDC_Display72）- 在子对话框中
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(IDC_Display72);
+		if (pWnd != NULL) pWnd->SetWindowText(strData73);
+	}
+
+	// 更新data74显示控件（IDC_Display73）- 在子对话框中
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(IDC_Display73);
+		if (pWnd != NULL) pWnd->SetWindowText(strData74);
 	}
 	
 	// 更新子对话框显示（优先使用子对话框）

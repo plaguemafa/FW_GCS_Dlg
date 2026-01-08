@@ -34,6 +34,7 @@ void CPage2Dlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CPage2Dlg, CDialogEx)
+	ON_BN_CLICKED(IDC_BUTTON1, &CPage2Dlg::OnBnClickedButton1)
 END_MESSAGE_MAP()
 
 // CPage2Dlg 消息处理程序
@@ -75,3 +76,8 @@ void CPage2Dlg::UpdateDisplay(const UdpRecvDataPacket* pPacket)
 		m_editData5.SetWindowText(strData5);
 }
 
+//UDP发送
+void CPage2Dlg::OnBnClickedButton1()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}

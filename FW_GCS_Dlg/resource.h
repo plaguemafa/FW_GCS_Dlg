@@ -1,6 +1,6 @@
-Ôªø//{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ ÁîüÊàêÁöÑÂåÖÂê´Êñá‰ª∂„ÄÇ
-// ‰æõ FWGCSDlg.rc ‰ΩøÁî®
+//{{NO_DEPENDENCIES}}
+// Microsoft Visual C++ …˙≥…µƒ∞¸∫¨Œƒº˛°£
+// π© FWGCSDlg.rc  π”√
 //
 #define IDD_FW_GCS_DLG_DIALOG           102
 #define IDR_MAINFRAME                   128
@@ -23,6 +23,7 @@
 #define IDC_Display5                    1028
 #define IDC_Display6                    1029
 #define IDC_Display7                    1030
+#define IDC_BUTTON1                     1030
 #define IDC_Display8                    1031
 #define IDC_Display9                    1032
 #define IDC_Display10                   1033
@@ -79,6 +80,13 @@
 #define IDC_Display64                   1084
 #define IDC_Display65                   1085
 #define IDC_Display66                   1086
+#define IDC_Display67                   1087
+#define IDC_Display68                   1088
+#define IDC_Display69                   1089
+#define IDC_Display70                   1090
+#define IDC_Display71                   1091
+#define IDC_Display72                   1092
+#define IDC_Display73                   1093
 
 // Next default values for new objects
 // 
@@ -86,7 +94,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        138
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1030
+#define _APS_NEXT_CONTROL_VALUE         1031
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
