@@ -58,6 +58,83 @@ protected:
 	CEdit m_editData4;                     // data4数据显示控件（IDC_Display3）
 	CEdit m_editData5;                     // data5数据显示控件（IDC_Display4）
 	
+	// 视窗组1相关控件
+	CEdit m_editDisplay5;                  // 俯仰角速率（IDC_Display5）
+	CEdit m_editDisplay6;                  // 滚转角速率（IDC_Display6）
+	CEdit m_editDisplay7;                  // 航向角速率（IDC_Display7）
+	CEdit m_editDisplay8;                  // 俯仰角加速度（IDC_Display8）
+	CEdit m_editDisplay9;                  // 滚转角加速度（IDC_Display9）
+	CEdit m_editDisplay10;                 // 航向角加速度（IDC_Display10）
+	CEdit m_editDisplay11;                 // 法向过载（IDC_Display11）
+	CEdit m_editDisplay12;                 // 纵向过载（IDC_Display12）
+	CEdit m_editDisplay13;                 // 横向过载（IDC_Display13）
+	
+	// 视窗组2相关控件
+	CEdit m_editDisplay14;                 // 气压高度（IDC_Display14）
+	CEdit m_editDisplay15;                 // 无线电高度（IDC_Display15）
+	CEdit m_editDisplay16;                 // 气压空速（IDC_Display16）
+	CEdit m_editDisplay17;                 // 表速（IDC_Display17）
+	CEdit m_editDisplay18;                 // 马赫数（IDC_Display18）
+	CEdit m_editDisplay19;                 // 东向速度（IDC_Display19）
+	CEdit m_editDisplay20;                 // 北向速度（IDC_Display20）
+	CEdit m_editDisplay21;                 // 天向速度（IDC_Display21）
+	CEdit m_editDisplay22;                 // 大气温度（IDC_Display22）
+	
+	// 视窗组3相关控件
+	CEdit m_editDisplay23;                 // 油门控制（IDC_Display23）
+	CEdit m_editDisplay24;                 // 发动机缸温（IDC_Display24）
+	CEdit m_editDisplay25;                 // 发动机转速（IDC_Display25）
+	CEdit m_editDisplay26;                 // 剩余油量（IDC_Display26）
+	
+	// 视窗组4相关控件
+	CEdit m_editDisplay27;                 // 1#舵偏指令（IDC_Display27）
+	CEdit m_editDisplay28;                 // 2#舵偏指令（IDC_Display28）
+	CEdit m_editDisplay29;                 // 3#舵偏指令（IDC_Display29）
+	CEdit m_editDisplay30;                 // 4#舵偏指令（IDC_Display30）
+	CEdit m_editDisplay31;                 // 转弯舵机指令（IDC_Display31）
+	CEdit m_editDisplay32;                 // 控制指令（IDC_Display32）
+	
+	// 视窗组5相关控件（GPS）
+	CEdit m_editDisplay33;                 // 卫星经度（IDC_Display33）
+	CEdit m_editDisplay34;                 // 卫星纬度（IDC_Display34）
+	CEdit m_editDisplay35;                 // 卫星高度（IDC_Display35）
+	CEdit m_editDisplay36;                 // 卫星定位状态（IDC_Display36）
+	CEdit m_editDisplay37;                 // 卫星收星数（IDC_Display37）
+	CEdit m_editDisplay38;                 // 卫星地速航向（IDC_Display38）
+	CEdit m_editDisplay39;                 // 卫星地速（IDC_Display39）
+	CEdit m_editDisplay40;                 // 卫星垂直速度（IDC_Display40）
+	CEdit m_editDisplay41;                 // GPS时（IDC_Display41）
+	CEdit m_editDisplay42;                 // GPS分（IDC_Display42）
+	CEdit m_editDisplay43;                 // GPS秒（IDC_Display43）
+	
+	// 视窗组6相关控件（导航）
+	CEdit m_editDisplay44;                 // 导航状态（IDC_Display44）
+	CEdit m_editDisplay45;                 // 当前航线号（IDC_Display45）
+	CEdit m_editDisplay46;                 // 目标航点（IDC_Display46）
+	CEdit m_editDisplay47;                 // 偏航距（IDC_Display47）
+	CEdit m_editDisplay48;                 // 偏航角（IDC_Display48）
+	CEdit m_editDisplay49;                 // 待飞距（IDC_Display49）
+	CEdit m_editDisplay50;                 // 应飞航向（IDC_Display50）
+	CEdit m_editDisplay51;                 // 应飞速度（IDC_Display51）
+	CEdit m_editDisplay52;                 // 应飞高度（IDC_Display52）
+	CEdit m_editDisplay53;                 // 应飞时间（IDC_Display53）
+	
+	// 视窗组7相关控件（目标）
+	CEdit m_editDisplay54;                 // 目标经度（IDC_Display54）
+	CEdit m_editDisplay55;                 // 目标纬度（IDC_Display55）
+	CEdit m_editDisplay56;                 // 目标高度（IDC_Display56）
+	CEdit m_editDisplay57;                 // 目标速度（IDC_Display57）
+	CEdit m_editDisplay58;                 // 目标航向（IDC_Display58）
+	
+	// 视窗组8相关控件（载荷）
+	CEdit m_editDisplay59;                 // 载荷类型（IDC_Display59）
+	CEdit m_editDisplay60;                 // 剩余弹量（IDC_Display60）
+	CEdit m_editDisplay61;                 // 自检结果（IDC_Display61）
+	CEdit m_editDisplay62;                 // 电池电压（IDC_Display62）
+	CEdit m_editDisplay63;                 // 工作流程（IDC_Display63）
+	CEdit m_editDisplay64;                 // 报警状态字（IDC_Display64）
+	CEdit m_editDisplay65;                 // 开关量状态（IDC_Display65）
+	
 	// 子对话框（分页）
 	CPage1Dlg* m_pPage1Dlg;                // 第一页子对话框指针
 	CPage2Dlg* m_pPage2Dlg;                // 第二页子对话框指针

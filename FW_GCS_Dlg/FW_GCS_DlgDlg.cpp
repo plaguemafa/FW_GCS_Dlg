@@ -90,6 +90,83 @@ void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_Display2, m_editData3);  // 绑定data3显示控件
 	DDX_Control(pDX, IDC_Display3, m_editData4);  // 绑定data4显示控件
 	DDX_Control(pDX, IDC_Display4, m_editData5);  // 绑定data5显示控件
+	
+	// 视窗组1相关控件绑定
+	DDX_Control(pDX, IDC_Display5, m_editDisplay5); 
+	DDX_Control(pDX, IDC_Display6, m_editDisplay6);
+	DDX_Control(pDX, IDC_Display7, m_editDisplay7);
+	DDX_Control(pDX, IDC_Display8, m_editDisplay8);
+	DDX_Control(pDX, IDC_Display9, m_editDisplay9);
+	DDX_Control(pDX, IDC_Display10, m_editDisplay10);
+	DDX_Control(pDX, IDC_Display11, m_editDisplay11);
+	DDX_Control(pDX, IDC_Display12, m_editDisplay12);
+	DDX_Control(pDX, IDC_Display13, m_editDisplay13);
+	
+	// 视窗组2相关控件绑定
+	DDX_Control(pDX, IDC_Display14, m_editDisplay14);
+	DDX_Control(pDX, IDC_Display15, m_editDisplay15);
+	DDX_Control(pDX, IDC_Display16, m_editDisplay16);
+	DDX_Control(pDX, IDC_Display17, m_editDisplay17);
+	DDX_Control(pDX, IDC_Display18, m_editDisplay18);
+	DDX_Control(pDX, IDC_Display19, m_editDisplay19);
+	DDX_Control(pDX, IDC_Display20, m_editDisplay20);
+	DDX_Control(pDX, IDC_Display21, m_editDisplay21);
+	DDX_Control(pDX, IDC_Display22, m_editDisplay22);
+	
+	// 视窗组3相关控件绑定
+	DDX_Control(pDX, IDC_Display23, m_editDisplay23);
+	DDX_Control(pDX, IDC_Display24, m_editDisplay24);
+	DDX_Control(pDX, IDC_Display25, m_editDisplay25);
+	DDX_Control(pDX, IDC_Display26, m_editDisplay26);
+	
+	// 视窗组4相关控件绑定
+	DDX_Control(pDX, IDC_Display27, m_editDisplay27);
+	DDX_Control(pDX, IDC_Display28, m_editDisplay28);
+	DDX_Control(pDX, IDC_Display29, m_editDisplay29);
+	DDX_Control(pDX, IDC_Display30, m_editDisplay30);
+	DDX_Control(pDX, IDC_Display31, m_editDisplay31);
+	DDX_Control(pDX, IDC_Display32, m_editDisplay32);
+	
+	// 视窗组5相关控件绑定（GPS）
+	DDX_Control(pDX, IDC_Display33, m_editDisplay33);
+	DDX_Control(pDX, IDC_Display34, m_editDisplay34);
+	DDX_Control(pDX, IDC_Display35, m_editDisplay35);
+	DDX_Control(pDX, IDC_Display36, m_editDisplay36);
+	DDX_Control(pDX, IDC_Display37, m_editDisplay37);
+	DDX_Control(pDX, IDC_Display38, m_editDisplay38);
+	DDX_Control(pDX, IDC_Display39, m_editDisplay39);
+	DDX_Control(pDX, IDC_Display40, m_editDisplay40);
+	DDX_Control(pDX, IDC_Display41, m_editDisplay41);
+	DDX_Control(pDX, IDC_Display42, m_editDisplay42);
+	DDX_Control(pDX, IDC_Display43, m_editDisplay43);
+	
+	// 视窗组6相关控件绑定（导航）
+	DDX_Control(pDX, IDC_Display44, m_editDisplay44);
+	DDX_Control(pDX, IDC_Display45, m_editDisplay45);
+	DDX_Control(pDX, IDC_Display46, m_editDisplay46);
+	DDX_Control(pDX, IDC_Display47, m_editDisplay47);
+	DDX_Control(pDX, IDC_Display48, m_editDisplay48);
+	DDX_Control(pDX, IDC_Display49, m_editDisplay49);
+	DDX_Control(pDX, IDC_Display50, m_editDisplay50);
+	DDX_Control(pDX, IDC_Display51, m_editDisplay51);
+	DDX_Control(pDX, IDC_Display52, m_editDisplay52);
+	DDX_Control(pDX, IDC_Display53, m_editDisplay53);
+	
+	// 视窗组7相关控件绑定（目标）
+	DDX_Control(pDX, IDC_Display54, m_editDisplay54);
+	DDX_Control(pDX, IDC_Display55, m_editDisplay55);
+	DDX_Control(pDX, IDC_Display56, m_editDisplay56);
+	DDX_Control(pDX, IDC_Display57, m_editDisplay57);
+	DDX_Control(pDX, IDC_Display58, m_editDisplay58);
+	
+	// 视窗组8相关控件绑定（载荷）
+	DDX_Control(pDX, IDC_Display59, m_editDisplay59);
+	DDX_Control(pDX, IDC_Display60, m_editDisplay60);
+	DDX_Control(pDX, IDC_Display61, m_editDisplay61);
+	DDX_Control(pDX, IDC_Display62, m_editDisplay62);
+	DDX_Control(pDX, IDC_Display63, m_editDisplay63);
+	DDX_Control(pDX, IDC_Display64, m_editDisplay64);
+	DDX_Control(pDX, IDC_Display65, m_editDisplay65);
 }
 
 BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
@@ -132,6 +209,83 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	m_editData3.SetWindowText(_T("0.00"));  // 初始化data3显示
 	m_editData4.SetWindowText(_T("0.00"));  // 初始化data4显示
 	m_editData5.SetWindowText(_T("0.00"));  // 初始化data5显示
+	
+	// 初始化视窗组1相关控件
+	m_editDisplay5.SetWindowText(_T("0.00"));
+	m_editDisplay6.SetWindowText(_T("0.00"));
+	m_editDisplay7.SetWindowText(_T("0.00"));
+	m_editDisplay8.SetWindowText(_T("0.00"));
+	m_editDisplay9.SetWindowText(_T("0.00"));
+	m_editDisplay10.SetWindowText(_T("0.00"));
+	m_editDisplay11.SetWindowText(_T("0.00"));
+	m_editDisplay12.SetWindowText(_T("0.00"));
+	m_editDisplay13.SetWindowText(_T("0.00"));
+	
+	// 初始化视窗组2相关控件
+	m_editDisplay14.SetWindowText(_T("0.00"));
+	m_editDisplay15.SetWindowText(_T("0"));
+	m_editDisplay16.SetWindowText(_T("0.00"));
+	m_editDisplay17.SetWindowText(_T("0.00"));
+	m_editDisplay18.SetWindowText(_T("0"));
+	m_editDisplay19.SetWindowText(_T("0.00"));
+	m_editDisplay20.SetWindowText(_T("0.00"));
+	m_editDisplay21.SetWindowText(_T("0.00"));
+	m_editDisplay22.SetWindowText(_T("0"));
+	
+	// 初始化视窗组3相关控件
+	m_editDisplay23.SetWindowText(_T("0"));
+	m_editDisplay24.SetWindowText(_T("0.00"));
+	m_editDisplay25.SetWindowText(_T("0.00"));
+	m_editDisplay26.SetWindowText(_T("0"));
+	
+	// 初始化视窗组4相关控件
+	m_editDisplay27.SetWindowText(_T("0"));
+	m_editDisplay28.SetWindowText(_T("0"));
+	m_editDisplay29.SetWindowText(_T("0"));
+	m_editDisplay30.SetWindowText(_T("0"));
+	m_editDisplay31.SetWindowText(_T("0"));
+	m_editDisplay32.SetWindowText(_T("0"));
+	
+	// 初始化视窗组5相关控件（GPS）
+	m_editDisplay33.SetWindowText(_T("0"));
+	m_editDisplay34.SetWindowText(_T("0"));
+	m_editDisplay35.SetWindowText(_T("0.00"));
+	m_editDisplay36.SetWindowText(_T("0"));
+	m_editDisplay37.SetWindowText(_T("0"));
+	m_editDisplay38.SetWindowText(_T("0.00"));
+	m_editDisplay39.SetWindowText(_T("0.00"));
+	m_editDisplay40.SetWindowText(_T("0"));
+	m_editDisplay41.SetWindowText(_T("0"));
+	m_editDisplay42.SetWindowText(_T("0"));
+	m_editDisplay43.SetWindowText(_T("0"));
+	
+	// 初始化视窗组6相关控件（导航）
+	m_editDisplay44.SetWindowText(_T("0"));
+	m_editDisplay45.SetWindowText(_T("0"));
+	m_editDisplay46.SetWindowText(_T("0"));
+	m_editDisplay47.SetWindowText(_T("0.00"));
+	m_editDisplay48.SetWindowText(_T("0.00"));
+	m_editDisplay49.SetWindowText(_T("0.00"));
+	m_editDisplay50.SetWindowText(_T("0"));
+	m_editDisplay51.SetWindowText(_T("0"));
+	m_editDisplay52.SetWindowText(_T("0"));
+	m_editDisplay53.SetWindowText(_T("0"));
+	
+	// 初始化视窗组7相关控件（目标）
+	m_editDisplay54.SetWindowText(_T("0"));
+	m_editDisplay55.SetWindowText(_T("0"));
+	m_editDisplay56.SetWindowText(_T("0.00"));
+	m_editDisplay57.SetWindowText(_T("0"));
+	m_editDisplay58.SetWindowText(_T("0.00"));
+	
+	// 初始化视窗组8相关控件（载荷）
+	m_editDisplay59.SetWindowText(_T("0"));
+	m_editDisplay60.SetWindowText(_T("0"));
+	m_editDisplay61.SetWindowText(_T("0"));
+	m_editDisplay62.SetWindowText(_T("0"));
+	m_editDisplay63.SetWindowText(_T("0"));
+	m_editDisplay64.SetWindowText(_T("0"));
+	m_editDisplay65.SetWindowText(_T("0"));
 	
 	TRACE(_T("OnInitDialog: 所有数据显示控件已初始化\n"));
 	
@@ -555,21 +709,8 @@ void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
 	}
 	
 	// 兼容旧代码：如果子对话框未创建，更新主对话框控件
-	if (m_pPage1Dlg == NULL || m_pPage1Dlg->GetSafeHwnd() == NULL)
-	{
-		CString strData1, strData2, strData3, strData4, strData5;
-		strData1.Format(_T("%.2f"), pPacket->pitchAngle / 1.0f);
-		strData2.Format(_T("%.2f"), pPacket->rollAngle / 1.0f);
-		strData3.Format(_T("%.2f"), pPacket->yawAngle / 1.0f);
-		strData4.Format(_T("%.2f"), pPacket->attackAngle / 1.0f);
-		strData5.Format(_T("%.2f"), pPacket->sideslipAngle / 1.0f);
-		
-		if (m_editData1.GetSafeHwnd() != NULL) m_editData1.SetWindowText(strData1);
-		if (m_editData2.GetSafeHwnd() != NULL) m_editData2.SetWindowText(strData2);
-		if (m_editData3.GetSafeHwnd() != NULL) m_editData3.SetWindowText(strData3);
-		if (m_editData4.GetSafeHwnd() != NULL) m_editData4.SetWindowText(strData4);
-		if (m_editData5.GetSafeHwnd() != NULL) m_editData5.SetWindowText(strData5);
-	}
+	// 直接调用ProcessSerialReceivedData来更新所有字段（两个函数使用相同的更新逻辑）
+	ProcessSerialReceivedData(pPacket);
 	
 	TRACE(_T("ProcessReceivedData: 已更新所有控件显示\n"));
 }
@@ -1120,13 +1261,101 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	strData3.Format(_T("%.2f"), pPacket->yawAngle / 1.0f);
 	strData4.Format(_T("%.2f"), pPacket->attackAngle / 1.0f);
 	strData5.Format(_T("%.2f"), pPacket->sideslipAngle / 1.0f);
+	
+	// 格式化所有剩余字段
+	CString strData6, strData7, strData8, strData9, strData10, strData11, strData12, strData13;
+	CString strData14, strData15, strData16, strData17, strData18, strData19, strData20, strData21, strData22;
+	CString strData23, strData24, strData25, strData26;
+	CString strData27, strData28, strData29, strData30, strData31, strData32;
+	CString strData33, strData34, strData35, strData36, strData37, strData38, strData39, strData40, strData41, strData42, strData43;
+	CString strData44, strData45, strData46, strData47, strData48, strData49, strData50, strData51, strData52, strData53;
+	CString strData54, strData55, strData56, strData57, strData58;
+	CString strData59, strData60, strData61, strData62, strData63, strData64, strData65;
+	
+	// 视窗组1相关字段
+	strData6.Format(_T("%.2f"), pPacket->pitchRate / 1.0f);
+	strData7.Format(_T("%.2f"), pPacket->rollRate / 1.0f);
+	strData8.Format(_T("%.2f"), pPacket->yawRate / 1.0f);
+	strData9.Format(_T("%.2f"), pPacket->pitchAcceleration / 1.0f);
+	strData10.Format(_T("%.2f"), pPacket->rollAcceleration / 1.0f);
+	strData11.Format(_T("%.2f"), pPacket->yawAcceleration / 1.0f);
+	strData12.Format(_T("%.2f"), pPacket->normalOverload / 1.0f);
+	strData13.Format(_T("%.2f"), pPacket->longitudinalOverload / 1.0f);
+	strData14.Format(_T("%.2f"), pPacket->lateralOverload / 1.0f);
+	
+	// 视窗组2相关字段
+	strData15.Format(_T("%.2f"), pPacket->baroAltitude / 1.0f);
+	strData16.Format(_T("%u"), pPacket->radioAltitude);
+	strData17.Format(_T("%.2f"), pPacket->baroAirspeed / 1.0f);
+	strData18.Format(_T("%.2f"), pPacket->indicatedAirspeed / 1.0f);
+	strData19.Format(_T("%u"), pPacket->machNumber);
+	strData20.Format(_T("%.2f"), pPacket->eastVelocity / 1.0f);
+	strData21.Format(_T("%.2f"), pPacket->northVelocity / 1.0f);
+	strData22.Format(_T("%.2f"), pPacket->verticalVelocity / 1.0f);
+	strData23.Format(_T("%d"), pPacket->airTemperature);
+	
+	// 视窗组3相关字段
+	strData24.Format(_T("%u"), pPacket->throttle);
+	strData25.Format(_T("%.2f"), pPacket->engineTemp / 1.0f);
+	strData26.Format(_T("%.2f"), pPacket->engineRPM / 1.0f);
+	strData27.Format(_T("%u"), pPacket->fuelRemaining);
+	
+	// 视窗组4相关字段
+	strData28.Format(_T("%d"), pPacket->rudderCmd1);
+	strData29.Format(_T("%d"), pPacket->rudderCmd2);
+	strData30.Format(_T("%d"), pPacket->rudderCmd3);
+	strData31.Format(_T("%d"), pPacket->rudderCmd4);
+	strData32.Format(_T("%d"), pPacket->turnRudderCmd);
+	strData33.Format(_T("%u"), pPacket->controlCommand);
+	
+	// 视窗组5相关字段（GPS）
+	strData34.Format(_T("%d"), pPacket->longitude);
+	strData35.Format(_T("%d"), pPacket->latitude);
+	strData36.Format(_T("%.2f"), pPacket->gpsAltitude / 1.0f);
+	strData37.Format(_T("%u"), pPacket->gpsStatus);
+	strData38.Format(_T("%u"), pPacket->satelitesNum);
+	strData39.Format(_T("%.2f"), pPacket->gpsCourse / 1.0f);
+	strData40.Format(_T("%.2f"), pPacket->gpsGroundSpeed / 1.0f);
+	strData41.Format(_T("%u"), pPacket->gpsVerticalSpeed);
+	strData42.Format(_T("%u"), pPacket->gpsHour);
+	strData43.Format(_T("%u"), pPacket->gpsMinute);
+	strData44.Format(_T("%u"), pPacket->gpsSecond);
+	
+	// 视窗组6相关字段（导航）
+	strData45.Format(_T("%u"), pPacket->navStatus);
+	strData46.Format(_T("%u"), pPacket->routeNumber);
+	strData47.Format(_T("%u"), pPacket->targetWaypoint);
+	strData48.Format(_T("%.2f"), pPacket->crossTrackError / 1.0f);
+	strData49.Format(_T("%.2f"), pPacket->courseDeviation / 1.0f);
+	strData50.Format(_T("%.2f"), pPacket->distanceToGo / 1.0f);
+	strData51.Format(_T("%u"), pPacket->commandHeading);
+	strData52.Format(_T("%u"), pPacket->commandSpeed);
+	strData53.Format(_T("%u"), pPacket->commandAltitude);
+	strData54.Format(_T("%u"), pPacket->commandTime);
+	
+	// 视窗组7相关字段（目标）
+	strData55.Format(_T("%d"), pPacket->targetLongitude);
+	strData56.Format(_T("%d"), pPacket->targetLatitude);
+	strData57.Format(_T("%.2f"), pPacket->targetAltitude / 1.0f);
+	strData58.Format(_T("%d"), pPacket->targetSpeed);
+	strData59.Format(_T("%.2f"), pPacket->targetCourse / 1.0f);
+	
+	// 视窗组8相关字段（载荷）
+	strData60.Format(_T("%u"), pPacket->payloadType);
+	strData61.Format(_T("%u"), pPacket->ammoRemaining);
+	strData62.Format(_T("%u"), pPacket->selfTestResult);
+	strData63.Format(_T("%u"), pPacket->batteryVoltage);
+	strData64.Format(_T("%u"), pPacket->workflowStatus);
+	strData65.Format(_T("%u"), pPacket->alarmStatus);
+	CString strData66;
+	strData66.Format(_T("%u"), pPacket->switchStatus);
 
 	// ============================================================
 	// 步骤3：更新所有数据显示控件
 	// ============================================================
 	// 使用双重检查：先检查控件句柄是否有效，失败则使用GetDlgItem获取控件
 	
-	// 更新data1显示控件（IDC_Display）
+	// 更新data1显示控件（IDC_Display0）
 	if (m_editData1.GetSafeHwnd() != NULL) // 如果data1显示控件有效
 	{
 		m_editData1.SetWindowText(strData1); // 设置data1显示控件文本
@@ -1180,6 +1409,677 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	{
 		CWnd* pWnd = GetDlgItem(IDC_Display4);
 		if (pWnd != NULL) pWnd->SetWindowText(strData5);
+	}
+
+	// 更新data6显示控件（IDC_Display5）
+	if (m_editDisplay5.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay5.SetWindowText(strData6);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display5);
+		if (pWnd != NULL) pWnd->SetWindowText(strData6);
+	}
+
+	// 更新data7显示控件（IDC_Display6）
+	if (m_editDisplay6.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay6.SetWindowText(strData7);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display6);
+		if (pWnd != NULL) pWnd->SetWindowText(strData7);
+	}
+
+	// 更新data8显示控件（IDC_Display7）
+	if (m_editDisplay7.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay7.SetWindowText(strData8);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display7);
+		if (pWnd != NULL) pWnd->SetWindowText(strData8);
+	}
+
+	// 更新data9显示控件（IDC_Display8）
+	if (m_editDisplay8.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay8.SetWindowText(strData9);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display8);
+		if (pWnd != NULL) pWnd->SetWindowText(strData9);
+	}
+
+	// 更新data10显示控件（IDC_Display9）
+	if (m_editDisplay9.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay9.SetWindowText(strData10);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display9);
+		if (pWnd != NULL) pWnd->SetWindowText(strData10);
+	}
+
+	// 更新data11显示控件（IDC_Display10）
+	if (m_editDisplay10.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay10.SetWindowText(strData11);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display10);
+		if (pWnd != NULL) pWnd->SetWindowText(strData11);
+	}
+
+	// 更新data12显示控件（IDC_Display11）
+	if (m_editDisplay11.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay11.SetWindowText(strData12);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display11);
+		if (pWnd != NULL) pWnd->SetWindowText(strData12);
+	}
+
+	// 更新data13显示控件（IDC_Display12）
+	if (m_editDisplay12.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay12.SetWindowText(strData13);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display12);
+		if (pWnd != NULL) pWnd->SetWindowText(strData13);
+	}
+
+	// 更新data14显示控件（IDC_Display13）
+	if (m_editDisplay13.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay13.SetWindowText(strData14);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display13);
+		if (pWnd != NULL) pWnd->SetWindowText(strData14);
+	}
+
+	// 更新data15显示控件（IDC_Display14）
+	if (m_editDisplay14.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay14.SetWindowText(strData15);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display14);
+		if (pWnd != NULL) pWnd->SetWindowText(strData15);
+	}
+
+	// 更新data16显示控件（IDC_Display15）
+	if (m_editDisplay15.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay15.SetWindowText(strData16);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display15);
+		if (pWnd != NULL) pWnd->SetWindowText(strData16);
+	}
+
+	// 更新data17显示控件（IDC_Display16）
+	if (m_editDisplay16.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay16.SetWindowText(strData17);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display16);
+		if (pWnd != NULL) pWnd->SetWindowText(strData17);
+	}
+
+	// 更新data18显示控件（IDC_Display17）
+	if (m_editDisplay17.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay17.SetWindowText(strData18);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display17);
+		if (pWnd != NULL) pWnd->SetWindowText(strData18);
+	}
+
+	// 更新data19显示控件（IDC_Display18）
+	if (m_editDisplay18.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay18.SetWindowText(strData19);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display18);
+		if (pWnd != NULL) pWnd->SetWindowText(strData19);
+	}
+
+	// 更新data20显示控件（IDC_Display19）
+	if (m_editDisplay19.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay19.SetWindowText(strData20);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display19);
+		if (pWnd != NULL) pWnd->SetWindowText(strData20);
+	}
+
+	// 更新data21显示控件（IDC_Display20）
+	if (m_editDisplay20.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay20.SetWindowText(strData21);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display20);
+		if (pWnd != NULL) pWnd->SetWindowText(strData21);
+	}
+
+	// 更新data22显示控件（IDC_Display21）
+	if (m_editDisplay21.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay21.SetWindowText(strData22);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display21);
+		if (pWnd != NULL) pWnd->SetWindowText(strData22);
+	}
+
+	// 更新data23显示控件（IDC_Display22）
+	if (m_editDisplay22.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay22.SetWindowText(strData23);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display22);
+		if (pWnd != NULL) pWnd->SetWindowText(strData23);
+	}
+
+	// 更新data24显示控件（IDC_Display23）
+	if (m_editDisplay23.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay23.SetWindowText(strData24);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display23);
+		if (pWnd != NULL) pWnd->SetWindowText(strData24);
+	}
+
+	// 更新data25显示控件（IDC_Display24）
+	if (m_editDisplay24.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay24.SetWindowText(strData25);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display24);
+		if (pWnd != NULL) pWnd->SetWindowText(strData25);
+	}
+
+	// 更新data26显示控件（IDC_Display25）
+	if (m_editDisplay25.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay25.SetWindowText(strData26);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display25);
+		if (pWnd != NULL) pWnd->SetWindowText(strData26);
+	}
+
+	// 更新data27显示控件（IDC_Display26）
+	if (m_editDisplay26.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay26.SetWindowText(strData27);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display26);
+		if (pWnd != NULL) pWnd->SetWindowText(strData27);
+	}
+
+	// 更新data28显示控件（IDC_Display27）
+	if (m_editDisplay27.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay27.SetWindowText(strData28);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display27);
+		if (pWnd != NULL) pWnd->SetWindowText(strData28);
+	}
+
+	// 更新data29显示控件（IDC_Display28）
+	if (m_editDisplay28.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay28.SetWindowText(strData29);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display28);
+		if (pWnd != NULL) pWnd->SetWindowText(strData29);
+	}
+
+	// 更新data30显示控件（IDC_Display29）
+	if (m_editDisplay29.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay29.SetWindowText(strData30);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display29);
+		if (pWnd != NULL) pWnd->SetWindowText(strData30);
+	}
+
+	// 更新data31显示控件（IDC_Display30）
+	if (m_editDisplay30.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay30.SetWindowText(strData31);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display30);
+		if (pWnd != NULL) pWnd->SetWindowText(strData31);
+	}
+
+	// 更新data32显示控件（IDC_Display31）
+	if (m_editDisplay31.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay31.SetWindowText(strData32);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display31);
+		if (pWnd != NULL) pWnd->SetWindowText(strData32);
+	}
+
+	// 更新data33显示控件（IDC_Display32）
+	if (m_editDisplay32.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay32.SetWindowText(strData33);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display32);
+		if (pWnd != NULL) pWnd->SetWindowText(strData33);
+	}
+
+	// 更新data34显示控件（IDC_Display33）
+	if (m_editDisplay33.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay33.SetWindowText(strData34);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display33);
+		if (pWnd != NULL) pWnd->SetWindowText(strData34);
+	}
+
+	// 更新data35显示控件（IDC_Display34）
+	if (m_editDisplay34.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay34.SetWindowText(strData35);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display34);
+		if (pWnd != NULL) pWnd->SetWindowText(strData35);
+	}
+
+	// 更新data36显示控件（IDC_Display35）
+	if (m_editDisplay35.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay35.SetWindowText(strData36);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display35);
+		if (pWnd != NULL) pWnd->SetWindowText(strData36);
+	}
+
+	// 更新data37显示控件（IDC_Display36）
+	if (m_editDisplay36.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay36.SetWindowText(strData37);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display36);
+		if (pWnd != NULL) pWnd->SetWindowText(strData37);
+	}
+
+	// 更新data38显示控件（IDC_Display37）
+	if (m_editDisplay37.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay37.SetWindowText(strData38);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display37);
+		if (pWnd != NULL) pWnd->SetWindowText(strData38);
+	}
+
+	// 更新data39显示控件（IDC_Display38）
+	if (m_editDisplay38.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay38.SetWindowText(strData39);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display38);
+		if (pWnd != NULL) pWnd->SetWindowText(strData39);
+	}
+
+	// 更新data40显示控件（IDC_Display39）
+	if (m_editDisplay39.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay39.SetWindowText(strData40);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display39);
+		if (pWnd != NULL) pWnd->SetWindowText(strData40);
+	}
+
+	// 更新data41显示控件（IDC_Display40）
+	if (m_editDisplay40.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay40.SetWindowText(strData41);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display40);
+		if (pWnd != NULL) pWnd->SetWindowText(strData41);
+	}
+
+	// 更新data42显示控件（IDC_Display41）
+	if (m_editDisplay41.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay41.SetWindowText(strData42);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display41);
+		if (pWnd != NULL) pWnd->SetWindowText(strData42);
+	}
+
+	// 更新data43显示控件（IDC_Display42）
+	if (m_editDisplay42.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay42.SetWindowText(strData43);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display42);
+		if (pWnd != NULL) pWnd->SetWindowText(strData43);
+	}
+
+	// 更新data44显示控件（IDC_Display43）
+	if (m_editDisplay43.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay43.SetWindowText(strData44);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display43);
+		if (pWnd != NULL) pWnd->SetWindowText(strData44);
+	}
+
+	// 更新data45显示控件（IDC_Display44）
+	if (m_editDisplay44.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay44.SetWindowText(strData45);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display44);
+		if (pWnd != NULL) pWnd->SetWindowText(strData45);
+	}
+
+	// 更新data46显示控件（IDC_Display45）
+	if (m_editDisplay45.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay45.SetWindowText(strData46);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display45);
+		if (pWnd != NULL) pWnd->SetWindowText(strData46);
+	}
+
+	// 更新data47显示控件（IDC_Display46）
+	if (m_editDisplay46.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay46.SetWindowText(strData47);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display46);
+		if (pWnd != NULL) pWnd->SetWindowText(strData47);
+	}
+
+	// 更新data48显示控件（IDC_Display47）
+	if (m_editDisplay47.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay47.SetWindowText(strData48);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display47);
+		if (pWnd != NULL) pWnd->SetWindowText(strData48);
+	}
+
+	// 更新data49显示控件（IDC_Display48）
+	if (m_editDisplay48.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay48.SetWindowText(strData49);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display48);
+		if (pWnd != NULL) pWnd->SetWindowText(strData49);
+	}
+
+	// 更新data50显示控件（IDC_Display49）
+	if (m_editDisplay49.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay49.SetWindowText(strData50);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display49);
+		if (pWnd != NULL) pWnd->SetWindowText(strData50);
+	}
+
+	// 更新data51显示控件（IDC_Display50）
+	if (m_editDisplay50.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay50.SetWindowText(strData51);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display50);
+		if (pWnd != NULL) pWnd->SetWindowText(strData51);
+	}
+
+	// 更新data52显示控件（IDC_Display51）
+	if (m_editDisplay51.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay51.SetWindowText(strData52);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display51);
+		if (pWnd != NULL) pWnd->SetWindowText(strData52);
+	}
+
+	// 更新data53显示控件（IDC_Display52）
+	if (m_editDisplay52.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay52.SetWindowText(strData53);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display52);
+		if (pWnd != NULL) pWnd->SetWindowText(strData53);
+	}
+
+	// 更新data54显示控件（IDC_Display53）
+	if (m_editDisplay53.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay53.SetWindowText(strData54);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display53);
+		if (pWnd != NULL) pWnd->SetWindowText(strData54);
+	}
+
+	// 更新data55显示控件（IDC_Display54）
+	if (m_editDisplay54.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay54.SetWindowText(strData55);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display54);
+		if (pWnd != NULL) pWnd->SetWindowText(strData55);
+	}
+
+	// 更新data56显示控件（IDC_Display55）
+	if (m_editDisplay55.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay55.SetWindowText(strData56);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display55);
+		if (pWnd != NULL) pWnd->SetWindowText(strData56);
+	}
+
+	// 更新data57显示控件（IDC_Display56）
+	if (m_editDisplay56.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay56.SetWindowText(strData57);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display56);
+		if (pWnd != NULL) pWnd->SetWindowText(strData57);
+	}
+
+	// 更新data58显示控件（IDC_Display57）
+	if (m_editDisplay57.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay57.SetWindowText(strData58);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display57);
+		if (pWnd != NULL) pWnd->SetWindowText(strData58);
+	}
+
+	// 更新data59显示控件（IDC_Display58）
+	if (m_editDisplay58.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay58.SetWindowText(strData59);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display58);
+		if (pWnd != NULL) pWnd->SetWindowText(strData59);
+	}
+
+	// 更新data60显示控件（IDC_Display59）
+	if (m_editDisplay59.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay59.SetWindowText(strData60);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display59);
+		if (pWnd != NULL) pWnd->SetWindowText(strData60);
+	}
+
+	// 更新data61显示控件（IDC_Display60）
+	if (m_editDisplay60.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay60.SetWindowText(strData61);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display60);
+		if (pWnd != NULL) pWnd->SetWindowText(strData61);
+	}
+
+	// 更新data62显示控件（IDC_Display61）
+	if (m_editDisplay61.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay61.SetWindowText(strData62);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display61);
+		if (pWnd != NULL) pWnd->SetWindowText(strData62);
+	}
+
+	// 更新data63显示控件（IDC_Display62）
+	if (m_editDisplay62.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay62.SetWindowText(strData63);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display62);
+		if (pWnd != NULL) pWnd->SetWindowText(strData63);
+	}
+
+	// 更新data64显示控件（IDC_Display63）
+	if (m_editDisplay63.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay63.SetWindowText(strData64);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display63);
+		if (pWnd != NULL) pWnd->SetWindowText(strData64);
+	}
+
+	// 更新data65显示控件（IDC_Display64）
+	if (m_editDisplay64.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay64.SetWindowText(strData65);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display64);
+		if (pWnd != NULL) pWnd->SetWindowText(strData65);
+	}
+
+	// 更新data66显示控件（IDC_Display65）
+	if (m_editDisplay65.GetSafeHwnd() != NULL)
+	{
+		m_editDisplay65.SetWindowText(strData66);
+	}
+	else
+	{
+		CWnd* pWnd = GetDlgItem(IDC_Display65);
+		if (pWnd != NULL) pWnd->SetWindowText(strData66);
 	}
 	
 	// 更新子对话框显示（优先使用子对话框）
