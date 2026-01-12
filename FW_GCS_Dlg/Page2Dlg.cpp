@@ -1,4 +1,4 @@
-// Page2Dlg.cpp: 第二页子对话框实现文件
+﻿// Page2Dlg.cpp: 第二页子对话框实现文件
 //
 
 #include "pch.h"

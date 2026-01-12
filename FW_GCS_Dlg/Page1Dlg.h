@@ -1,4 +1,4 @@
-// Page1Dlg.h: 第一页子对话框头文件
+﻿// Page1Dlg.h: 第一页子对话框头文件
 //
 
 #pragma once

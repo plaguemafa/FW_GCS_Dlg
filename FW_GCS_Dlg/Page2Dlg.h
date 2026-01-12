@@ -1,4 +1,4 @@
-// Page2Dlg.h: 第二页子对话框头文件
+﻿// Page2Dlg.h: 第二页子对话框头文件
 //
 
 #pragma once

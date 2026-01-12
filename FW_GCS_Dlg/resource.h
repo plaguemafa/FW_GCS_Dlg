@@ -24,9 +24,13 @@
 #define IDC_Display6                    1029
 #define IDC_Display7                    1030
 #define IDC_BUTTON1                     1030
+#define IDC_BUTTON_SendData             1030
 #define IDC_Display8                    1031
+#define IDC_Display_EditData0           1031
 #define IDC_Display9                    1032
 #define IDC_Display10                   1033
+#define IDC_LIST1                       1033
+#define IDC_LISTBOX1                    1033
 #define IDC_Display11                   1034
 #define IDC_Display12                   1035
 #define IDC_Display13                   1036
@@ -94,7 +98,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        138
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1031
+#define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
