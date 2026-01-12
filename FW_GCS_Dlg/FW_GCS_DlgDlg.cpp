@@ -42,7 +42,6 @@
 // 自定义消息：串口数据接收（由串口接收线程发送到主线程）
 #define WM_SERIAL_DATA_RECEIVED  (WM_USER + 201)
 
-
 // CFWGCSDlgDlg 对话框
 
 CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
