@@ -6,6 +6,9 @@
 #include <afxdialogex.h>
 #include "UdpData.h"
 
+// 前向声明
+class CFWGCSDlgDlg;
+
 // CPage2Dlg 对话框
 class CPage2Dlg : public CDialogEx
 {
@@ -21,18 +24,27 @@ public:
 #endif
 
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+	virtual void DoDataExchange(CDataExchange* pDX) override;    // DDX/DDV 支持
 
 	DECLARE_MESSAGE_MAP()
 
 public:
-	virtual BOOL OnInitDialog();
-	// 数据显示控件
-	CEdit m_editData4;   // Display3 (AoA)
-	CEdit m_editData5;   // Display4 (AoS)
+	virtual BOOL OnInitDialog() override;
+	// 发送数据输入控件
+	CEdit m_editSendData0; // IDC_Display_EditData0
+	CEdit m_editSendData1; // IDC_Display_EditData1
+	CEdit m_editSendData2; // IDC_Display_EditData2
+	CEdit m_editSendData3; // IDC_Display_EditData3
+	CEdit m_editSendData4; // IDC_Display_EditData4
 	
-	// 更新数据显示
+	// 设置主对话框指针（避免每次使用dynamic_cast）
+	void SetMainDlg(CFWGCSDlgDlg* pMainDlg) { m_pMainDlg = pMainDlg; }
+	
+	// 更新数据显示（Page2当前不显示接收数据，保留接口以兼容主对话框调用）
 	void UpdateDisplay(const UdpRecvDataPacket* pPacket);
-	afx_msg void OnBnClickedButton1();
+	afx_msg void OnBnClickedButtonSendData();
+	
+private:
+	CFWGCSDlgDlg* m_pMainDlg;  // 主对话框指针
 };
 

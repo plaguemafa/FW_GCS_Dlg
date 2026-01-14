@@ -115,12 +115,18 @@ typedef struct {
 // 	float data5;  // 数据5
 // };
 
+// 地面站发送数据包结构（需要1字节对齐，避免结构体填充）
+#pragma pack(push, 1)  // 紧密打包，避免字节对齐填充
 struct UdpSendDataPacket
 {
 	float data1;  // 数据1
 	float data2;  // 数据2
 	float data3;  // 数据3
+    float data4;  // 数据4
+    float data5;  // 数据5
+
 };
+#pragma pack(pop)  // 恢复默认字节对齐
 
 // 握手数据包结构
 struct UdpHandshakePacket

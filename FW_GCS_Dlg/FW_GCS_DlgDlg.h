@@ -24,14 +24,16 @@
 //   Simulink 远程地址 = 127.0.0.1 (程序所在地址)
 //   Simulink 远程端口 = UDP_LOCAL_PORT (5001) - Simulink发送数据的目标端口
 //
-#define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
-//#define UDP_REMOTE_IP      "127.0.0.1"         // Simulink的本地IP（用于本地测试）
+//#define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
+#define UDP_REMOTE_IP      "127.0.0.1"         // Simulink的本地IP（用于本地测试）
 #define UDP_REMOTE_PORT     50000                // Simulink的本地端口（用于本地测试）地面站远程端口
 #define UDP_LOCAL_PORT      50001                 // 本程序监听端口（接收Simulink发送的数据）
 
 // 串口配置参数宏
 #define SERIAL_PORT_NAME   "COM20"        // 目标串口名称（RS422串口，格式：COM1-COM256）
 #define SERIAL_BAUD_RATE   115200         // 波特率（常用值：9600, 19200, 38400, 57600, 115200）
+
+#define   UI_UPDATE_INTERVAL_MS 250  // 显示控件刷新频率
 
 // 自定义消息：UDP数据接收
 #define WM_UDP_DATA_RECEIVED  (WM_USER + 200)
@@ -67,6 +69,7 @@ protected:
 	BOOL m_bUdpThreadRunning;             // 线程运行标志
 	BOOL m_bUdpRemoteResponded;           // 远程地址响应标志（用于验证连接）
 	CCriticalSection m_csUdpResponse;      // 保护响应标志的临界区
+	DWORD m_dwLastUdpUiUpdate;            // 上次UI更新时间（用于限频）
 	
 	// 串口通信相关成员变量
 	HANDLE m_hSerialPort;                  // 串口句柄
@@ -180,6 +183,7 @@ protected:
 	BOOL SendHandshake();                  // 发送握手数据包
 	void ProcessReceivedData(const UdpRecvDataPacket* pPacket);  // 处理接收到的数据包
 	static UINT UdpRecvThread(LPVOID pParam);  // UDP接收线程函数（静态）
+	void UpdateControlText(UINT nID, const CString& strText);  // 辅助函数：更新控件文本（优先在子对话框中查找）
 	
 	// 串口通信相关函数
 	BOOL OpenSerialPort();                 // 打开串口
@@ -203,4 +207,7 @@ protected:
 public:
 	afx_msg void OnBnClickedSeriallink();
 	afx_msg void OnBnClickedButton1();
+public:
+	// 提供给子对话框安全调用的UDP发送封装
+	BOOL SendUdpDataPublic(const void* pData, int nSize) { return SendUdpData(pData, nSize); }
 };

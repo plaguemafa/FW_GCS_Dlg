@@ -32,6 +32,7 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_pUdpRecvThread = NULL; 					// 初始化UDP接收线程指针为空
 	m_bUdpThreadRunning = FALSE; 				// 初始化UDP线程运行标志为未运行
 	m_bUdpRemoteResponded = FALSE; 				// 初始化远程响应标志为未响应
+	m_dwLastUdpUiUpdate = 0;                   // 上次UI更新时间（限频用）
 	memset(&m_udpRemoteAddr, 0, sizeof(m_udpRemoteAddr)); // 清空远程地址结构
 	
 	// 串口初始化
@@ -376,6 +377,15 @@ BOOL CFWGCSDlgDlg::InitUdpSocket()
 		return FALSE;
 	}
 
+	// 设置Socket为非阻塞模式，避免sendto阻塞UI线程
+	u_long mode = 1;  // 1 = 非阻塞模式，0 = 阻塞模式
+	if (ioctlsocket(m_udpSocket, FIONBIO, &mode) == SOCKET_ERROR)
+	{
+		int nError = WSAGetLastError();
+		TRACE(_T("UDP Socket设置非阻塞模式失败，错误代码: %d\n"), nError);
+		// 继续执行，但sendto可能会阻塞
+	}
+
 	// 绑定本地端口（用于接收数据）
 	sockaddr_in localAddr;
 	memset(&localAddr, 0, sizeof(localAddr));
@@ -461,32 +471,84 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 		return FALSE;
 	}
 
-	// 等待远程地址响应（最多等待3秒）
+	// 等待远程地址响应（最多等待5秒，给Simulink更多时间发送数据）
+	// 使用消息泵保持UI响应，避免阻塞
 	BOOL bReceived = FALSE;
-	const int nWaitTimeMs = 3000;  // 等待3秒
+	const int nWaitTimeMs = 5000;  // 等待5秒，给Simulink更多时间
 	const int nCheckIntervalMs = 50;  // 每50ms检查一次
-	int nElapsedMs = 0;
+	DWORD dwStartTime = GetTickCount();
+	int nCheckCount = 0;
 
-	while (nElapsedMs < nWaitTimeMs)
+	TRACE(_T("ConnectUdp: 开始等待远程地址响应，最多等待 %d 毫秒\n"), nWaitTimeMs);
+
+	while ((GetTickCount() - dwStartTime) < nWaitTimeMs)
 	{
-		Sleep(nCheckIntervalMs);
-		nElapsedMs += nCheckIntervalMs;
-
-		CSingleLock lock(&m_csUdpResponse);
-		lock.Lock();
-		if (m_bUdpRemoteResponded)
+		// 处理Windows消息，保持UI响应
+		// 每次处理一条消息后立即检查响应标志，避免在处理大量消息时延迟检查
+		MSG msg;
+		BOOL bProcessedMsg = FALSE;
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
-			bReceived = TRUE;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+			bProcessedMsg = TRUE;
+			
+			// 处理完每条消息后立即检查响应标志
+			// 这样可以快速响应，避免在处理大量消息时延迟
+			CSingleLock lock(&m_csUdpResponse);
+			lock.Lock();
+			if (m_bUdpRemoteResponded)
+			{
+				bReceived = TRUE;
+				DWORD dwElapsed = GetTickCount() - dwStartTime;
+				TRACE(_T("ConnectUdp: 检测到响应标志已设置（在处理消息后），耗时 %d 毫秒\n"), dwElapsed);
+				lock.Unlock();
+				break;
+			}
 			lock.Unlock();
+		}
+		
+		// 如果已经收到响应，退出循环
+		if (bReceived)
+		{
 			break;
 		}
-		lock.Unlock();
+
+		// 如果没有处理消息，也检查一次响应标志（防止遗漏）
+		if (!bProcessedMsg)
+		{
+			CSingleLock lock(&m_csUdpResponse);
+			lock.Lock();
+			if (m_bUdpRemoteResponded)
+			{
+				bReceived = TRUE;
+				DWORD dwElapsed = GetTickCount() - dwStartTime;
+				TRACE(_T("ConnectUdp: 检测到响应标志已设置，耗时 %d 毫秒\n"), dwElapsed);
+				lock.Unlock();
+				break;
+			}
+			lock.Unlock();
+		}
+
+		// 每1秒输出一次调试信息
+		nCheckCount++;
+		if (nCheckCount % 20 == 0)  // 每20次检查（约1秒）输出一次
+		{
+			DWORD dwElapsed = GetTickCount() - dwStartTime;
+			TRACE(_T("ConnectUdp: 等待中... 已等待 %d 毫秒，响应标志=%d\n"), 
+				dwElapsed, m_bUdpRemoteResponded);
+		}
+
+		// 短暂休眠，避免CPU占用过高
+		Sleep(nCheckIntervalMs);
 	}
 
 	if (!bReceived)
 	{
 		// 超时未收到响应，连接失败
-		TRACE(_T("UDP连接失败: 等待远程地址响应超时 (%s:%d)\n"), UDP_REMOTE_IP, UDP_REMOTE_PORT);
+		DWORD dwElapsed = GetTickCount() - dwStartTime;
+		TRACE(_T("UDP连接失败: 等待远程地址响应超时 (%s:%d)，已等待 %d 毫秒，响应标志=%d\n"), 
+			UDP_REMOTE_IP, UDP_REMOTE_PORT, dwElapsed, m_bUdpRemoteResponded);
 		m_bUdpThreadRunning = FALSE;
 		if (m_udpSocket != INVALID_SOCKET)
 		{
@@ -547,18 +609,37 @@ BOOL CFWGCSDlgDlg::SendUdpData(const void* pData, int nSize)
 {
 	if (m_udpSocket == INVALID_SOCKET)
 	{
+		TRACE(_T("SendUdpData: Socket无效\n"));
 		return FALSE;
 	}
+	
 	// 发送数据到远程地址，函数参数依序为：Socket句柄、数据、数据长度、标志、远程地址、远程地址长度。返回值为发送的字节数，如果发送失败返回SOCKET_ERROR。
 	int nSent = sendto(m_udpSocket, (const char*)pData, nSize, 0, 
 		(sockaddr*)&m_udpRemoteAddr, sizeof(m_udpRemoteAddr)); 
 
 	if (nSent == SOCKET_ERROR)
 	{
+		int nError = WSAGetLastError();
+		// 在非阻塞模式下，如果发送缓冲区满，会返回WSAEWOULDBLOCK
+		// 这种情况下，数据可能已经部分发送，但通常UDP不会出现这种情况
+		if (nError == WSAEWOULDBLOCK)
+		{
+			TRACE(_T("SendUdpData: 发送缓冲区满，数据未发送\n"));
+		}
+		else
+		{
+			TRACE(_T("SendUdpData: 发送失败，错误代码: %d\n"), nError);
+		}
 		return FALSE;
 	}
 
-	return (nSent == nSize);
+	if (nSent != nSize)
+	{
+		TRACE(_T("SendUdpData: 部分发送，期望 %d 字节，实际发送 %d 字节\n"), nSize, nSent);
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 // UDP接收线程函数
@@ -583,19 +664,36 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			TRACE(_T("UDP接收线程: 收到 %d 字节数据，来源: %s:%d\n"), 
 				nReceived, CString(szIpAddr), ntohs(fromAddr.sin_port));
 			
-			// 检查数据包是否来自远程地址（用于验证连接）
+			// UDP是无连接协议，只要收到任何数据包就认为连接成功
+			// 如果还没有设置响应标志，则设置它（用于连接验证）
+			CSingleLock lock(&pDlg->m_csUdpResponse);
+			lock.Lock();
+			BOOL bWasSet = pDlg->m_bUdpRemoteResponded;
+			if (!pDlg->m_bUdpRemoteResponded)
+			{
+				pDlg->m_bUdpRemoteResponded = TRUE;
+				TRACE(_T("UDP接收线程: [首次]检测到数据接收，设置响应标志=TRUE（来源: %s:%d）\n"), 
+					CString(szIpAddr), ntohs(fromAddr.sin_port));
+			}
+			else
+			{
+				TRACE(_T("UDP接收线程: 收到数据，但响应标志已设置（来源: %s:%d）\n"), 
+					CString(szIpAddr), ntohs(fromAddr.sin_port));
+			}
+			lock.Unlock();
+			
+			// 如果数据包来自配置的远程地址，更新远程地址信息（用于后续发送）
 			if (fromAddr.sin_addr.s_addr == pDlg->m_udpRemoteAddr.sin_addr.s_addr &&
 				fromAddr.sin_port == pDlg->m_udpRemoteAddr.sin_port)
 			{
-				// 收到来自远程地址的数据，设置响应标志
-				CSingleLock lock(&pDlg->m_csUdpResponse);
-				lock.Lock();
-				if (!pDlg->m_bUdpRemoteResponded)
-				{
-					pDlg->m_bUdpRemoteResponded = TRUE;
-					TRACE(_T("UDP接收线程: 检测到远程地址响应，连接验证成功\n"));
-				}
-				lock.Unlock();
+				TRACE(_T("UDP接收线程: 数据包来自配置的远程地址\n"));
+			}
+			else
+			{
+				// 如果数据包来自其他地址，更新远程地址（适应动态IP场景）
+				TRACE(_T("UDP接收线程: 数据包来自新地址，更新远程地址信息\n"));
+				pDlg->m_udpRemoteAddr.sin_addr.s_addr = fromAddr.sin_addr.s_addr;
+				pDlg->m_udpRemoteAddr.sin_port = fromAddr.sin_port;
 			}
 			
 			// 检查数据包大小是否匹配
@@ -652,10 +750,44 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 	UdpRecvDataPacket* pPacket = (UdpRecvDataPacket*)wParam;
 	if (pPacket != NULL)
 	{
-		// 处理接收到的数据包
+		// ============================================================
+		// 除消息队列中的旧消息（避免UI频繁刷新和消息积压）
+		// ============================================================
+		// 原因：如果接收速度很快，消息队列可能积压多个数据包
+		// 只处理最新的数据包，避免UI频繁刷新和内存泄漏
+		MSG msg;
+		while (PeekMessage(&msg, m_hWnd, WM_UDP_DATA_RECEIVED, WM_UDP_DATA_RECEIVED, PM_REMOVE))
+		{
+			// ============================================================
+			// 释放旧消息中的数据包内存
+			// ============================================================
+			// 注意：当前消息（wParam）的数据包不要在这里删除，后面还要使用
+			if (msg.wParam != NULL && msg.wParam != wParam)
+			{
+				UdpRecvDataPacket* pOldPacket = (UdpRecvDataPacket*)msg.wParam;
+				delete pOldPacket;  // 释放旧数据包内存
+			}
+		}
+
+		// ============================================================
+		// 处理接收到的数据包（更新UI显示）
+		// ============================================================
+		// 限制UI刷新频率，避免高频数据导致UI卡顿（例如拖动窗口困难）
+		const DWORD kUiUpdateIntervalMs = UI_UPDATE_INTERVAL_MS;
+		DWORD dwNow = GetTickCount();
+		if (m_dwLastUdpUiUpdate != 0 && (dwNow - m_dwLastUdpUiUpdate) < kUiUpdateIntervalMs)
+		{
+			// 过于频繁，丢弃本次数据包以保护GUI响应
+			delete pPacket;
+			return 0;
+		}
+		m_dwLastUdpUiUpdate = dwNow;
+
 		ProcessReceivedData(pPacket);
 		
-		// 释放内存
+		// ============================================================
+		// 释放当前数据包内存
+		// ============================================================
 		delete pPacket;
 	}
 	return 0;
@@ -684,8 +816,8 @@ void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
 		m_pPage2Dlg->UpdateDisplay(pPacket);
 	}
 	
-	// 兼容旧代码：如果子对话框未创建，更新主对话框控件
-	// 直接调用ProcessSerialReceivedData来更新所有字段（两个函数使用相同的更新逻辑）
+	// 更新主对话框控件（ProcessSerialReceivedData会处理所有控件的更新）
+	// 注意：如果控件在子对话框中，ProcessSerialReceivedData会优先在子对话框中查找
 	ProcessSerialReceivedData(pPacket);
 	
 	TRACE(_T("ProcessReceivedData: 已更新所有控件显示\n"));
@@ -1201,6 +1333,38 @@ LRESULT CFWGCSDlgDlg::OnSerialDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 }
 
 // ============================================================================
+// 辅助函数：更新控件文本（优先在子对话框中查找）
+// ============================================================================
+// 功能：更新指定ID的控件文本，优先在子对话框中查找，如果找不到再在主对话框中查找
+// 参数：
+//   - nID：控件ID
+//   - strText：要设置的文本
+// ============================================================================
+void CFWGCSDlgDlg::UpdateControlText(UINT nID, const CString& strText)
+{
+	BOOL bUpdated = FALSE;
+	// 优先在子对话框中查找控件
+	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
+	{
+		CWnd* pWnd = m_pPage1Dlg->GetDlgItem(nID);
+		if (pWnd != NULL)
+		{
+			pWnd->SetWindowText(strText);
+			bUpdated = TRUE;
+		}
+	}
+	// 如果子对话框未创建或未找到控件，在主对话框中查找
+	if (!bUpdated)
+	{
+		CWnd* pWnd = GetDlgItem(nID);
+		if (pWnd != NULL)
+		{
+			pWnd->SetWindowText(strText);
+		}
+	}
+}
+
+// ============================================================================
 // 处理串口接收到的数据包函数
 // ============================================================================
 // 功能：格式化串口接收到的数据包，更新UI显示控件
@@ -1215,6 +1379,7 @@ LRESULT CFWGCSDlgDlg::OnSerialDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 //   - 此函数在主线程中执行，可以安全访问UI控件
 //   - 与UDP数据处理使用相同的显示逻辑和控件
 //   - 使用双重检查：先检查控件句柄，失败则使用GetDlgItem
+//   - 优先在子对话框中查找控件，如果找不到再在主对话框中查找
 // ============================================================================
 void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 {
@@ -1344,60 +1509,13 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	// 使用双重检查：先检查控件句柄是否有效，失败则使用GetDlgItem获取控件
 	
 	// 更新data1显示控件（IDC_Display0）
-	if (m_editData1.GetSafeHwnd() != NULL) // 如果data1显示控件有效
-	{
-		m_editData1.SetWindowText(strData1); // 设置data1显示控件文本
-	}
-	else
-	{
-		// 控件未绑定，使用GetDlgItem获取控件
-		CWnd* pWnd = GetDlgItem(IDC_Display0);
-		if (pWnd != NULL) pWnd->SetWindowText(strData1);
-	}
+	UpdateControlText(IDC_Display0, strData1);
 
-	// 更新data2显示控件（IDC_Display1）
-	if (m_editData2.GetSafeHwnd() != NULL)
-	{
-		m_editData2.SetWindowText(strData2);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display1);
-		if (pWnd != NULL) pWnd->SetWindowText(strData2);
-	}
-
-	// 更新data3显示控件（IDC_Display2）
-	if (m_editData3.GetSafeHwnd() != NULL)
-	{
-		m_editData3.SetWindowText(strData3);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display2);
-		if (pWnd != NULL) pWnd->SetWindowText(strData3);
-	}
-
-	// 更新data4显示控件（IDC_Display3）
-	if (m_editData4.GetSafeHwnd() != NULL)
-	{
-		m_editData4.SetWindowText(strData4);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display3);
-		if (pWnd != NULL) pWnd->SetWindowText(strData4);
-	}
-
-	// 更新data5显示控件（IDC_Display4）
-	if (m_editData5.GetSafeHwnd() != NULL)
-	{
-		m_editData5.SetWindowText(strData5);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display4);
-		if (pWnd != NULL) pWnd->SetWindowText(strData5);
-	}
+	// 更新data2-5显示控件
+	UpdateControlText(IDC_Display1, strData2);
+	UpdateControlText(IDC_Display2, strData3);
+	UpdateControlText(IDC_Display3, strData4);
+	UpdateControlText(IDC_Display4, strData5);
 
 	// 更新data6显示控件（IDC_Display5）
 	if (m_editDisplay5.GetSafeHwnd() != NULL)
@@ -2207,6 +2325,8 @@ BOOL CFWGCSDlgDlg::CreateChildDialogs()
 		// 不返回FALSE，让程序继续运行
 		return TRUE;
 	}
+	// 设置主对话框指针（避免每次使用dynamic_cast）
+	m_pPage2Dlg->SetMainDlg(this);
 	// 设置为独立窗口，居中显示在主窗口（只设置位置，大小使用资源中的设置）
 	m_pPage2Dlg->GetWindowRect(&rectDlg);
 	x = rectMain.left + (rectMain.Width() - rectDlg.Width()) / 2;
