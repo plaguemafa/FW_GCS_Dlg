@@ -30,12 +30,36 @@ protected:
 
 public:
 	virtual BOOL OnInitDialog() override;
-	// 发送数据输入控件
-	CEdit m_editSendData0; // IDC_Display_EditData0
-	CEdit m_editSendData1; // IDC_Display_EditData1
-	CEdit m_editSendData2; // IDC_Display_EditData2
-	CEdit m_editSendData3; // IDC_Display_EditData3
-	CEdit m_editSendData4; // IDC_Display_EditData4
+	// 发送数据输入控件（对应UdpSendDataPacket协议字段）
+	CEdit m_editSendData0;  // IDC_Display_EditData0 - missionCommand (uint8_t)
+	CEdit m_editSendData1;  // IDC_Display_EditData1 - controlMode (uint8_t)
+	CEdit m_editSendData2;  // IDC_Display_EditData2 - launchLongitude (int32_t)
+	CEdit m_editSendData3;  // IDC_Display_EditData3 - launchLatitude (int32_t)
+	CEdit m_editSendData4;  // IDC_Display_EditData4 - launchAltitude (int16_t)
+	CEdit m_editSendData5;  // IDC_Display_EditData5 - initPitch (int16_t)
+	CEdit m_editSendData6;  // IDC_Display_EditData6 - initYaw (int16_t)
+	CEdit m_editSendData7;  // IDC_Display_EditData7 - initRoll (int16_t)
+	CEdit m_editSendData8;  // IDC_Display_EditData8 - initPitchRate (int16_t)
+	CEdit m_editSendData9;  // IDC_Display_EditData9 - initYawRate (int16_t)
+	CEdit m_editSendData10; // IDC_Display_EditData10 - initRollRate (int16_t)
+	CEdit m_editSendData11; // IDC_Display_EditData11 - initNorthVelocity (int16_t)
+	CEdit m_editSendData12; // IDC_Display_EditData12 - initEastVelocity (int16_t)
+	CEdit m_editSendData13; // IDC_Display_EditData13 - initVerticalVelocity (int16_t)
+	CEdit m_editSendData14; // IDC_Display_EditData14 - initNorthAccel (int16_t)
+	CEdit m_editSendData15; // IDC_Display_EditData15 - initEastAccel (int16_t)
+	CEdit m_editSendData16; // IDC_Display_EditData16 - initVerticalAccel (int16_t)
+	CEdit m_editSendData17; // IDC_Display_EditData17 - targetLongitude (int32_t)
+	CEdit m_editSendData18; // IDC_Display_EditData18 - targetLatitude (int32_t)
+	CEdit m_editSendData19; // IDC_Display_EditData19 - targetAltitude (int16_t)
+	CEdit m_editSendData20; // IDC_Display_EditData20 - launchLongitude2 (int32_t)
+	CEdit m_editSendData21; // IDC_Display_EditData21 - launchLatitude2 (int32_t)
+	CEdit m_editSendData22; // IDC_Display_EditData22 - launchAltitude2 (int16_t)
+	CEdit m_editSendData23; // IDC_Display_EditData23 - parachuteLongitude (int32_t)
+	CEdit m_editSendData24; // IDC_Display_EditData24 - parachuteLatitude (int32_t)
+	CEdit m_editSendData25; // IDC_Display_EditData25 - parachuteAltitude (int16_t)
+	CEdit m_editSendData26; // IDC_Display_EditData26 - elevatorCmd (int8_t)
+	CEdit m_editSendData27; // IDC_Display_EditData27 - aileronCmd (int8_t)
+	CEdit m_editSendData28; // IDC_Display_EditData28 - airspeedSet (uint8_t)
 	
 	// 设置主对话框指针（避免每次使用dynamic_cast）
 	void SetMainDlg(CFWGCSDlgDlg* pMainDlg) { m_pMainDlg = pMainDlg; }

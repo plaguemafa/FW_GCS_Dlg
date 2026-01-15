@@ -28,6 +28,8 @@
 #define IDC_Display8                    1031
 #define IDC_Display_EditData0           1031
 #define IDC_Display9                    1032
+#define IDC_BUTTON_SendData2            1032
+#define IDC_BUTTON_WP_Read              1032
 #define IDC_Display10                   1033
 #define IDC_LIST1                       1033
 #define IDC_LISTBOX1                    1033
@@ -95,6 +97,30 @@
 #define IDC_Display_EditData2           1095
 #define IDC_Display_EditData3           1096
 #define IDC_Display_EditData4           1097
+#define IDC_Display_EditData5           1098
+#define IDC_Display_EditData6           1099
+#define IDC_Display_EditData7           1100
+#define IDC_Display_EditData8           1101
+#define IDC_Display_EditData9           1102
+#define IDC_Display_EditData10          1103
+#define IDC_Display_EditData11          1104
+#define IDC_Display_EditData12          1105
+#define IDC_Display_EditData13          1106
+#define IDC_Display_EditData14          1107
+#define IDC_Display_EditData15          1108
+#define IDC_Display_EditData16          1109
+#define IDC_Display_EditData17          1110
+#define IDC_Display_EditData18          1111
+#define IDC_Display_EditData19          1112
+#define IDC_Display_EditData20          1113
+#define IDC_Display_EditData21          1114
+#define IDC_Display_EditData22          1115
+#define IDC_Display_EditData23          1116
+#define IDC_Display_EditData24          1117
+#define IDC_Display_EditData25          1118
+#define IDC_Display_EditData26          1119
+#define IDC_Display_EditData27          1120
+#define IDC_Display_EditData28          1121
 
 // Next default values for new objects
 // 
