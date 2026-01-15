@@ -61,12 +61,18 @@ public:
 	CEdit m_editSendData27; // IDC_Display_EditData27 - aileronCmd (int8_t)
 	CEdit m_editSendData28; // IDC_Display_EditData28 - airspeedSet (uint8_t)
 	
+	// 航路点相关控件
+	CButton m_chkLoadWaypoints;  // 复选框：是否加载航路点数据
+	
 	// 设置主对话框指针（避免每次使用dynamic_cast）
 	void SetMainDlg(CFWGCSDlgDlg* pMainDlg) { m_pMainDlg = pMainDlg; }
 	
 	// 更新数据显示（Page2当前不显示接收数据，保留接口以兼容主对话框调用）
 	void UpdateDisplay(const UdpRecvDataPacket* pPacket);
 	afx_msg void OnBnClickedButtonSendData();
+	
+	// 加载航路点XML文件（从可执行文件目录下的waypoints.xml）
+	BOOL LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount);
 	
 private:
 	CFWGCSDlgDlg* m_pMainDlg;  // 主对话框指针

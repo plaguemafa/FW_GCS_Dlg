@@ -5,6 +5,8 @@
 #include "framework.h"
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
+#include <msxml6.h>
+#pragma comment(lib, "msxml6.lib")
 #include "FW_GCS_Dlg.h"
 #include "FW_GCS_DlgDlg.h"
 #include "Page2Dlg.h"
@@ -138,6 +140,13 @@ BOOL CPage2Dlg::OnInitDialog()
 	if (m_editSendData27.GetSafeHwnd() != NULL) m_editSendData27.SetWindowText(_T("0"));    // int8_t
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.SetWindowText(_T("0"));    // uint8_t
 	
+	// 绑定航路点相关控件
+	pWnd = GetDlgItem(IDC_CHECK_LoadWaypoints);
+	if (pWnd != NULL) m_chkLoadWaypoints.SubclassWindow(pWnd->GetSafeHwnd());
+	
+	// 初始化航路点相关控件
+	m_chkLoadWaypoints.SetCheck(BST_UNCHECKED);  // 默认不加载航路点
+	
 	return TRUE;
 }
 
@@ -232,7 +241,26 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.initNorthAccel = static_cast<int16_t>(_ttoi(strData[14]));            // int16_t
 	packet.initEastAccel = static_cast<int16_t>(_ttoi(strData[15]));             // int16_t
 	packet.initVerticalAccel = static_cast<int16_t>(_ttoi(strData[16]));         // int16_t
-	// waypoints[100] 数组保持为0（没有对应的IDC控件）
+	
+	// 根据复选框状态决定是否加载航路点数据
+	if (m_chkLoadWaypoints.GetCheck() == BST_CHECKED)
+	{
+		int nLoadedCount = 0;
+		if (LoadWaypointsFromXml(packet.waypoints, nLoadedCount))
+		{
+			TRACE(_T("成功加载 %d 个航路点\n"), nLoadedCount);
+		}
+		else
+		{
+			TRACE(_T("警告：航路点文件加载失败，waypoints数组保持为0\n"));
+		}
+	}
+	else
+	{
+		// waypoints[100] 数组保持为0（没有加载航路点文件）
+		memset(packet.waypoints, 0, sizeof(packet.waypoints));
+	}
+	
 	packet.targetLongitude = static_cast<int32_t>(_ttoi(strData[17]));          // int32_t
 	packet.targetLatitude = static_cast<int32_t>(_ttoi(strData[18]));            // int32_t
 	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]));            // int16_t
@@ -289,4 +317,185 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	TRACE(_T("UDP数据发送成功。\n"));
 	MessageBox(_T("UDP数据发送成功。"), _T("发送成功"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
 	// btnEnabler析构函数会自动恢复按钮状态
+}
+
+// 从XML文件加载航路点（文件路径：可执行文件目录下的waypoints.xml）
+BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
+{
+	nLoadedCount = 0;
+	memset(waypoints, 0, sizeof(Waypoint) * 100);
+	
+	// 获取可执行文件所在目录
+	TCHAR szModulePath[MAX_PATH];
+	GetModuleFileName(NULL, szModulePath, MAX_PATH);
+	CString strExePath = szModulePath;
+	int nLastSlash = strExePath.ReverseFind(_T('\\'));
+	if (nLastSlash >= 0)
+	{
+		strExePath = strExePath.Left(nLastSlash + 1);
+	}
+	
+	// 构建航路点文件完整路径（可执行文件目录下的waypoints.xml）
+	CString strFilePath = strExePath + _T("waypoints.xml");
+	
+	TRACE(_T("尝试加载航路点文件: %s\n"), strFilePath);
+	
+	// 检查文件是否存在
+	CFileStatus status;
+	if (!CFile::GetStatus(strFilePath, status))
+	{
+		TRACE(_T("航路点文件不存在: %s\n"), strFilePath);
+		return FALSE;
+	}
+	
+	// 初始化COM（如果尚未初始化）
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	BOOL bNeedUninit = SUCCEEDED(hr);
+	if (FAILED(hr) && hr != RPC_E_CHANGED_MODE)
+	{
+		TRACE(_T("COM初始化失败，错误代码: 0x%08X\n"), hr);
+		return FALSE;
+	}
+	
+	// 使用作用域块确保所有 COM 对象在 CoUninitialize() 之前析构
+	{
+		// 创建DOM文档对象
+		CComPtr<IXMLDOMDocument> spXMLDoc;
+		hr = spXMLDoc.CoCreateInstance(__uuidof(DOMDocument60));
+		if (FAILED(hr))
+		{
+			TRACE(_T("创建XML文档对象失败，错误代码: 0x%08X\n"), hr);
+			if (bNeedUninit) CoUninitialize();
+			return FALSE;
+		}
+		
+		// 设置异步加载为FALSE
+		VARIANT_BOOL vbSuccess;
+		spXMLDoc->put_async(VARIANT_FALSE);
+		
+		// 加载XML文件
+		CComVariant varFileName(strFilePath);
+		hr = spXMLDoc->load(varFileName, &vbSuccess);
+		
+		if (FAILED(hr) || vbSuccess != VARIANT_TRUE)
+		{
+			TRACE(_T("加载XML文件失败: %s\n"), strFilePath);
+			if (bNeedUninit) CoUninitialize();
+			return FALSE;
+		}
+		
+		TRACE(_T("XML文件加载成功\n"));
+		
+		// 获取根节点（根节点就是 <waypoints>）
+		CComPtr<IXMLDOMElement> spRoot;
+		hr = spXMLDoc->get_documentElement(&spRoot);
+		if (FAILED(hr) || spRoot == NULL)
+		{
+			TRACE(_T("获取XML根节点失败\n"));
+			if (bNeedUninit) CoUninitialize();
+			return FALSE;
+		}
+		
+		// 查找waypoint节点（根节点waypoints，直接查询其子节点waypoint）
+		CComPtr<IXMLDOMNodeList> spNodeList;
+		hr = spRoot->selectNodes(CComBSTR(_T("waypoint")), &spNodeList);
+		if (FAILED(hr) || spNodeList == NULL)
+		{
+			TRACE(_T("查找waypoint节点失败，错误代码: 0x%08X\n"), hr);
+			// 尝试使用 getElementsByTagName 方法
+			hr = spRoot->getElementsByTagName(CComBSTR(_T("waypoint")), &spNodeList);
+			if (FAILED(hr) || spNodeList == NULL)
+			{
+				TRACE(_T("使用getElementsByTagName查找waypoint节点也失败，错误代码: 0x%08X\n"), hr);
+				if (bNeedUninit) CoUninitialize();
+				return FALSE;
+			}
+			TRACE(_T("使用getElementsByTagName成功找到waypoint节点\n"));
+		}
+		
+		// 获取节点数量
+		long nNodeCount = 0;
+		hr = spNodeList->get_length(&nNodeCount);
+		if (FAILED(hr))
+		{
+			TRACE(_T("获取节点数量失败\n"));
+			if (bNeedUninit) CoUninitialize();
+			return FALSE;
+		}
+		
+		// 限制最多100个航路点
+		if (nNodeCount > 100)
+		{
+			TRACE(_T("警告：XML文件包含 %d 个航路点，只加载前100个\n"), nNodeCount);
+			nNodeCount = 100;
+		}
+		
+		// 遍历所有waypoint节点
+		for (long i = 0; i < nNodeCount; i++)
+		{
+			CComPtr<IXMLDOMNode> spNode;
+			hr = spNodeList->get_item(i, &spNode);
+			if (FAILED(hr) || spNode == NULL)
+				continue;
+			
+			// 获取longitude子节点（XML中为浮点数，转换为int32_t：度 * 1000000）
+			CComPtr<IXMLDOMNode> spLongitudeNode;
+			hr = spNode->selectSingleNode(CComBSTR(_T("longitude")), &spLongitudeNode);
+			if (SUCCEEDED(hr) && spLongitudeNode != NULL)
+			{
+				CComBSTR bstrText;
+				spLongitudeNode->get_text(&bstrText);
+				if (bstrText.Length() > 0)
+				{
+					// 读取浮点数并转换为int32_t（度 * 1000000）
+					double dLongitude = _tstof(CString(bstrText));
+					waypoints[i].longitude = static_cast<int32_t>(dLongitude * 1000000.0);
+					TRACE(_T("航路点 %d: longitude=%.6f度 -> %d\n"), i + 1, dLongitude, waypoints[i].longitude);
+				}
+			}
+			
+			// 获取latitude子节点（XML中为浮点数，转换为int32_t：度 * 1000000）
+			CComPtr<IXMLDOMNode> spLatitudeNode;
+			hr = spNode->selectSingleNode(CComBSTR(_T("latitude")), &spLatitudeNode);
+			if (SUCCEEDED(hr) && spLatitudeNode != NULL)
+			{
+				CComBSTR bstrText;
+				spLatitudeNode->get_text(&bstrText);
+				if (bstrText.Length() > 0)
+				{
+					// 读取浮点数并转换为int32_t（度 * 1000000）
+					double dLatitude = _tstof(CString(bstrText));
+					waypoints[i].latitude = static_cast<int32_t>(dLatitude * 1000000.0);
+					TRACE(_T("航路点 %d: latitude=%.6f度 -> %d\n"), i + 1, dLatitude, waypoints[i].latitude);
+				}
+			}
+			
+			// 获取altitude子节点（XML中为浮点数，转换为int16_t：米）
+			CComPtr<IXMLDOMNode> spAltitudeNode;
+			hr = spNode->selectSingleNode(CComBSTR(_T("altitude")), &spAltitudeNode);
+			if (SUCCEEDED(hr) && spAltitudeNode != NULL)
+			{
+				CComBSTR bstrText;
+				spAltitudeNode->get_text(&bstrText);
+				if (bstrText.Length() > 0)
+				{
+					// 读取浮点数并转换为int16_t（米）
+					double dAltitude = _tstof(CString(bstrText));
+					waypoints[i].altitude = static_cast<int16_t>(dAltitude);
+					TRACE(_T("航路点 %d: altitude=%.2f米 -> %d\n"), i + 1, dAltitude, waypoints[i].altitude);
+				}
+			}
+			
+			nLoadedCount++;
+		}
+		
+		// 作用域块结束，所有 CComPtr 对象会自动析构并释放 COM 对象
+		// 此时 COM 环境仍然有效，可以安全地释放对象
+	}
+	
+	// 所有 COM 对象都已释放，安全卸载 COM
+	if (bNeedUninit) CoUninitialize();
+	
+	TRACE(_T("成功加载 %d 个航路点\n"), nLoadedCount);
+	return (nLoadedCount > 0);
 }
