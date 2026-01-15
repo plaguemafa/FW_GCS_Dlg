@@ -63,6 +63,7 @@ public:
 	
 	// 航路点相关控件
 	CButton m_chkLoadWaypoints;  // 复选框：是否加载航路点数据
+	CListCtrl m_listWaypoints;  // 列表控件：显示航路点数据
 	
 	// 设置主对话框指针（避免每次使用dynamic_cast）
 	void SetMainDlg(CFWGCSDlgDlg* pMainDlg) { m_pMainDlg = pMainDlg; }
@@ -74,7 +75,29 @@ public:
 	// 加载航路点XML文件（从可执行文件目录下的waypoints.xml）
 	BOOL LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount);
 	
+	// 显示航路点数据到列表控件
+	void DisplayWaypoints(const Waypoint waypoints[100], int nCount);
+	
+	// 获取当前显示的航路点数据（用于编辑后保存）
+	void GetWaypointsFromList(Waypoint waypoints[100], int& nCount);
+	
+	// 列表控件编辑相关
+	afx_msg void OnNMDblclkListWaypoints(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnNMClickListWaypoints(NMHDR *pNMHDR, LRESULT *pResult);
+	afx_msg void OnEnKillfocusEditInline();
+	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam) override;
+	
 private:
 	CFWGCSDlgDlg* m_pMainDlg;  // 主对话框指针
+	CEdit m_editInline;         // 内联编辑控件
+	int m_nEditingItem;         // 当前编辑的行索引
+	int m_nEditingSubItem;     // 当前编辑的列索引
+	Waypoint m_currentWaypoints[100];  // 当前显示的航路点数据
+	int m_nCurrentWaypointCount;        // 当前航路点数量
+	
+	// 开始编辑单元格
+	void StartEditCell(int nItem, int nSubItem);
+	// 结束编辑单元格
+	void EndEditCell(BOOL bCancel = FALSE);
 };
 

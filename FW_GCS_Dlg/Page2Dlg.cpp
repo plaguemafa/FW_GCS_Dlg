@@ -23,7 +23,11 @@ IMPLEMENT_DYNAMIC(CPage2Dlg, CDialogEx)
 CPage2Dlg::CPage2Dlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_PAGE2_DIALOG, pParent)
 	, m_pMainDlg(NULL)
+	, m_nEditingItem(-1)
+	, m_nEditingSubItem(-1)
+	, m_nCurrentWaypointCount(0)
 {
+	memset(m_currentWaypoints, 0, sizeof(m_currentWaypoints));
 }
 
 CPage2Dlg::~CPage2Dlg()
@@ -41,6 +45,9 @@ void CPage2Dlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CPage2Dlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_SendData, &CPage2Dlg::OnBnClickedButtonSendData)
+	ON_NOTIFY(NM_DBLCLK, IDC_LIST_Waypoints, &CPage2Dlg::OnNMDblclkListWaypoints)
+	ON_NOTIFY(NM_CLICK, IDC_LIST_Waypoints, &CPage2Dlg::OnNMClickListWaypoints)
+	ON_EN_KILLFOCUS(1001, &CPage2Dlg::OnEnKillfocusEditInline)
 END_MESSAGE_MAP()
 
 // CPage2Dlg 消息处理程序
@@ -147,6 +154,34 @@ BOOL CPage2Dlg::OnInitDialog()
 	// 初始化航路点相关控件
 	m_chkLoadWaypoints.SetCheck(BST_UNCHECKED);  // 默认不加载航路点
 	
+	// 初始化航路点列表控件
+	pWnd = GetDlgItem(IDC_LIST_Waypoints);
+	if (pWnd != NULL)
+	{
+		m_listWaypoints.SubclassWindow(pWnd->GetSafeHwnd());
+		
+		// 设置列表控件为报告视图（表格模式）- 必须设置，否则无法显示列
+		DWORD dwStyle = m_listWaypoints.GetStyle();
+		dwStyle &= ~(LVS_TYPEMASK);  // 清除现有视图类型
+		dwStyle |= LVS_REPORT;       // 设置为报告视图
+		m_listWaypoints.ModifyStyle(0, dwStyle);
+		
+		// 设置扩展样式
+		m_listWaypoints.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		
+		// 添加列标题
+		m_listWaypoints.InsertColumn(0, _T("编号"), LVCFMT_LEFT, 60);
+		m_listWaypoints.InsertColumn(1, _T("经度(度)"), LVCFMT_LEFT, 120);
+		m_listWaypoints.InsertColumn(2, _T("纬度(度)"), LVCFMT_LEFT, 120);
+		m_listWaypoints.InsertColumn(3, _T("高度(米)"), LVCFMT_LEFT, 100);
+		
+		TRACE(_T("航路点列表控件初始化完成\n"));
+	}
+	else
+	{
+		TRACE(_T("警告：未找到IDC_LIST_Waypoints控件\n"));
+	}
+	
 	return TRUE;
 }
 
@@ -245,20 +280,41 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	// 根据复选框状态决定是否加载航路点数据
 	if (m_chkLoadWaypoints.GetCheck() == BST_CHECKED)
 	{
-		int nLoadedCount = 0;
-		if (LoadWaypointsFromXml(packet.waypoints, nLoadedCount))
+		// 如果列表控件中有编辑过的数据，优先使用列表控件中的数据
+		if (m_nCurrentWaypointCount > 0)
 		{
-			TRACE(_T("成功加载 %d 个航路点\n"), nLoadedCount);
+			TRACE(_T("使用列表控件中编辑后的航路点数据（%d个）\n"), m_nCurrentWaypointCount);
+			GetWaypointsFromList(packet.waypoints, m_nCurrentWaypointCount);
 		}
 		else
 		{
-			TRACE(_T("警告：航路点文件加载失败，waypoints数组保持为0\n"));
+			// 从XML文件加载
+			int nLoadedCount = 0;
+			if (LoadWaypointsFromXml(packet.waypoints, nLoadedCount))
+			{
+				TRACE(_T("成功加载 %d 个航路点\n"), nLoadedCount);
+				// 显示航路点数据到列表控件
+				DisplayWaypoints(packet.waypoints, nLoadedCount);
+			}
+			else
+			{
+				TRACE(_T("警告：航路点文件加载失败，waypoints数组保持为0\n"));
+				MessageBox(_T("航路点文件加载失败，请检查waypoints.xml文件。"), _T("错误"), MB_OK | MB_ICONERROR | MB_TOPMOST);
+				// 清空列表显示
+				if (m_listWaypoints.GetSafeHwnd() != NULL)
+					m_listWaypoints.DeleteAllItems();
+			}
 		}
 	}
 	else
 	{
 		// waypoints[100] 数组保持为0（没有加载航路点文件）
 		memset(packet.waypoints, 0, sizeof(packet.waypoints));
+		TRACE(_T("未勾选加载航路点，waypoints数组已清零。\n"));
+		// 清空列表显示
+		if (m_listWaypoints.GetSafeHwnd() != NULL)
+			m_listWaypoints.DeleteAllItems();
+		m_nCurrentWaypointCount = 0;
 	}
 	
 	packet.targetLongitude = static_cast<int32_t>(_ttoi(strData[17]));          // int32_t
@@ -498,4 +554,223 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 	
 	TRACE(_T("成功加载 %d 个航路点\n"), nLoadedCount);
 	return (nLoadedCount > 0);
+}
+
+// 显示航路点数据到列表控件
+void CPage2Dlg::DisplayWaypoints(const Waypoint waypoints[100], int nCount)
+{
+	if (m_listWaypoints.GetSafeHwnd() == NULL)
+	{
+		TRACE(_T("错误：列表控件句柄无效，无法显示航路点\n"));
+		return;
+	}
+	
+	TRACE(_T("开始显示航路点数据，数量: %d\n"), nCount);
+	
+	// 清空现有数据
+	m_listWaypoints.DeleteAllItems();
+	
+	// 限制显示数量（最多100个）
+	if (nCount > 100)
+		nCount = 100;
+	
+	if (nCount <= 0)
+	{
+		TRACE(_T("警告：航路点数量为0，不显示数据\n"));
+		return;
+	}
+	
+	// 添加航路点数据到列表
+	for (int i = 0; i < nCount; i++)
+	{
+		// 将协议格式转换为显示格式
+		// 经度/纬度：从 int32_t（度 * 1000000）转换为浮点数（度）
+		double dLongitude = waypoints[i].longitude / 1000000.0;
+		double dLatitude = waypoints[i].latitude / 1000000.0;
+		// 高度：int16_t（米）直接显示
+		int nAltitude = waypoints[i].altitude;
+		
+		// 格式化字符串
+		CString strIndex, strLongitude, strLatitude, strAltitude;
+		strIndex.Format(_T("%d"), i + 1);
+		strLongitude.Format(_T("%.6f"), dLongitude);
+		strLatitude.Format(_T("%.6f"), dLatitude);
+		strAltitude.Format(_T("%d"), nAltitude);
+		
+		// 插入行
+		int nItem = m_listWaypoints.InsertItem(i, strIndex);
+		if (nItem >= 0)
+		{
+			m_listWaypoints.SetItemText(nItem, 1, strLongitude);
+			m_listWaypoints.SetItemText(nItem, 2, strLatitude);
+			m_listWaypoints.SetItemText(nItem, 3, strAltitude);
+			
+			// 调试输出前几个航路点
+			if (i < 3)
+			{
+				TRACE(_T("航路点 %d: 编号=%s, 经度=%s, 纬度=%s, 高度=%s\n"), 
+					i + 1, strIndex, strLongitude, strLatitude, strAltitude);
+			}
+		}
+		else
+		{
+			TRACE(_T("错误：插入航路点 %d 失败\n"), i + 1);
+		}
+	}
+	
+	TRACE(_T("已显示 %d 个航路点到列表控件\n"), nCount);
+	
+	// 保存当前显示的航路点数据（用于编辑）
+	memcpy(m_currentWaypoints, waypoints, sizeof(Waypoint) * nCount);
+	m_nCurrentWaypointCount = nCount;
+}
+
+// 从列表控件获取航路点数据（用于编辑后保存）
+void CPage2Dlg::GetWaypointsFromList(Waypoint waypoints[100], int& nCount)
+{
+	nCount = m_nCurrentWaypointCount;
+	if (nCount > 100) nCount = 100;
+	memcpy(waypoints, m_currentWaypoints, sizeof(Waypoint) * nCount);
+}
+
+// 双击列表控件单元格，开始编辑
+void CPage2Dlg::OnNMDblclkListWaypoints(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	
+	// 如果点击的不是有效行，返回
+	if (pNMItemActivate->iItem < 0)
+	{
+		*pResult = 0;
+		return;
+	}
+	
+	// 如果点击的是编号列（第0列），不允许编辑
+	if (pNMItemActivate->iSubItem == 0)
+	{
+		*pResult = 0;
+		return;
+	}
+	
+	// 开始编辑单元格
+	StartEditCell(pNMItemActivate->iItem, pNMItemActivate->iSubItem);
+	
+	*pResult = 0;
+}
+
+// 单击列表控件，结束编辑
+void CPage2Dlg::OnNMClickListWaypoints(NMHDR *pNMHDR, LRESULT *pResult)
+{
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	
+	// 如果当前正在编辑，结束编辑
+	if (m_nEditingItem >= 0)
+	{
+		EndEditCell(FALSE);  // 保存编辑
+	}
+	
+	*pResult = 0;
+}
+
+// 开始编辑单元格
+void CPage2Dlg::StartEditCell(int nItem, int nSubItem)
+{
+	// 如果正在编辑其他单元格，先结束编辑
+	if (m_nEditingItem >= 0 && (m_nEditingItem != nItem || m_nEditingSubItem != nSubItem))
+	{
+		EndEditCell(FALSE);
+	}
+	
+	// 获取单元格文本
+	CString strText = m_listWaypoints.GetItemText(nItem, nSubItem);
+	
+	// 获取单元格位置
+	CRect rect;
+	m_listWaypoints.GetSubItemRect(nItem, nSubItem, LVIR_BOUNDS, rect);
+	
+	// 创建或显示编辑控件
+	if (m_editInline.GetSafeHwnd() == NULL)
+	{
+		m_editInline.Create(WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL,
+			rect, &m_listWaypoints, 1001);
+		m_editInline.SetFont(m_listWaypoints.GetFont());
+	}
+	
+	m_editInline.SetWindowText(strText);
+	m_editInline.SetWindowPos(NULL, rect.left, rect.top, rect.Width(), rect.Height(),
+		SWP_SHOWWINDOW | SWP_NOZORDER);
+	m_editInline.SetSel(0, -1);  // 全选文本
+	m_editInline.SetFocus();
+	
+	m_nEditingItem = nItem;
+	m_nEditingSubItem = nSubItem;
+}
+
+// 结束编辑单元格
+void CPage2Dlg::EndEditCell(BOOL bCancel)
+{
+	if (m_nEditingItem < 0 || m_editInline.GetSafeHwnd() == NULL)
+		return;
+	
+	if (!bCancel)
+	{
+		// 获取编辑后的文本
+		CString strNewText;
+		m_editInline.GetWindowText(strNewText);
+		
+		// 更新列表控件显示
+		m_listWaypoints.SetItemText(m_nEditingItem, m_nEditingSubItem, strNewText);
+		
+		// 更新内存中的航路点数据
+		if (m_nEditingItem < m_nCurrentWaypointCount)
+		{
+			double dValue = _tstof(strNewText);
+			
+			switch (m_nEditingSubItem)
+			{
+			case 1:  // 经度
+				m_currentWaypoints[m_nEditingItem].longitude = static_cast<int32_t>(dValue * 1000000.0);
+				TRACE(_T("航路点 %d 经度更新为: %.6f度 (%d)\n"), 
+					m_nEditingItem + 1, dValue, m_currentWaypoints[m_nEditingItem].longitude);
+				break;
+			case 2:  // 纬度
+				m_currentWaypoints[m_nEditingItem].latitude = static_cast<int32_t>(dValue * 1000000.0);
+				TRACE(_T("航路点 %d 纬度更新为: %.6f度 (%d)\n"), 
+					m_nEditingItem + 1, dValue, m_currentWaypoints[m_nEditingItem].latitude);
+				break;
+			case 3:  // 高度
+				m_currentWaypoints[m_nEditingItem].altitude = static_cast<int16_t>(dValue);
+				TRACE(_T("航路点 %d 高度更新为: %.2f米 (%d)\n"), 
+					m_nEditingItem + 1, dValue, m_currentWaypoints[m_nEditingItem].altitude);
+				break;
+			}
+		}
+	}
+	
+	// 隐藏编辑控件
+	m_editInline.ShowWindow(SW_HIDE);
+	m_nEditingItem = -1;
+	m_nEditingSubItem = -1;
+}
+
+// 编辑控件失去焦点时，结束编辑
+void CPage2Dlg::OnEnKillfocusEditInline()
+{
+	EndEditCell(FALSE);  // 保存编辑
+}
+
+// 处理命令消息（用于处理编辑控件的回车键）
+BOOL CPage2Dlg::OnCommand(WPARAM wParam, LPARAM lParam)
+{
+	// 如果编辑控件存在且正在编辑，处理回车键
+	if (m_editInline.GetSafeHwnd() != NULL && m_nEditingItem >= 0)
+	{
+		if (LOWORD(wParam) == 1001 && HIWORD(wParam) == EN_KILLFOCUS)
+		{
+			EndEditCell(FALSE);
+			return TRUE;
+		}
+	}
+	
+	return CDialogEx::OnCommand(wParam, lParam);
 }
