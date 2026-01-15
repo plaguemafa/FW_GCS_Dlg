@@ -152,7 +152,8 @@ BOOL CPage2Dlg::OnInitDialog()
 	if (pWnd != NULL) m_chkLoadWaypoints.SubclassWindow(pWnd->GetSafeHwnd());
 	
 	// 初始化航路点相关控件
-	m_chkLoadWaypoints.SetCheck(BST_UNCHECKED);  // 默认不加载航路点
+	// 注意：复选框默认勾选，因为列表会在初始化时自动加载XML数据
+	m_chkLoadWaypoints.SetCheck(BST_CHECKED);  // 默认勾选（因为列表已自动加载）
 	
 	// 初始化航路点列表控件
 	pWnd = GetDlgItem(IDC_LIST_Waypoints);
@@ -176,6 +177,24 @@ BOOL CPage2Dlg::OnInitDialog()
 		m_listWaypoints.InsertColumn(3, _T("高度(米)"), LVCFMT_LEFT, 100);
 		
 		TRACE(_T("航路点列表控件初始化完成\n"));
+		
+		// ============================================================
+		// 对话框初始化时自动加载XML文件并显示到列表
+		// ============================================================
+		Waypoint waypoints[100];
+		int nLoadedCount = 0;
+		if (LoadWaypointsFromXml(waypoints, nLoadedCount))
+		{
+			TRACE(_T("对话框初始化：成功加载 %d 个航路点\n"), nLoadedCount);
+			DisplayWaypoints(waypoints, nLoadedCount);
+		}
+		else
+		{
+			TRACE(_T("对话框初始化：航路点文件加载失败或文件不存在，列表为空\n"));
+			// 不显示错误消息框，因为文件可能不存在是正常情况
+			m_listWaypoints.DeleteAllItems();
+			m_nCurrentWaypointCount = 0;
+		}
 	}
 	else
 	{
@@ -277,44 +296,29 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.initEastAccel = static_cast<int16_t>(_ttoi(strData[15]));             // int16_t
 	packet.initVerticalAccel = static_cast<int16_t>(_ttoi(strData[16]));         // int16_t
 	
-	// 根据复选框状态决定是否加载航路点数据
+	// ============================================================
+	// 根据复选框状态决定是否在发送数据包中包含航路点数据
+	// ============================================================
 	if (m_chkLoadWaypoints.GetCheck() == BST_CHECKED)
 	{
-		// 如果列表控件中有编辑过的数据，优先使用列表控件中的数据
+		// 勾选：使用列表控件中的航路点数据（可能是编辑后的）
 		if (m_nCurrentWaypointCount > 0)
 		{
-			TRACE(_T("使用列表控件中编辑后的航路点数据（%d个）\n"), m_nCurrentWaypointCount);
+			TRACE(_T("勾选加载航路点：使用列表控件中的数据（%d个）\n"), m_nCurrentWaypointCount);
 			GetWaypointsFromList(packet.waypoints, m_nCurrentWaypointCount);
 		}
 		else
 		{
-			// 从XML文件加载
-			int nLoadedCount = 0;
-			if (LoadWaypointsFromXml(packet.waypoints, nLoadedCount))
-			{
-				TRACE(_T("成功加载 %d 个航路点\n"), nLoadedCount);
-				// 显示航路点数据到列表控件
-				DisplayWaypoints(packet.waypoints, nLoadedCount);
-			}
-			else
-			{
-				TRACE(_T("警告：航路点文件加载失败，waypoints数组保持为0\n"));
-				MessageBox(_T("航路点文件加载失败，请检查waypoints.xml文件。"), _T("错误"), MB_OK | MB_ICONERROR | MB_TOPMOST);
-				// 清空列表显示
-				if (m_listWaypoints.GetSafeHwnd() != NULL)
-					m_listWaypoints.DeleteAllItems();
-			}
+			// 列表为空，发送时航路点数组保持为0
+			memset(packet.waypoints, 0, sizeof(packet.waypoints));
+			TRACE(_T("勾选加载航路点：但列表为空，waypoints数组保持为0\n"));
 		}
 	}
 	else
 	{
-		// waypoints[100] 数组保持为0（没有加载航路点文件）
+		// 未勾选：发送时航路点数组保持为0（不发送航路点数据）
 		memset(packet.waypoints, 0, sizeof(packet.waypoints));
-		TRACE(_T("未勾选加载航路点，waypoints数组已清零。\n"));
-		// 清空列表显示
-		if (m_listWaypoints.GetSafeHwnd() != NULL)
-			m_listWaypoints.DeleteAllItems();
-		m_nCurrentWaypointCount = 0;
+		TRACE(_T("未勾选加载航路点：waypoints数组已清零（不发送航路点数据）\n"));
 	}
 	
 	packet.targetLongitude = static_cast<int32_t>(_ttoi(strData[17]));          // int32_t
