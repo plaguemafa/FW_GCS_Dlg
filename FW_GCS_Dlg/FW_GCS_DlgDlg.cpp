@@ -99,8 +99,8 @@ void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_Display28, m_editDisplay28);
 	DDX_Control(pDX, IDC_Display29, m_editDisplay29);
 	DDX_Control(pDX, IDC_Display30, m_editDisplay30);
-	DDX_Control(pDX, IDC_Display31, m_editDisplay31);
-	DDX_Control(pDX, IDC_Display32, m_editDisplay32);
+	// IDC_Display31 在资源文件中不存在，已跳过绑定
+	DDX_Control(pDX, IDC_Display32, m_editDisplay32);  // 转弯舵机指令
 	
 	// 视窗组5相关控件绑定（GPS）
 	DDX_Control(pDX, IDC_Display33, m_editDisplay33);
@@ -294,8 +294,8 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	m_editDisplay28.SetWindowText(_T("0"));
 	m_editDisplay29.SetWindowText(_T("0"));
 	m_editDisplay30.SetWindowText(_T("0"));
-	m_editDisplay31.SetWindowText(_T("0"));
-	m_editDisplay32.SetWindowText(_T("0"));
+	// m_editDisplay31 已移除，因为 IDC_Display31 在资源文件中不存在
+	m_editDisplay32.SetWindowText(_T("0"));  // 转弯舵机指令
 	
 	// 初始化视窗组5相关控件（GPS）
 	m_editDisplay33.SetWindowText(_T("0"));
@@ -1592,8 +1592,10 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	strData29.Format(_T("%d"), pPacket->rudderCmd2);
 	strData30.Format(_T("%d"), pPacket->rudderCmd3);
 	strData31.Format(_T("%d"), pPacket->rudderCmd4);
-	strData32.Format(_T("%d"), pPacket->turnRudderCmd);
-	// controlCommand 已弃用，使用扩展协议的 bool 字段替代
+	// 注意：IDC_Display31 在资源文件中不存在，turnRudderCmd 应该显示在 IDC_Display32
+	strData32.Format(_T("%d"), pPacket->turnRudderCmd);  // 转弯舵机指令 -> IDC_Display32
+	// controlCommand 已弃用，使用扩展协议的 bool 字段替代（IDC_RADIO_Flag1~3）
+	strData33.Format(_T(""));  // IDC_Display32 已用于显示转弯舵机指令，不再显示 controlCommand
 	
 	// 视窗组5相关字段（GPS）
 	strData34.Format(_T("%d"), pPacket->longitude);
@@ -1948,27 +1950,18 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 		if (pWnd != NULL) pWnd->SetWindowText(strData31);
 	}
 
-	// 更新data32显示控件（IDC_Display31）
-	if (m_editDisplay31.GetSafeHwnd() != NULL)
-	{
-		m_editDisplay31.SetWindowText(strData32);
-	}
-	else
-	{
-		CWnd* pWnd = GetDlgItem(IDC_Display31);
-		if (pWnd != NULL) pWnd->SetWindowText(strData32);
-	}
-
-	// 更新data33显示控件（IDC_Display32）
+	// 更新转弯舵机指令显示控件（IDC_Display32）
+	// 注意：IDC_Display31 在资源文件中不存在，turnRudderCmd 显示在 IDC_Display32
 	if (m_editDisplay32.GetSafeHwnd() != NULL)
 	{
-		m_editDisplay32.SetWindowText(strData33);
+		m_editDisplay32.SetWindowText(strData32);  // turnRudderCmd -> IDC_Display32
 	}
 	else
 	{
 		CWnd* pWnd = GetDlgItem(IDC_Display32);
-		if (pWnd != NULL) pWnd->SetWindowText(strData33);
+		if (pWnd != NULL) pWnd->SetWindowText(strData32);
 	}
+	// IDC_Display32 已用于显示转弯舵机指令，不再显示 controlCommand（已改为 Radio Button）
 
 	// 更新data34显示控件（IDC_Display33）
 	if (m_editDisplay33.GetSafeHwnd() != NULL)

@@ -405,23 +405,65 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 		return;  // btnEnabler析构函数会自动恢复按钮状态
 	}
 
-	TRACE(_T("OnBnClickedButtonSendData: 开始调用SendUdpDataPublic\n"));
+	TRACE(_T("OnBnClickedButtonSendData: 开始调用SendUdpDataPublic（连续发送3次以应对丢包）\n"));
 	
-	// 发送数据（非阻塞）
-	BOOL bResult = m_pMainDlg->SendUdpDataPublic(&packet, sizeof(packet));
+	// ============================================================
+	// 丢包保护措施：连续发送3次相同的数据包
+	// 接收端通过判断连续两个包数据相同时，才采纳数据
+	// ============================================================
+	const int nSendCount = 3;  // 连续发送次数
+	const int nSendIntervalMs = 10;  // 每次发送之间的间隔（毫秒），避免网络拥塞
+	int nSuccessCount = 0;
+	int nFailCount = 0;
 	
-	TRACE(_T("OnBnClickedButtonSendData: SendUdpDataPublic返回 %d\n"), bResult);
-	
-	if (!bResult)
+	for (int i = 0; i < nSendCount; i++)
 	{
-		TRACE(_T("错误：UDP未连接或发送失败，请检查连接后重试。\n"));
-		MessageBox(_T("UDP未连接或发送失败，请检查连接后重试。"), _T("发送失败"), MB_OK | MB_ICONERROR | MB_TOPMOST);
+		// 发送数据（非阻塞）
+		BOOL bResult = m_pMainDlg->SendUdpDataPublic(&packet, sizeof(packet));
+		
+		if (bResult)
+		{
+			nSuccessCount++;
+			TRACE(_T("UDP发送第 %d/%d 次：成功\n"), i + 1, nSendCount);
+		}
+		else
+		{
+			nFailCount++;
+			TRACE(_T("UDP发送第 %d/%d 次：失败\n"), i + 1, nSendCount);
+		}
+		
+		// 如果不是最后一次发送，等待一段时间再发送下一次
+		if (i < nSendCount - 1)
+		{
+			Sleep(nSendIntervalMs);
+		}
+	}
+	
+	TRACE(_T("UDP发送完成：成功 %d 次，失败 %d 次（共 %d 次）\n"), nSuccessCount, nFailCount, nSendCount);
+	
+	// 如果所有发送都失败，显示错误消息
+	if (nSuccessCount == 0)
+	{
+		TRACE(_T("错误：UDP未连接或所有发送都失败，请检查连接后重试。\n"));
+		MessageBox(_T("UDP未连接或所有发送都失败，请检查连接后重试。"), _T("发送失败"), MB_OK | MB_ICONERROR | MB_TOPMOST);
 		return;  // btnEnabler析构函数会自动恢复按钮状态
 	}
-
-	// 发送成功
-	TRACE(_T("UDP数据发送成功。\n"));
-	MessageBox(_T("UDP数据发送成功。"), _T("发送成功"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+	
+	// 至少有一次发送成功
+	if (nFailCount > 0)
+	{
+		// 部分成功，显示警告
+		CString strMsg;
+		strMsg.Format(_T("UDP数据发送完成（成功 %d 次，失败 %d 次）。\n\n建议：如果频繁失败，请检查网络连接。"), 
+			nSuccessCount, nFailCount);
+		MessageBox(strMsg, _T("发送部分成功"), MB_OK | MB_ICONWARNING | MB_TOPMOST);
+	}
+	else
+	{
+		// 全部成功
+		TRACE(_T("UDP数据发送成功（全部 %d 次都成功）。\n"), nSuccessCount);
+		MessageBox(_T("UDP数据发送成功（已发送3包次，间隔10ms）。"), _T("发送成功"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+	}
 	// btnEnabler析构函数会自动恢复按钮状态
 }
 

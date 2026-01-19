@@ -119,8 +119,8 @@ protected:
 	CEdit m_editDisplay28;                 // 2#舵偏指令（IDC_Display28）
 	CEdit m_editDisplay29;                 // 3#舵偏指令（IDC_Display29）
 	CEdit m_editDisplay30;                 // 4#舵偏指令（IDC_Display30）
-	CEdit m_editDisplay31;                 // 转弯舵机指令（IDC_Display31）
-	CEdit m_editDisplay32;                 // 控制指令（IDC_Display32）
+	// m_editDisplay31 已移除，因为 IDC_Display31 在资源文件中不存在
+	CEdit m_editDisplay32;                 // 转弯舵机指令（IDC_Display32），注意：原 controlCommand 已改为 Radio Button
 	
 	// 视窗组5相关控件（GPS）
 	CEdit m_editDisplay33;                 // 卫星经度（IDC_Display33）

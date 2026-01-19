@@ -108,10 +108,10 @@ typedef struct {
     int8_t   targetSpeed;         // 目标速度 (68)           视窗组7-3 IDC_Display57
     int16_t  targetCourse;        // 目标航向 (69)           视窗组7-4 IDC_Display58
 
-    int32_t  reserved1;           // 预留1 (70)             
-    int32_t  reserved2;           // 预留2 (71)
-    int32_t  reserved3;           // 预留3 (72)
-    int32_t  reserved4;           // 预留4 (73)
+    // int32_t  reserved1;           // 预留1 (70)             
+    // int32_t  reserved2;           // 预留2 (71)
+    // int32_t  reserved3;           // 预留3 (72)
+    // int32_t  reserved4;           // 预留4 (73)
     
     // 校验和 (序号74)
     // uint8_t checksum; 
