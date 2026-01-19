@@ -24,8 +24,8 @@
 //   Simulink 远程地址 = 127.0.0.1 (程序所在地址)
 //   Simulink 远程端口 = UDP_LOCAL_PORT (5001) - Simulink发送数据的目标端口
 //
-//#define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
-#define UDP_REMOTE_IP      "127.0.0.1"         // Simulink的本地IP（用于本地测试）
+#define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
+//#define UDP_REMOTE_IP      "127.0.0.1"         // Simulink的本地IP（用于本地测试）
 #define UDP_REMOTE_PORT     50000                // Simulink的本地端口（用于本地测试）地面站远程端口
 #define UDP_LOCAL_PORT      50001                 // 本程序监听端口（接收Simulink发送的数据）
 
@@ -159,9 +159,32 @@ protected:
 	CEdit m_editDisplay60;                 // 剩余弹量（IDC_Display60）
 	CEdit m_editDisplay61;                 // 自检结果（IDC_Display61）
 	CEdit m_editDisplay62;                 // 电池电压（IDC_Display62）
-	CEdit m_editDisplay63;                 // 工作流程（IDC_Display63）
-	CEdit m_editDisplay64;                 // 报警状态字（IDC_Display64）
-	CEdit m_editDisplay65;                 // 开关量状态（IDC_Display65）
+	CEdit m_editDisplay63;                 // 工作流程（IDC_Display63）- 已弃用，保留用于兼容
+	CEdit m_editDisplay64;                 // 报警状态字（IDC_Display64）- 已弃用，保留用于兼容
+	CEdit m_editDisplay65;                 // 开关量状态（IDC_Display65）- 已弃用，保留用于兼容
+	
+	// 扩展协议 Radio Button 控件（指示灯显示，只读）
+	CButton m_radioFlag1;                   // 开伞指令标志（IDC_RADIO_Flag1）
+	CButton m_radioFlag2;                   // 开舱指令标志（IDC_RADIO_Flag2）
+	CButton m_radioFlag3;                   // 起落架指令标志（IDC_RADIO_Flag3）
+	CButton m_radioFlag4;                   // 工作流程标志-0（IDC_RADIO_Flag4）
+	CButton m_radioFlag5;                   // 工作流程标志-1（IDC_RADIO_Flag5）
+	CButton m_radioFlag6;                   // 发射状态标志（IDC_RADIO_Flag6）
+	CButton m_radioFlag7;                   // 电池电压低报警标志（IDC_RADIO_Flag7）
+	CButton m_radioFlag8;                   // 高度报警标志（IDC_RADIO_Flag8）
+	CButton m_radioFlag9;                   // 油量低报警标志（IDC_RADIO_Flag9）
+	CButton m_radioFlag10;                  // 转速异常报警标志（IDC_RADIO_Flag10）
+	CButton m_radioFlag11;                  // 空速异常报警标志（IDC_RADIO_Flag11）
+	CButton m_radioFlag12;                  // GPS定位精度低报警标志（IDC_RADIO_Flag12）
+	CButton m_radioFlag13;                  // 发动机并网状态（IDC_RADIO_Flag13）
+	CButton m_radioFlag14;                  // 发动机启动状态（IDC_RADIO_Flag14）
+	CButton m_radioFlag15;                  // 盘旋状态（IDC_RADIO_Flag15）
+	CButton m_radioFlag16;                  // 归航状态（IDC_RADIO_Flag16）
+	CButton m_radioFlag17;                  // 关车状态（IDC_RADIO_Flag17）
+	CButton m_radioFlag18;                  // 起落架收放状态-0（IDC_RADIO_Flag18）
+	CButton m_radioFlag19;                  // 起落架收放状态-1（IDC_RADIO_Flag19）
+	CButton m_radioFlag20;                  // 开伞状态（IDC_RADIO_Flag20）
+	CButton m_radioFlag21;                  // 夜航灯开关状态（IDC_RADIO_Flag21）
 	
 	// 子对话框（分页）
 	CPage1Dlg* m_pPage1Dlg;                // 第一页子对话框指针
@@ -203,6 +226,8 @@ protected:
 	afx_msg void OnBnClickedPage1();      // 切换到第一页
 	afx_msg void OnBnClickedPage2();      // 切换到第二页
 	afx_msg void OnSize(UINT nType, int cx, int cy);  // 窗口大小改变时调整子对话框位置
+	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);  // 拦截只读 Radio Button 的点击
+	virtual BOOL PreTranslateMessage(MSG* pMsg);  // 拦截鼠标消息，阻止只读 Radio Button 的点击
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedSeriallink();

@@ -17,8 +17,6 @@
 #define new DEBUG_NEW
 #endif
 
-
-
 // CFWGCSDlgDlg 对话框
 
 CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
@@ -141,9 +139,9 @@ void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_Display60, m_editDisplay60);
 	DDX_Control(pDX, IDC_Display61, m_editDisplay61);
 	DDX_Control(pDX, IDC_Display62, m_editDisplay62);
-	DDX_Control(pDX, IDC_Display63, m_editDisplay63);
-	DDX_Control(pDX, IDC_Display64, m_editDisplay64);
-	DDX_Control(pDX, IDC_Display65, m_editDisplay65);
+	
+	// 扩展协议 Radio Button 控件绑定（在 OnInitDialog 中手动绑定，避免 DDX_Control 异常）
+	// 注意：Radio Button 控件使用 SubclassWindow 方式绑定，更安全
 }
 
 BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
@@ -158,6 +156,82 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_BN_CLICKED(IDC_BTN_PAGE2, &CFWGCSDlgDlg::OnBnClickedPage2)
 	ON_WM_SIZE()
 END_MESSAGE_MAP()
+
+// 在消息到达控件之前拦截鼠标点击，阻止只读 Radio Button 的交互
+BOOL CFWGCSDlgDlg::PreTranslateMessage(MSG* pMsg)
+{
+	// 拦截鼠标左键按下和弹起消息
+	if (pMsg->message == WM_LBUTTONDOWN || pMsg->message == WM_LBUTTONUP)
+	{
+		// 检查消息的目标窗口是否是只读 Radio Button
+		CWnd* pWnd = CWnd::FromHandle(pMsg->hwnd);
+		if (pWnd != NULL)
+		{
+			UINT nID = pWnd->GetDlgCtrlID();
+			// 如果是只读显示的 Radio Button，阻止鼠标消息
+			if (nID >= IDC_RADIO_Flag1 && nID <= IDC_RADIO_Flag21)
+			{
+				return TRUE;  // 返回 TRUE 表示消息已处理，阻止进一步处理
+			}
+		}
+	}
+	
+	// 其他消息正常处理
+	return CDialogEx::PreTranslateMessage(pMsg);
+}
+
+// 拦截只读 Radio Button 的点击消息，作为双重保护
+BOOL CFWGCSDlgDlg::OnCommand(WPARAM wParam, LPARAM lParam)
+{
+	// 检查是否是 Radio Button 的点击消息（BN_CLICKED）
+	if (HIWORD(wParam) == BN_CLICKED)
+	{
+		UINT nID = LOWORD(wParam);
+		// 如果是只读显示的 Radio Button，阻止点击
+		if (nID >= IDC_RADIO_Flag1 && nID <= IDC_RADIO_Flag21)
+		{
+			// 获取对应的按钮并恢复之前的状态（防止状态被改变）
+			CButton* pBtn = NULL;
+			switch (nID)
+			{
+			case IDC_RADIO_Flag1: pBtn = &m_radioFlag1; break;
+			case IDC_RADIO_Flag2: pBtn = &m_radioFlag2; break;
+			case IDC_RADIO_Flag3: pBtn = &m_radioFlag3; break;
+			case IDC_RADIO_Flag4: pBtn = &m_radioFlag4; break;
+			case IDC_RADIO_Flag5: pBtn = &m_radioFlag5; break;
+			case IDC_RADIO_Flag6: pBtn = &m_radioFlag6; break;
+			case IDC_RADIO_Flag7: pBtn = &m_radioFlag7; break;
+			case IDC_RADIO_Flag8: pBtn = &m_radioFlag8; break;
+			case IDC_RADIO_Flag9: pBtn = &m_radioFlag9; break;
+			case IDC_RADIO_Flag10: pBtn = &m_radioFlag10; break;
+			case IDC_RADIO_Flag11: pBtn = &m_radioFlag11; break;
+			case IDC_RADIO_Flag12: pBtn = &m_radioFlag12; break;
+			case IDC_RADIO_Flag13: pBtn = &m_radioFlag13; break;
+			case IDC_RADIO_Flag14: pBtn = &m_radioFlag14; break;
+			case IDC_RADIO_Flag15: pBtn = &m_radioFlag15; break;
+			case IDC_RADIO_Flag16: pBtn = &m_radioFlag16; break;
+			case IDC_RADIO_Flag17: pBtn = &m_radioFlag17; break;
+			case IDC_RADIO_Flag18: pBtn = &m_radioFlag18; break;
+			case IDC_RADIO_Flag19: pBtn = &m_radioFlag19; break;
+			case IDC_RADIO_Flag20: pBtn = &m_radioFlag20; break;
+			case IDC_RADIO_Flag21: pBtn = &m_radioFlag21; break;
+			}
+			
+			// 如果状态已经被改变，立即恢复（双重保护）
+			if (pBtn != NULL && pBtn->GetSafeHwnd() != NULL)
+			{
+				// 这里我们需要知道之前的状态，但由于 Radio Button 的特殊性
+				// 最好的方法是在 PreTranslateMessage 中完全阻止
+				// 这里作为备用保护
+			}
+			
+			return TRUE;  // 返回 TRUE 表示已处理，阻止默认行为
+		}
+	}
+	
+	// 其他消息正常处理
+	return CDialogEx::OnCommand(wParam, lParam);
+}
 
 // CFWGCSDlgDlg 消息处理程序
 
@@ -260,9 +334,61 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	m_editDisplay60.SetWindowText(_T("0"));
 	m_editDisplay61.SetWindowText(_T("0"));
 	m_editDisplay62.SetWindowText(_T("0"));
-	m_editDisplay63.SetWindowText(_T("0"));
-	m_editDisplay64.SetWindowText(_T("0"));
-	m_editDisplay65.SetWindowText(_T("0"));
+	
+	// ============================================================
+	// 绑定扩展协议 Radio Button 控件（使用 SubclassWindow 方式，只读显示0/1状态，不灰色但不可交互）
+	// ============================================================
+	CWnd* pWnd = NULL;
+	
+	// 视窗组4-5：控制指令标志
+	pWnd = GetDlgItem(IDC_RADIO_Flag1);
+	if (pWnd != NULL) { m_radioFlag1.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag1.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag2);
+	if (pWnd != NULL) { m_radioFlag2.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag2.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag3);
+	if (pWnd != NULL) { m_radioFlag3.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag3.ModifyStyle(WS_TABSTOP, 0); }
+	
+	// 视窗组8-4：工作流程标志
+	pWnd = GetDlgItem(IDC_RADIO_Flag4);
+	if (pWnd != NULL) { m_radioFlag4.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag4.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag5);
+	if (pWnd != NULL) { m_radioFlag5.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag5.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag6);
+	if (pWnd != NULL) { m_radioFlag6.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag6.ModifyStyle(WS_TABSTOP, 0); }
+	
+	// 视窗组8-5：报警状态标志
+	pWnd = GetDlgItem(IDC_RADIO_Flag7);
+	if (pWnd != NULL) { m_radioFlag7.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag7.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag8);
+	if (pWnd != NULL) { m_radioFlag8.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag8.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag9);
+	if (pWnd != NULL) { m_radioFlag9.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag9.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag10);
+	if (pWnd != NULL) { m_radioFlag10.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag10.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag11);
+	if (pWnd != NULL) { m_radioFlag11.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag11.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag12);
+	if (pWnd != NULL) { m_radioFlag12.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag12.ModifyStyle(WS_TABSTOP, 0); }
+	
+	// 视窗组8-6：开关量状态标志
+	pWnd = GetDlgItem(IDC_RADIO_Flag13);
+	if (pWnd != NULL) { m_radioFlag13.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag13.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag14);
+	if (pWnd != NULL) { m_radioFlag14.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag14.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag15);
+	if (pWnd != NULL) { m_radioFlag15.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag15.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag16);
+	if (pWnd != NULL) { m_radioFlag16.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag16.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag17);
+	if (pWnd != NULL) { m_radioFlag17.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag17.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag18);
+	if (pWnd != NULL) { m_radioFlag18.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag18.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag19);
+	if (pWnd != NULL) { m_radioFlag19.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag19.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag20);
+	if (pWnd != NULL) { m_radioFlag20.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag20.ModifyStyle(WS_TABSTOP, 0); }
+	pWnd = GetDlgItem(IDC_RADIO_Flag21);
+	if (pWnd != NULL) { m_radioFlag21.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag21.ModifyStyle(WS_TABSTOP, 0); }
 	
 	TRACE(_T("OnInitDialog: 所有数据显示控件已初始化\n"));
 	
@@ -275,6 +401,12 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	
 	// 显示第一页
 	ShowPage(0);
+	
+	// 初始化时禁用功能按钮（需要连接后才能使用）
+	CWnd* pBtn = GetDlgItem(IDC_BTN_PAGE1);
+	if (pBtn != NULL) pBtn->EnableWindow(FALSE);  // 详细自检信息
+	pBtn = GetDlgItem(IDC_BTN_PAGE2);
+	if (pBtn != NULL) pBtn->EnableWindow(FALSE);  // 地面站指令
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -326,6 +458,12 @@ void CFWGCSDlgDlg::OnBnClickedUdplink()
 			strMsg.Format(_T("UDP连接成功！\n\n本地端口: %d\n远程地址: %s:%d"), 
 				UDP_LOCAL_PORT, _T(UDP_REMOTE_IP), UDP_REMOTE_PORT);
 			MessageBox(strMsg, _T("UDP回报窗口"), MB_OK | MB_ICONINFORMATION);
+			
+			// 连接成功后启用功能按钮
+			CWnd* pBtn = GetDlgItem(IDC_BTN_PAGE1);
+			if (pBtn != NULL) pBtn->EnableWindow(TRUE);  // 详细自检信息
+			pBtn = GetDlgItem(IDC_BTN_PAGE2);
+			if (pBtn != NULL) pBtn->EnableWindow(TRUE);  // 地面站指令
 		}
 		else
 		{
@@ -341,6 +479,12 @@ void CFWGCSDlgDlg::OnBnClickedUdplink()
 		// 当前已连接，执行断开操作
 		DisconnectUdp();
 		MessageBox(_T("UDP已断开！"), _T("UDP回报窗口"), MB_OK | MB_ICONINFORMATION);
+		
+		// 断开连接后禁用功能按钮
+		CWnd* pBtn = GetDlgItem(IDC_BTN_PAGE1);
+		if (pBtn != NULL) pBtn->EnableWindow(FALSE);  // 详细自检信息
+		pBtn = GetDlgItem(IDC_BTN_PAGE2);
+		if (pBtn != NULL) pBtn->EnableWindow(FALSE);  // 地面站指令
 	}
 }
 
@@ -1449,7 +1593,7 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	strData30.Format(_T("%d"), pPacket->rudderCmd3);
 	strData31.Format(_T("%d"), pPacket->rudderCmd4);
 	strData32.Format(_T("%d"), pPacket->turnRudderCmd);
-	strData33.Format(_T("%u"), pPacket->controlCommand);
+	// controlCommand 已弃用，使用扩展协议的 bool 字段替代
 	
 	// 视窗组5相关字段（GPS）
 	strData34.Format(_T("%d"), pPacket->longitude);
@@ -1488,9 +1632,10 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	strData61.Format(_T("%u"), pPacket->ammoRemaining);
 	strData62.Format(_T("%u"), pPacket->selfTestResult);
 	strData63.Format(_T("%u"), pPacket->batteryVoltage);
-	strData64.Format(_T("%u"), pPacket->workflowStatus);
-	strData65.Format(_T("%u"), pPacket->alarmStatus);
-	strData66.Format(_T("%u"), pPacket->switchStatus);
+	// workflowStatus, alarmStatus, switchStatus 已弃用，使用扩展协议的 bool 字段替代
+	strData64.Format(_T("0"));  // 已弃用字段，保留用于兼容
+	strData65.Format(_T("0"));  // 已弃用字段，保留用于兼容
+	strData66.Format(_T("0"));  // 已弃用字段，保留用于兼容
 	
 	// 视窗组9相关字段（自检结果）
 	strData67.Format(_T("%u"), pPacket->YIS100A_result);
@@ -2244,6 +2389,59 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 		if (pWnd != NULL) pWnd->SetWindowText(strData74);
 	}
 	
+	// ============================================================
+	// 步骤4：更新扩展协议 Radio Button 控件（指示灯显示）
+	// ============================================================
+	// 视窗组4-5：控制指令标志
+	if (m_radioFlag1.GetSafeHwnd() != NULL)
+		m_radioFlag1.SetCheck(pPacket->controlCommand_D0 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag2.GetSafeHwnd() != NULL)
+		m_radioFlag2.SetCheck(pPacket->controlCommand_D1 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag3.GetSafeHwnd() != NULL)
+		m_radioFlag3.SetCheck(pPacket->controlCommand_D2 ? BST_CHECKED : BST_UNCHECKED);
+	
+	// 视窗组8-4：工作流程标志（特殊处理：workflowStatus_B0 根据值激活不同的 Radio Button）
+	if (m_radioFlag4.GetSafeHwnd() != NULL)
+		m_radioFlag4.SetCheck(!pPacket->workflowStatus_B0 ? BST_CHECKED : BST_UNCHECKED);  // 0时激活
+	if (m_radioFlag5.GetSafeHwnd() != NULL)
+		m_radioFlag5.SetCheck(pPacket->workflowStatus_B0 ? BST_CHECKED : BST_UNCHECKED);   // 1时激活
+	if (m_radioFlag6.GetSafeHwnd() != NULL)
+		m_radioFlag6.SetCheck(pPacket->workflowStatus_B1 ? BST_CHECKED : BST_UNCHECKED);
+	
+	// 视窗组8-5：报警状态标志
+	if (m_radioFlag7.GetSafeHwnd() != NULL)
+		m_radioFlag7.SetCheck(pPacket->alarmStatus_B0 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag8.GetSafeHwnd() != NULL)
+		m_radioFlag8.SetCheck(pPacket->alarmStatus_B1 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag9.GetSafeHwnd() != NULL)
+		m_radioFlag9.SetCheck(pPacket->alarmStatus_B2 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag10.GetSafeHwnd() != NULL)
+		m_radioFlag10.SetCheck(pPacket->alarmStatus_B3 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag11.GetSafeHwnd() != NULL)
+		m_radioFlag11.SetCheck(pPacket->alarmStatus_B4 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag12.GetSafeHwnd() != NULL)
+		m_radioFlag12.SetCheck(pPacket->alarmStatus_B5 ? BST_CHECKED : BST_UNCHECKED);
+	
+	// 视窗组8-6：开关量状态标志（特殊处理：switchStatus_B5 根据值激活不同的 Radio Button）
+	if (m_radioFlag13.GetSafeHwnd() != NULL)
+		m_radioFlag13.SetCheck(pPacket->switchStatus_B0 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag14.GetSafeHwnd() != NULL)
+		m_radioFlag14.SetCheck(pPacket->switchStatus_B1 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag15.GetSafeHwnd() != NULL)
+		m_radioFlag15.SetCheck(pPacket->switchStatus_B2 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag16.GetSafeHwnd() != NULL)
+		m_radioFlag16.SetCheck(pPacket->switchStatus_B3 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag17.GetSafeHwnd() != NULL)
+		m_radioFlag17.SetCheck(pPacket->switchStatus_B4 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag18.GetSafeHwnd() != NULL)
+		m_radioFlag18.SetCheck(!pPacket->switchStatus_B5 ? BST_CHECKED : BST_UNCHECKED);  // 0时激活
+	if (m_radioFlag19.GetSafeHwnd() != NULL)
+		m_radioFlag19.SetCheck(pPacket->switchStatus_B5 ? BST_CHECKED : BST_UNCHECKED);   // 1时激活
+	if (m_radioFlag20.GetSafeHwnd() != NULL)
+		m_radioFlag20.SetCheck(pPacket->switchStatus_B6 ? BST_CHECKED : BST_UNCHECKED);
+	if (m_radioFlag21.GetSafeHwnd() != NULL)
+		m_radioFlag21.SetCheck(pPacket->switchStatus_B7 ? BST_CHECKED : BST_UNCHECKED);
+	
 	// 更新子对话框显示（优先使用子对话框）
 	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
 	{
@@ -2253,7 +2451,7 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	{
 		m_pPage2Dlg->UpdateDisplay(pPacket);
 	}
-		
+	
 	TRACE(_T("ProcessSerialReceivedData: 已更新所有控件显示\n"));
 }
 
@@ -2411,4 +2609,3 @@ void CFWGCSDlgDlg::OnSize(UINT nType, int cx, int cy)
 	// 独立弹窗不需要跟随主窗口调整位置
 	// 如果需要让弹窗始终居中，可以在这里实现
 }
-

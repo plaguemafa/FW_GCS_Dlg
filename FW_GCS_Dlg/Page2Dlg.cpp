@@ -56,12 +56,9 @@ BOOL CPage2Dlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 	
-	// 绑定发送数据输入控件（IDC_Display_EditData0 到 IDC_Display_EditData28）
-	CWnd* pWnd = GetDlgItem(IDC_Display_EditData0);
-	if (pWnd != NULL) m_editSendData0.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display_EditData1);
-	if (pWnd != NULL) m_editSendData1.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display_EditData2);
+	// 绑定发送数据输入控件（IDC_Display_EditData2 到 IDC_Display_EditData28）
+	// 注意：IDC_Display_EditData0 和 IDC_Display_EditData1 已弃用，改用 Radio Button 控件
+	CWnd* pWnd = GetDlgItem(IDC_Display_EditData2);
 	if (pWnd != NULL) m_editSendData2.SubclassWindow(pWnd->GetSafeHwnd());
 	pWnd = GetDlgItem(IDC_Display_EditData3);
 	if (pWnd != NULL) m_editSendData3.SubclassWindow(pWnd->GetSafeHwnd());
@@ -115,10 +112,31 @@ BOOL CPage2Dlg::OnInitDialog()
 	if (pWnd != NULL) m_editSendData27.SubclassWindow(pWnd->GetSafeHwnd());
 	pWnd = GetDlgItem(IDC_Display_EditData28);
 	if (pWnd != NULL) m_editSendData28.SubclassWindow(pWnd->GetSafeHwnd());
+
+	// 绑定扩展协议指令/模式 Radio 控件（仅当资源存在）
+	pWnd = GetDlgItem(IDC_RADIO_Flag22);
+	if (pWnd != NULL) m_radioMissionCmd0.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag23);
+	if (pWnd != NULL) m_radioMissionCmd1.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag24);
+	if (pWnd != NULL) m_radioMissionCmd2.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag25);
+	if (pWnd != NULL) m_radioMissionCmd3.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag26);
+	if (pWnd != NULL) m_radioMissionCmd4.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag27);
+	if (pWnd != NULL) m_radioMissionCmd5.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag28);
+	if (pWnd != NULL) m_radioMissionCmd6.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag29);
+	if (pWnd != NULL) m_radioCtrlMode0.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag30);
+	if (pWnd != NULL) m_radioCtrlMode1.SubclassWindow(pWnd->GetSafeHwnd());
+	pWnd = GetDlgItem(IDC_RADIO_Flag31);
+	if (pWnd != NULL) m_radioCtrlMode2.SubclassWindow(pWnd->GetSafeHwnd());
 	
 	// 初始化发送数据输入控件（根据数据类型设置默认值）
-	if (m_editSendData0.GetSafeHwnd() != NULL) m_editSendData0.SetWindowText(_T("0"));      // uint8_t
-	if (m_editSendData1.GetSafeHwnd() != NULL) m_editSendData1.SetWindowText(_T("0"));      // uint8_t
+	// 注意：m_editSendData0 和 m_editSendData1 已弃用（missionCommand 和 controlMode 改用 Radio Button）
 	if (m_editSendData2.GetSafeHwnd() != NULL) m_editSendData2.SetWindowText(_T("0"));      // int32_t
 	if (m_editSendData3.GetSafeHwnd() != NULL) m_editSendData3.SetWindowText(_T("0"));      // int32_t
 	if (m_editSendData4.GetSafeHwnd() != NULL) m_editSendData4.SetWindowText(_T("0"));      // int16_t
@@ -146,6 +164,18 @@ BOOL CPage2Dlg::OnInitDialog()
 	if (m_editSendData26.GetSafeHwnd() != NULL) m_editSendData26.SetWindowText(_T("0"));    // int8_t
 	if (m_editSendData27.GetSafeHwnd() != NULL) m_editSendData27.SetWindowText(_T("0"));    // int8_t
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.SetWindowText(_T("0"));    // uint8_t
+
+	// 默认指令/模式 Radio 状态
+	if (m_radioMissionCmd0.GetSafeHwnd() != NULL) m_radioMissionCmd0.SetCheck(BST_CHECKED); // 默认地面测试流程
+	if (m_radioMissionCmd1.GetSafeHwnd() != NULL) m_radioMissionCmd1.SetCheck(BST_UNCHECKED);
+	if (m_radioMissionCmd2.GetSafeHwnd() != NULL) m_radioMissionCmd2.SetCheck(BST_UNCHECKED);
+	if (m_radioMissionCmd3.GetSafeHwnd() != NULL) m_radioMissionCmd3.SetCheck(BST_UNCHECKED);
+	if (m_radioMissionCmd4.GetSafeHwnd() != NULL) m_radioMissionCmd4.SetCheck(BST_UNCHECKED);
+	if (m_radioMissionCmd5.GetSafeHwnd() != NULL) m_radioMissionCmd5.SetCheck(BST_UNCHECKED);
+	if (m_radioMissionCmd6.GetSafeHwnd() != NULL) m_radioMissionCmd6.SetCheck(BST_UNCHECKED);
+	if (m_radioCtrlMode0.GetSafeHwnd() != NULL) m_radioCtrlMode0.SetCheck(BST_CHECKED);     // 默认手动
+	if (m_radioCtrlMode1.GetSafeHwnd() != NULL) m_radioCtrlMode1.SetCheck(BST_UNCHECKED);
+	if (m_radioCtrlMode2.GetSafeHwnd() != NULL) m_radioCtrlMode2.SetCheck(BST_UNCHECKED);
 	
 	// 绑定航路点相关控件
 	pWnd = GetDlgItem(IDC_CHECK_LoadWaypoints);
@@ -242,9 +272,8 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	} btnEnabler(pBtn);
 
 	// 获取所有控件数据
+	// 注意：strData[0] 和 strData[1] 已弃用（missionCommand 和 controlMode 改用 Radio Button）
 	CString strData[29];
-	if (m_editSendData0.GetSafeHwnd() != NULL) m_editSendData0.GetWindowText(strData[0]);
-	if (m_editSendData1.GetSafeHwnd() != NULL) m_editSendData1.GetWindowText(strData[1]);
 	if (m_editSendData2.GetSafeHwnd() != NULL) m_editSendData2.GetWindowText(strData[2]);
 	if (m_editSendData3.GetSafeHwnd() != NULL) m_editSendData3.GetWindowText(strData[3]);
 	if (m_editSendData4.GetSafeHwnd() != NULL) m_editSendData4.GetWindowText(strData[4]);
@@ -278,19 +307,33 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	memset(&packet, 0, sizeof(packet));  // 清零，包括waypoints数组
 	
 	// 填充数据（根据数据类型转换）
-	packet.missionCommand = static_cast<uint8_t>(_ttoi(strData[0]));           // uint8_t
-	packet.controlMode = static_cast<uint8_t>(_ttoi(strData[1]));               // uint8_t
-	packet.launchLongitude = static_cast<int32_t>(_ttoi(strData[2]));           // int32_t
-	packet.launchLatitude = static_cast<int32_t>(_ttoi(strData[3]));            // int32_t
-	packet.launchAltitude = static_cast<int16_t>(_ttoi(strData[4]));            // int16_t
-	packet.initPitch = static_cast<int16_t>(_ttoi(strData[5]));                 // int16_t
-	packet.initYaw = static_cast<int16_t>(_ttoi(strData[6]));                   // int16_t
-	packet.initRoll = static_cast<int16_t>(_ttoi(strData[7]));                  // int16_t
-	packet.initPitchRate = static_cast<int16_t>(_ttoi(strData[8]));             // int16_t
-	packet.initYawRate = static_cast<int16_t>(_ttoi(strData[9]));               // int16_t
-	packet.initRollRate = static_cast<int16_t>(_ttoi(strData[10]));             // int16_t
-	packet.initNorthVelocity = static_cast<int16_t>(_ttoi(strData[11]));        // int16_t
-	packet.initEastVelocity = static_cast<int16_t>(_ttoi(strData[12]));         // int16_t
+	// missionCommand: 由 Radio Flag22~28 决定
+	packet.missionCommand_B0 = (m_radioMissionCmd1.GetSafeHwnd() != NULL && m_radioMissionCmd1.GetCheck() == BST_CHECKED) ? 1 : 0;
+	packet.missionCommand_B1 = (m_radioMissionCmd2.GetSafeHwnd() != NULL && m_radioMissionCmd2.GetCheck() == BST_CHECKED) ? 1 : 0;
+	packet.missionCommand_B2 = (m_radioMissionCmd3.GetSafeHwnd() != NULL && m_radioMissionCmd3.GetCheck() == BST_CHECKED) ? 1 : 0;
+	packet.missionCommand_B3 = (m_radioMissionCmd4.GetSafeHwnd() != NULL && m_radioMissionCmd4.GetCheck() == BST_CHECKED) ? 1 : 0;
+	packet.missionCommand_B4 = (m_radioMissionCmd5.GetSafeHwnd() != NULL && m_radioMissionCmd5.GetCheck() == BST_CHECKED) ? 1 : 0;
+	packet.missionCommand_B5 = (m_radioMissionCmd6.GetSafeHwnd() != NULL && m_radioMissionCmd6.GetCheck() == BST_CHECKED) ? 1 : 0;
+
+	// controlMode: Flag29=0 手动，Flag30=1 半自主，Flag31=2 全自主
+	if (m_radioCtrlMode1.GetSafeHwnd() != NULL && m_radioCtrlMode1.GetCheck() == BST_CHECKED)
+		packet.controlMode_B0 = 1;
+	else if (m_radioCtrlMode2.GetSafeHwnd() != NULL && m_radioCtrlMode2.GetCheck() == BST_CHECKED)
+		packet.controlMode_B0 = 2;
+	else
+		packet.controlMode_B0 = 0; // 默认手动
+	// 注意：controlMode 只有 B0 字段，没有 B1 和 B2
+	packet.launchLongitude = static_cast<int32_t>(_ttoi(strData[2]));            // int32_t
+	packet.launchLatitude = static_cast<int32_t>(_ttoi(strData[3]));             // int32_t
+	packet.launchAltitude = static_cast<int16_t>(_ttoi(strData[4]));             // int16_t
+	packet.initPitch = static_cast<int16_t>(_ttoi(strData[5]));                  // int16_t
+	packet.initYaw = static_cast<int16_t>(_ttoi(strData[6]));                    // int16_t
+	packet.initRoll = static_cast<int16_t>(_ttoi(strData[7]));                   // int16_t
+	packet.initPitchRate = static_cast<int16_t>(_ttoi(strData[8]));              // int16_t
+	packet.initYawRate = static_cast<int16_t>(_ttoi(strData[9]));                // int16_t
+	packet.initRollRate = static_cast<int16_t>(_ttoi(strData[10]));              // int16_t
+	packet.initNorthVelocity = static_cast<int16_t>(_ttoi(strData[11]));         // int16_t
+	packet.initEastVelocity = static_cast<int16_t>(_ttoi(strData[12]));          // int16_t
 	packet.initVerticalVelocity = static_cast<int16_t>(_ttoi(strData[13]));      // int16_t
 	packet.initNorthAccel = static_cast<int16_t>(_ttoi(strData[14]));            // int16_t
 	packet.initEastAccel = static_cast<int16_t>(_ttoi(strData[15]));             // int16_t
@@ -322,21 +365,24 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	}
 	
 	packet.targetLongitude = static_cast<int32_t>(_ttoi(strData[17]));          // int32_t
-	packet.targetLatitude = static_cast<int32_t>(_ttoi(strData[18]));            // int32_t
-	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]));            // int16_t
-	packet.launchLongitude2 = static_cast<int32_t>(_ttoi(strData[20]));          // int32_t
-	packet.launchLatitude2 = static_cast<int32_t>(_ttoi(strData[21]));           // int32_t
-	packet.launchAltitude2 = static_cast<int16_t>(_ttoi(strData[22]));           // int16_t
+	packet.targetLatitude = static_cast<int32_t>(_ttoi(strData[18]));           // int32_t
+	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]));           // int16_t
+	packet.launchLongitude2 = static_cast<int32_t>(_ttoi(strData[20]));         // int32_t
+	packet.launchLatitude2 = static_cast<int32_t>(_ttoi(strData[21]));          // int32_t
+	packet.launchAltitude2 = static_cast<int16_t>(_ttoi(strData[22]));          // int16_t
 	packet.parachuteLongitude = static_cast<int32_t>(_ttoi(strData[23]));       // int32_t
-	packet.parachuteLatitude = static_cast<int32_t>(_ttoi(strData[24]));          // int32_t
-	packet.parachuteAltitude = static_cast<int16_t>(_ttoi(strData[25]));         // int16_t
-	packet.elevatorCmd = static_cast<int8_t>(_ttoi(strData[26]));                // int8_t
-	packet.aileronCmd = static_cast<int8_t>(_ttoi(strData[27]));                  // int8_t
-	packet.airspeedSet = static_cast<uint8_t>(_ttoi(strData[28]));               // uint8_t
+	packet.parachuteLatitude = static_cast<int32_t>(_ttoi(strData[24]));        // int32_t
+	packet.parachuteAltitude = static_cast<int16_t>(_ttoi(strData[25]));        // int16_t
+	packet.elevatorCmd = static_cast<int8_t>(_ttoi(strData[26]));               // int8_t
+	packet.aileronCmd = static_cast<int8_t>(_ttoi(strData[27]));                // int8_t
+	packet.airspeedSet = static_cast<uint8_t>(_ttoi(strData[28]));              // uint8_t
 
 	// 调试输出：检查发送的数据和结构体大小
-	TRACE(_T("UDP发送: missionCommand=%u, controlMode=%u, launchLongitude=%d, launchLatitude=%d, launchAltitude=%d\n"), 
-		packet.missionCommand, packet.controlMode, packet.launchLongitude, packet.launchLatitude, packet.launchAltitude);
+	TRACE(_T("UDP发送: missionCommand_B0~B5=%u,%u,%u,%u,%u,%u; controlMode_B0=%u; launchLon=%d, launchLat=%d, launchAlt=%d\n"),
+		packet.missionCommand_B0, packet.missionCommand_B1, packet.missionCommand_B2,
+		packet.missionCommand_B3, packet.missionCommand_B4, packet.missionCommand_B5,
+		packet.controlMode_B0,
+		packet.launchLongitude, packet.launchLatitude, packet.launchAltitude);
 	TRACE(_T("UDP发送: 结构体大小=%d字节\n"), sizeof(UdpSendDataPacket));
 	
 	// 调试输出：显示原始字节（用于诊断，只显示前32字节）
@@ -405,6 +451,9 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 	if (!CFile::GetStatus(strFilePath, status))
 	{
 		TRACE(_T("航路点文件不存在: %s\n"), strFilePath);
+		CString strMsg;
+		strMsg.Format(_T("航路点文件不存在:\n%s"), (LPCTSTR)strFilePath);
+		MessageBox(strMsg, _T("XML文件加载失败"), MB_OK | MB_ICONWARNING);
 		return FALSE;
 	}
 	
@@ -441,6 +490,9 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 		{
 			TRACE(_T("加载XML文件失败: %s\n"), strFilePath);
 			if (bNeedUninit) CoUninitialize();
+			CString strMsg;
+			strMsg.Format(_T("加载XML文件失败\n"));
+			MessageBox(strMsg, _T("xml文件加载失败"), MB_OK | MB_ICONINFORMATION);
 			return FALSE;
 		}
 		

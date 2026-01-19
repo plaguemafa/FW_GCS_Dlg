@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ ï¿½ï¿½ï¿½ÉµÄ°ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½
-// ï¿½ï¿½ FWGCSDlg.rc Ê¹ï¿½ï¿½
+// Microsoft Visual C++ Éú³ÉµÄ°üº¬ÎÄ¼þ¡£
+// ¹© FWGCSDlg.rc Ê¹ÓÃ
 //
 #define IDD_FW_GCS_DLG_DIALOG           102
 #define IDR_MAINFRAME                   128
@@ -122,6 +122,40 @@
 #define IDC_Display_EditData28          1121
 #define IDC_CHECK_LoadWaypoints         1130
 #define IDC_LIST_Waypoints              1131
+#define IDC_Display74                   1132
+#define IDC_RADIO_Flag22                1132
+#define IDC_Display75                   1133
+#define IDC_RADIO_Flag23                1133
+#define IDC_RADIO_Flag1                 1134
+#define IDC_RADIO_Flag24                1134
+#define IDC_RADIO_Flag2                 1135
+#define IDC_RADIO_Flag25                1135
+#define IDC_RADIO_Flag3                 1136
+#define IDC_RADIO_Flag26                1136
+#define IDC_RADIO_Flag4                 1137
+#define IDC_RADIO_Flag27                1137
+#define IDC_RADIO_Flag5                 1138
+#define IDC_RADIO_Flag28                1138
+#define IDC_RADIO_Flag6                 1139
+#define IDC_RADIO_Flag29                1139
+#define IDC_RADIO_Flag7                 1140
+#define IDC_RADIO_Flag30                1140
+#define IDC_RADIO_Flag8                 1141
+#define IDC_RADIO_Flag31                1141
+#define IDC_RADIO_Flag9                 1142
+#define IDC_RADIO_Flag10                1143
+#define IDC_RADIO_Flag11                1144
+#define IDC_RADIO_Flag12                1145
+#define IDC_RADIO_Flag13                1146
+#define IDC_RADIO_Flag14                1147
+#define IDC_RADIO_Flag15                1148
+#define IDC_RADIO_Flag16                1149
+#define IDC_RADIO_Flag17                1150
+#define IDC_RADIO_Flag18                1151
+#define IDC_RADIO_Flag19                1152
+#define IDC_RADIO_Flag20                1153
+#define IDC_RADIO_Flag21                1154
+#define IDC_RADIO_Flag32                1155
 
 // Next default values for new objects
 // 
@@ -129,7 +163,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        138
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1132
+#define _APS_NEXT_CONTROL_VALUE         1155
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -10,13 +10,9 @@
 typedef struct {
     // 帧头 (序号1)
     // uint16_t frameHeader;  // 固定值0xAA55 (小端存储: 内存中为55 AA)
-    
-    // // 字节长度 (序号2)
     // uint16_t dataLength;   // 整个数据帧长度(含帧头和校验和)
     
     // 飞机状态数据 (序号3-74)
-    // 重要：结构体成员顺序必须与发送端FlightCtrlToDataLink完全一致！严格按照协议序号排列
-    // ============================================================================
     // uint8_t  aircraftID;          // 飞机编号 (3)              (系统信息，暂不显示)
     int16_t  pitchAngle;          // 俯仰角 (4)                 视窗组1-0 IDC_Display0
     int16_t  rollAngle;           // 滚转角 (5)                 视窗组1-1 IDC_Display1
@@ -29,7 +25,10 @@ typedef struct {
     int8_t   rudderCmd3;          // 3#舵偏指令 (12)           视窗组4-2 IDC_Display29
     int8_t   rudderCmd4;          // 4#舵偏指令 (13)           视窗组4-3 IDC_Display30
     uint8_t  throttle;            // 油门控制 (14)           视窗组3-0 IDC_Display23
-    uint8_t  controlCommand;      // 控制指令 (15)             视窗组4-5 IDC_Display32
+    //uint8_t  controlCommand;      // 控制指令 (15)                   视窗组4-5 IDC_Display32   弃用
+    uint8_t controlCommand_D0;       //开伞指令标志                视窗组4-5 IDC_RADIO_Flag1  扩展协议
+    uint8_t controlCommand_D1;       //开舱指令标志                视窗组4-5 IDC_RADIO_Flag2  扩展协议
+    uint8_t controlCommand_D2;       //起落架指令标志              视窗组4-5 IDC_RADIO_Flag3  扩展协议
     int8_t   turnRudderCmd;       // 转弯舵机指令 (16)         视窗组4-4 IDC_Display31
     int16_t  pitchRate;           // 俯仰角速率 (17)         视窗组1-5 IDC_Display5
     int16_t  rollRate;            // 滚转角速率 (18)         视窗组1-6 IDC_Display6
@@ -75,29 +74,44 @@ typedef struct {
     uint8_t  payloadType;         // 载荷类型 (58)             视窗组8-0 IDC_Display59
     uint8_t  ammoRemaining;       // 剩余弹量 (59)             视窗组8-1 IDC_Display60
     uint8_t  selfTestResult;      // 自检结果 (60)             视窗组8-2 IDC_Display61
-    uint8_t  YIS100A_result;      //IMU自检结果            视窗组9-0 IDC_Display66
-    uint8_t  HP5804_result;       //气压计自检结果         视窗组9-1 IDC_Display67
-    uint8_t  MS4525D_result;      // 空速计自检结果        视窗组9-2 IDC_Display68
-    uint8_t  M401_result;         // 温度计自检结果        视窗组9-3 IDC_Display69
-    uint8_t  GPS_result;          // GPS自检结果          视窗组9-4 IDC_Display70
-    uint8_t  PAC1931_result1;     // 电压自检结果         视窗组9-5 IDC_Display71
-    uint8_t  can_to_pw_result;    // PWM自检结果          视窗组9-6 IDC_Display72
-    uint8_t  SBUS_result;         // SBUS自检结果         视窗组9-7 IDC_Display73
+    uint8_t  YIS100A_result;      //IMU自检结果            视窗组9-0 IDC_Display66  扩展协议 pag1
+    uint8_t  HP5804_result;       //气压计自检结果         视窗组9-1 IDC_Display67  扩展协议 pag1
+    uint8_t  MS4525D_result;      // 空速计自检结果        视窗组9-2 IDC_Display68  扩展协议 pag1
+    uint8_t  M401_result;         // 温度计自检结果        视窗组9-3 IDC_Display69  扩展协议 pag1
+    uint8_t  GPS_result;          // GPS自检结果           视窗组9-4 IDC_Display70  扩展协议 pag1
+    uint8_t  PAC1931_result1;     // 电压自检结果          视窗组9-5 IDC_Display71  扩展协议 pag1
+    uint8_t  can_to_pw_result;    // PWM自检结果           视窗组9-6 IDC_Display72  扩展协议 pag1
+    uint8_t  SBUS_result;         // SBUS自检结果          视窗组9-7 IDC_Display73  扩展协议 pag1
     uint8_t  batteryVoltage;      // 电池电压 (61)             视窗组8-3 IDC_Display62
-    uint8_t  workflowStatus;      // 工作流程 (62)             视窗组8-4 IDC_Display63
-    uint8_t  alarmStatus;         // 报警状态字 (63)           视窗组8-5 IDC_Display64
-    uint8_t  switchStatus;        // 开关量状态 (64)           视窗组8-6 IDC_Display65
+    //uint8_t  workflowStatus;      // 工作流程 (62)                        视窗组8-4 IDC_Display63  弃用
+    uint8_t     workflowStatus_B0;   //工作流程标志               视窗组8-4  0时激活IDC_RADIO_Flag4  1时激活IDC_RADIO_Flag4  扩展协议
+    uint8_t     workflowStatus_B1;   //发射状态标志               视窗组8-4 IDC_RADIO_Flag6  扩展协议
+    //uint8_t  alarmStatus;         // 报警状态字 (63)                      视窗组8-5 IDC_Display64  弃用
+    uint8_t     alarmStatus_B0;      //电池电压低报警标志          视窗组8-5 IDC_RADIO_Flag7  扩展协议
+    uint8_t     alarmStatus_B1;      //高度报警标志               视窗组8-5 IDC_RADIO_Flag8  扩展协议
+    uint8_t     alarmStatus_B2;      //油量低报警标志              视窗组8-5 IDC_RADIO_Flag9  扩展协议
+    uint8_t     alarmStatus_B3;      //转速异常报警标志            视窗组8-5 IDC_RADIO_Flag10  扩展协议
+    uint8_t     alarmStatus_B4;       //空速异常报警标志           视窗组8-5 IDC_RADIO_Flag11  扩展协议
+    uint8_t     alarmStatus_B5;       //GPS定位精度低报警标志      视窗组8-5 IDC_RADIO_Flag12  扩展协议
+    // uint8_t  switchStatus;        // 开关量状态 (64)                     视窗组8-6 IDC_Display65  弃用
+    uint8_t     switchStatus_B0;        //发动机并网状态           视窗组8-6 IDC_RADIO_Flag13  扩展协议
+    uint8_t     switchStatus_B1;        //发动机启动状态           视窗组8-6 IDC_RADIO_Flag14  扩展协议
+    uint8_t     switchStatus_B2;        //盘旋状态                 视窗组8-6 IDC_RADIO_Flag15  扩展协议
+    uint8_t     switchStatus_B3;        //归航状态                 视窗组8-6 IDC_RADIO_Flag16  扩展协议
+    uint8_t     switchStatus_B4;        //关车状态                 视窗组8-6 IDC_RADIO_Flag17  扩展协议
+    uint8_t     switchStatus_B5;        //起落架收放状态           视窗组8-6 0时激活IDC_RADIO_Flag18  1时激活IDC_RADIO_Flag19  扩展协议
+    uint8_t     switchStatus_B6;        //开伞状态                 视窗组8-6 IDC_RADIO_Flag20  扩展协议
+    uint8_t     switchStatus_B7;        //夜航灯开关状态            视窗组8-6 IDC_RADIO_Flag21 扩展协议
     int32_t  targetLongitude;     // 目标经度 (65)           视窗组7-0 IDC_Display54
     int32_t  targetLatitude;      // 目标纬度 (66)           视窗组7-1 IDC_Display55
     int16_t  targetAltitude;      // 目标高度 (67)           视窗组7-2 IDC_Display56
     int8_t   targetSpeed;         // 目标速度 (68)           视窗组7-3 IDC_Display57
     int16_t  targetCourse;        // 目标航向 (69)           视窗组7-4 IDC_Display58
-    // int32_t  reserved1;           // 预留1 (70)             
-    // int32_t  reserved2;           // 预留2 (71)
-    // int32_t  reserved3;           // 预留3 (72)
-    // int32_t  reserved4;           // 预留4 (73)
 
-
+    int32_t  reserved1;           // 预留1 (70)             
+    int32_t  reserved2;           // 预留2 (71)
+    int32_t  reserved3;           // 预留3 (72)
+    int32_t  reserved4;           // 预留4 (73)
     
     // 校验和 (序号74)
     // uint8_t checksum; 
@@ -130,12 +144,20 @@ struct Waypoint
 struct UdpSendDataPacket
 {
             
-    // 任务指令
-    uint8_t missionCommand;                      // IDC_Display_EditData0
-            
-    // 控制模式
-    uint8_t controlMode;                         // IDC_Display_EditData1
-            
+    // 任务指令（使用 Radio Button 控件：IDC_RADIO_Flag22~28）
+    uint8_t missionCommand_B0;                  // IDC_RADIO_Flag22激活时, 此参数置0，为地面测试流程指令，
+                                                // IDC_RADIO_Flag23激活时，此参数置1，为发射流程指令，
+    uint8_t missionCommand_B1;                  // IDC_RADIO_Flag24激活时，此参数置1，未激活置0  自检指令
+    uint8_t missionCommand_B2;                  // IDC_RADIO_Flag25激活时，此参数置1，未激活置0  参数装订指令
+    uint8_t missionCommand_B3;                  // IDC_RADIO_Flag26激活时，此参数置1，未激活置0  舵面检查指令
+    uint8_t missionCommand_B4;                  // IDC_RADIO_Flag27激活时，此参数置1，未激活置0  发动机检查指令
+    uint8_t missionCommand_B5;                  // IDC_RADIO_Flag28激活时，此参数置1，未激活置0  发射指令
+
+    // 控制模式（使用 Radio Button 控件：IDC_RADIO_Flag29~31）
+    uint8_t controlMode_B0;                         // IDC_RADIO_Flag29激活时，此参数置0，为手动遥控
+                                                    // IDC_RADIO_Flag30激活时，此参数置1，为半自主
+                                                    // IDC_RADIO_Flag31激活时，此参数置2，为全自主
+
     // 发射点 
     int32_t launchLongitude;                     // IDC_Display_EditData2
     int32_t launchLatitude;                      // IDC_Display_EditData3

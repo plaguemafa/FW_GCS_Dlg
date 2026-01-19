@@ -31,8 +31,7 @@ protected:
 public:
 	virtual BOOL OnInitDialog() override;
 	// 发送数据输入控件（对应UdpSendDataPacket协议字段）
-	CEdit m_editSendData0;  // IDC_Display_EditData0 - missionCommand (uint8_t)
-	CEdit m_editSendData1;  // IDC_Display_EditData1 - controlMode (uint8_t)
+	// 注意：missionCommand 和 controlMode 已改为 Radio Button 控件（m_radioMissionCmd* 和 m_radioCtrlMode*）
 	CEdit m_editSendData2;  // IDC_Display_EditData2 - launchLongitude (int32_t)
 	CEdit m_editSendData3;  // IDC_Display_EditData3 - launchLatitude (int32_t)
 	CEdit m_editSendData4;  // IDC_Display_EditData4 - launchAltitude (int16_t)
@@ -60,6 +59,18 @@ public:
 	CEdit m_editSendData26; // IDC_Display_EditData26 - elevatorCmd (int8_t)
 	CEdit m_editSendData27; // IDC_Display_EditData27 - aileronCmd (int8_t)
 	CEdit m_editSendData28; // IDC_Display_EditData28 - airspeedSet (uint8_t)
+
+	// 扩展协议：指令/模式 Radio 控件（用于发送端选择）
+	CButton m_radioMissionCmd0; // IDC_RADIO_Flag22
+	CButton m_radioMissionCmd1; // IDC_RADIO_Flag23
+	CButton m_radioMissionCmd2; // IDC_RADIO_Flag24
+	CButton m_radioMissionCmd3; // IDC_RADIO_Flag25
+	CButton m_radioMissionCmd4; // IDC_RADIO_Flag26
+	CButton m_radioMissionCmd5; // IDC_RADIO_Flag27
+	CButton m_radioMissionCmd6; // IDC_RADIO_Flag28
+	CButton m_radioCtrlMode0;   // IDC_RADIO_Flag29
+	CButton m_radioCtrlMode1;   // IDC_RADIO_Flag30
+	CButton m_radioCtrlMode2;   // IDC_RADIO_Flag31
 	
 	// 航路点相关控件
 	CButton m_chkLoadWaypoints;  // 复选框：是否加载航路点数据
