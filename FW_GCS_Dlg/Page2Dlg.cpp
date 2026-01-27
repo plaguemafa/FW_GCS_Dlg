@@ -604,7 +604,7 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 					// 读取浮点数并转换为int32_t（度 * 1000000）
 					double dLongitude = _tstof(CString(bstrText));
 					waypoints[i].longitude = static_cast<int32_t>(dLongitude * 1000000.0);
-					TRACE(_T("航路点 %d: longitude=%.6f度 -> %d\n"), i + 1, dLongitude, waypoints[i].longitude);
+					// TRACE(_T("航路点 %d: longitude=%.6f度 -> %d\n"), i + 1, dLongitude, waypoints[i].longitude);
 				}
 			}
 			
@@ -620,7 +620,7 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 					// 读取浮点数并转换为int32_t（度 * 1000000）
 					double dLatitude = _tstof(CString(bstrText));
 					waypoints[i].latitude = static_cast<int32_t>(dLatitude * 1000000.0);
-					TRACE(_T("航路点 %d: latitude=%.6f度 -> %d\n"), i + 1, dLatitude, waypoints[i].latitude);
+					// TRACE(_T("航路点 %d: latitude=%.6f度 -> %d\n"), i + 1, dLatitude, waypoints[i].latitude);
 				}
 			}
 			
@@ -636,7 +636,7 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 					// 读取浮点数并转换为int16_t（米）
 					double dAltitude = _tstof(CString(bstrText));
 					waypoints[i].altitude = static_cast<int16_t>(dAltitude);
-					TRACE(_T("航路点 %d: altitude=%.2f米 -> %d\n"), i + 1, dAltitude, waypoints[i].altitude);
+					// TRACE(_T("航路点 %d: altitude=%.2f米 -> %d\n"), i + 1, dAltitude, waypoints[i].altitude);
 				}
 			}
 			

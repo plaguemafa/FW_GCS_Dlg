@@ -1,4 +1,4 @@
-﻿
+
 // FW_GCS_DlgDlg.cpp: 实现文件
 //
 
@@ -12,10 +12,79 @@
 #include "afxdialogex.h"
 #include "Page1Dlg.h"
 #include "Page2Dlg.h"
+#include <objbase.h>
+#include <string>
+#include <vector>
+#include <cstdarg>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+namespace
+{
+	void LogMap(const wchar_t* format, ...)
+	{
+		wchar_t buffer[1024] = {};
+		va_list args;
+		va_start(args, format);
+		_vsnwprintf_s(buffer, _countof(buffer), _TRUNCATE, format, args);
+		va_end(args);
+		::OutputDebugStringW(buffer);
+		::OutputDebugStringW(L"\r\n");
+	}
+
+	bool ParseTileUrl(const std::wstring& url, int& z, int& x, int& y)
+	{
+		z = x = y = 0;
+		const std::wstring token = L"/tiles/";
+		size_t pos = url.find(token);
+		if (pos == std::wstring::npos)
+		{
+			return false;
+		}
+
+		std::wstring path = url.substr(pos + token.size());
+		size_t queryPos = path.find(L'?');
+		if (queryPos != std::wstring::npos)
+		{
+			path = path.substr(0, queryPos);
+		}
+
+		std::vector<std::wstring> parts;
+		size_t start = 0;
+		while (start < path.size())
+		{
+			size_t slash = path.find(L'/', start);
+			if (slash == std::wstring::npos)
+			{
+				parts.push_back(path.substr(start));
+				break;
+			}
+			parts.push_back(path.substr(start, slash - start));
+			start = slash + 1;
+		}
+
+		if (parts.size() < 3)
+		{
+			return false;
+		}
+
+		auto trimExtension = [](std::wstring value) {
+			size_t dot = value.find(L'.');
+			if (dot != std::wstring::npos)
+			{
+				value = value.substr(0, dot);
+			}
+			return value;
+		};
+
+		z = _wtoi(parts[0].c_str());
+		x = _wtoi(parts[1].c_str());
+		y = _wtoi(trimExtension(parts[2]).c_str());
+		return z >= 0 && x >= 0 && y >= 0;
+	}
+}
 
 // CFWGCSDlgDlg 对话框
 
@@ -392,6 +461,111 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	
 	TRACE(_T("OnInitDialog: 所有数据显示控件已初始化\n"));
 	
+	// 初始化离线地图（MBTiles + WebView2）
+	m_mbtilesPath = GetDefaultMbtilesPath();
+	LogMap(L"[Map] MBTiles path: %s", m_mbtilesPath.GetString());
+	DWORD mbtilesAttr = ::GetFileAttributesW(m_mbtilesPath);
+	LogMap(L"[Map] MBTiles exists: %s", (mbtilesAttr != INVALID_FILE_ATTRIBUTES) ? L"yes" : L"no");
+	CString sqlitePathLower;
+	CString sqlitePathUpper;
+	{
+		wchar_t exePath[MAX_PATH] = {};
+		::GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+		CString exeDir(exePath);
+		int pos = exeDir.ReverseFind(L'\\');
+		if (pos >= 0)
+		{
+			exeDir = exeDir.Left(pos);
+		}
+		sqlitePathLower = exeDir + _T("\\sqlite3.dll");
+		sqlitePathUpper = exeDir + _T("\\SQLite3.dll");
+	}
+	DWORD sqliteAttrLower = ::GetFileAttributesW(sqlitePathLower);
+	DWORD sqliteAttrUpper = ::GetFileAttributesW(sqlitePathUpper);
+	LogMap(L"[Map] sqlite3.dll in exe dir: %s", (sqliteAttrLower != INVALID_FILE_ATTRIBUTES) ? L"yes" : L"no");
+	LogMap(L"[Map] SQLite3.dll in exe dir: %s", (sqliteAttrUpper != INVALID_FILE_ATTRIBUTES) ? L"yes" : L"no");
+	CString mbtilesError;
+	if (!m_mbtilesReader.Open(m_mbtilesPath, mbtilesError))
+	{
+		LogMap(L"[Map] MBTiles open failed: %s", mbtilesError.GetString());
+		LogMap(L"[Map] Attempted path: %s", m_mbtilesPath.GetString());
+		// 尝试查找文件（按优先级顺序）
+		wchar_t exePath[MAX_PATH] = {};
+		::GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+		CString exeDir(exePath);
+		int pos = exeDir.ReverseFind(L'\\');
+		if (pos >= 0)
+		{
+			exeDir = exeDir.Left(pos);
+		}
+		// 优先级1: maps\OUTPUT_FILE.mbtiles（QGIS 默认输出）
+		CString altPath1 = exeDir + _T("\\maps\\OUTPUT_FILE.mbtiles");
+		// 优先级2: OUTPUT_FILE.mbtiles（exe 同目录）
+		CString altPath2 = exeDir + _T("\\OUTPUT_FILE.mbtiles");
+		// 优先级3: maps\osm-2020-02-10-v3.11_china_nanchang.mbtiles（旧文件名）
+		CString altPath3 = exeDir + _T("\\maps\\osm-2020-02-10-v3.11_china_nanchang.mbtiles");
+		
+		DWORD attr1 = ::GetFileAttributesW(altPath1);
+		DWORD attr2 = ::GetFileAttributesW(altPath2);
+		DWORD attr3 = ::GetFileAttributesW(altPath3);
+		LogMap(L"[Map] maps\\OUTPUT_FILE.mbtiles exists: %s", (attr1 != INVALID_FILE_ATTRIBUTES) ? L"yes" : L"no");
+		LogMap(L"[Map] OUTPUT_FILE.mbtiles exists: %s", (attr2 != INVALID_FILE_ATTRIBUTES) ? L"yes" : L"no");
+		LogMap(L"[Map] Old filename exists: %s", (attr3 != INVALID_FILE_ATTRIBUTES) ? L"yes" : L"no");
+		
+		if (attr1 != INVALID_FILE_ATTRIBUTES)
+		{
+			m_mbtilesPath = altPath1;
+			if (m_mbtilesReader.Open(m_mbtilesPath, mbtilesError))
+			{
+				LogMap(L"[Map] Successfully opened maps\\OUTPUT_FILE.mbtiles");
+				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+			}
+		}
+		else if (attr2 != INVALID_FILE_ATTRIBUTES)
+		{
+			m_mbtilesPath = altPath2;
+			if (m_mbtilesReader.Open(m_mbtilesPath, mbtilesError))
+			{
+				LogMap(L"[Map] Successfully opened OUTPUT_FILE.mbtiles");
+				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+			}
+		}
+		else if (attr3 != INVALID_FILE_ATTRIBUTES)
+		{
+			m_mbtilesPath = altPath3;
+			if (m_mbtilesReader.Open(m_mbtilesPath, mbtilesError))
+			{
+				LogMap(L"[Map] Successfully opened old filename");
+				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+			}
+		}
+	}
+	else
+	{
+		m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+		LogMap(L"[Map] metadata zoom=%d..%d default=%d center=(%.6f, %.6f) format=%s",
+			m_mbtilesMetadata.minZoom,
+			m_mbtilesMetadata.maxZoom,
+			m_mbtilesMetadata.defaultZoom,
+			m_mbtilesMetadata.centerLat,
+			m_mbtilesMetadata.centerLng,
+			m_mbtilesMetadata.format.GetString());
+	}
+#if FW_GCS_WITH_WEBVIEW2
+	if (!m_comInitialized)
+	{
+		HRESULT hrCo = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+		if (SUCCEEDED(hrCo))
+		{
+			m_comInitialized = true;
+		}
+		LogMap(L"[Map] CoInitializeEx result: 0x%08X", hrCo);
+	}
+	InitMapWebView();
+#else
+	LogMap(L"[Map] WebView2 headers not found; map disabled.");
+#endif
+	
 	// 创建子对话框
 	if (!CreateChildDialogs())
 	{
@@ -499,6 +673,23 @@ void CFWGCSDlgDlg::OnDestroy()
 	
 	// 清理Winsock库
 	WSACleanup();
+
+	// 关闭离线地图资源
+#if FW_GCS_WITH_WEBVIEW2
+	if (m_webViewController)
+	{
+		m_webViewController->Close();
+	}
+	m_webView = nullptr;
+	m_webViewController = nullptr;
+	m_webViewEnvironment = nullptr;
+#endif
+	m_mbtilesReader.Close();
+	if (m_comInitialized)
+	{
+		::CoUninitialize();
+		m_comInitialized = false;
+	}
 	
 	CDialogEx::OnDestroy();
 }
@@ -2601,4 +2792,368 @@ void CFWGCSDlgDlg::OnSize(UINT nType, int cx, int cy)
 	
 	// 独立弹窗不需要跟随主窗口调整位置
 	// 如果需要让弹窗始终居中，可以在这里实现
+	ResizeMapWebView(cx, cy);
+}
+
+#if FW_GCS_WITH_WEBVIEW2
+void CFWGCSDlgDlg::InitMapWebView()
+{
+	if (m_hMapHostWnd != nullptr)
+	{
+		return;
+	}
+
+	CRect clientRect;
+	GetClientRect(&clientRect);
+	m_hMapHostWnd = ::CreateWindowExW(
+		0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
+		0, 0, clientRect.Width(), clientRect.Height(),
+		m_hWnd, nullptr, AfxGetInstanceHandle(), nullptr);
+	if (m_hMapHostWnd == nullptr)
+	{
+		LogMap(L"[Map] Create host window failed (GetLastError=%lu)", ::GetLastError());
+		return;
+	}
+	LogMap(L"[Map] Host window created");
+
+	auto envCompletedHandler = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
+		[this](HRESULT result, ICoreWebView2Environment* env) -> HRESULT
+		{
+			if (FAILED(result) || env == nullptr)
+			{
+				LogMap(L"[Map] WebView2 Environment failed: 0x%08X", result);
+				return S_OK;
+			}
+			m_webViewEnvironment = env;
+			LogMap(L"[Map] WebView2 Environment OK");
+
+			auto controllerHandler = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+				[this](HRESULT controllerResult, ICoreWebView2Controller* controller) -> HRESULT
+				{
+					if (FAILED(controllerResult) || controller == nullptr)
+					{
+						LogMap(L"[Map] WebView2 Controller failed: 0x%08X", controllerResult);
+						return S_OK;
+					}
+
+					m_webViewController = controller;
+					m_webViewController->get_CoreWebView2(&m_webView);
+					LogMap(L"[Map] WebView2 Controller OK");
+
+					RECT bounds{};
+					::GetClientRect(m_hMapHostWnd, &bounds);
+					m_webViewController->put_Bounds(bounds);
+					m_webViewController->put_IsVisible(TRUE);
+
+					if (m_webView != nullptr)
+					{
+						LogMap(L"[Map] WebView2 CoreWebView2 OK");
+						m_webView->AddWebResourceRequestedFilter(
+							L"https://tiles.local/*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_IMAGE);
+
+						m_webView->add_WebResourceRequested(
+							Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+								[this](ICoreWebView2* sender, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT
+								{
+									UNREFERENCED_PARAMETER(sender);
+									Microsoft::WRL::ComPtr<ICoreWebView2WebResourceRequest> request;
+									if (FAILED(args->get_Request(&request)) || request == nullptr)
+									{
+										return S_OK;
+									}
+
+									LPWSTR uri = nullptr;
+									if (FAILED(request->get_Uri(&uri)) || uri == nullptr)
+									{
+										return S_OK;
+									}
+									std::wstring url(uri);
+									::CoTaskMemFree(uri);
+
+									int z = 0, x = 0, y = 0;
+									if (!ParseTileUrl(url, z, x, y))
+									{
+										return S_OK;
+									}
+
+									std::vector<unsigned char> tileData;
+									CString mimeType;
+									bool isGzip = false;
+									if (!m_mbtilesReader.GetTile(z, x, y, tileData, mimeType, isGzip))
+									{
+										static int s_missingCount = 0;
+										if (s_missingCount < 10)
+										{
+											LogMap(L"[Map] Missing tile z=%d x=%d y=%d", z, x, y);
+											++s_missingCount;
+										}
+										Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
+										m_webViewEnvironment->CreateWebResourceResponse(nullptr, 404, L"Not Found", L"", &response);
+										args->put_Response(response.Get());
+										return S_OK;
+									}
+
+									HGLOBAL hGlobal = ::GlobalAlloc(GMEM_MOVEABLE, tileData.size());
+									if (hGlobal == nullptr)
+									{
+										return S_OK;
+									}
+									void* buffer = ::GlobalLock(hGlobal);
+									if (buffer != nullptr)
+									{
+										memcpy(buffer, tileData.data(), tileData.size());
+										::GlobalUnlock(hGlobal);
+									}
+
+									Microsoft::WRL::ComPtr<IStream> stream;
+									if (FAILED(::CreateStreamOnHGlobal(hGlobal, TRUE, &stream)))
+									{
+										return S_OK;
+									}
+
+									CString headers;
+									if (isGzip)
+									{
+										headers.Format(_T("Content-Type: %s\r\nContent-Encoding: gzip\r\n"), mimeType.GetString());
+									}
+									else
+									{
+										headers.Format(_T("Content-Type: %s\r\n"), mimeType.GetString());
+									}
+									Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
+									m_webViewEnvironment->CreateWebResourceResponse(
+										stream.Get(), 200, L"OK", headers, &response);
+									args->put_Response(response.Get());
+									return S_OK;
+								}).Get(),
+							nullptr);
+
+						CString html = BuildMapHtml();
+						m_webView->NavigateToString(html);
+						LogMap(L"[Map] NavigateToString done");
+					}
+
+					// 保证地图在最底层显示
+					::SetWindowPos(m_hMapHostWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+					return S_OK;
+				});
+
+			env->CreateCoreWebView2Controller(m_hMapHostWnd, controllerHandler.Get());
+			return S_OK;
+		});
+
+	CreateCoreWebView2EnvironmentWithOptions(nullptr, nullptr, nullptr, envCompletedHandler.Get());
+	LogMap(L"[Map] CreateCoreWebView2EnvironmentWithOptions called");
+}
+#else
+void CFWGCSDlgDlg::InitMapWebView()
+{
+}
+#endif
+
+void CFWGCSDlgDlg::ResizeMapWebView(int cx, int cy)
+{
+	if (m_hMapHostWnd == nullptr)
+	{
+		return;
+	}
+	::SetWindowPos(m_hMapHostWnd, HWND_BOTTOM, 0, 0, cx, cy, SWP_NOACTIVATE);
+#if FW_GCS_WITH_WEBVIEW2
+	if (m_webViewController)
+	{
+		RECT bounds{};
+		bounds.left = 0;
+		bounds.top = 0;
+		bounds.right = cx;
+		bounds.bottom = cy;
+		m_webViewController->put_Bounds(bounds);
+	}
+#endif
+}
+
+CString CFWGCSDlgDlg::BuildMapHtml() const
+{
+	CStringA html;
+	html += "<!doctype html><html><head><meta charset=\"utf-8\">";
+	html += "<style>";
+	html += "html,body,#map{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b0f14;}";
+	html += ".tile{position:absolute;width:256px;height:256px;}";
+	html += "#status{position:absolute;left:12px;top:12px;color:#e0e0e0;font-family:Segoe UI,Arial;font-size:12px;";
+	html += "background:rgba(0,0,0,0.45);padding:6px 8px;border-radius:4px;z-index:10;}";
+	html += "</style></head><body>";
+	html += "<div id=\"map\"></div><div id=\"status\"></div>";
+	html += "<script>";
+
+	CStringA config;
+	config.Format(
+		"const mapConfig={tileUrl:\"https://tiles.local/tiles/{z}/{x}/{y}\",minZoom:%d,maxZoom:%d,zoom:%d,centerLat:%0.8f,centerLng:%0.8f,hasCenter:%s};",
+		m_mbtilesMetadata.minZoom,
+		m_mbtilesMetadata.maxZoom,
+		m_mbtilesMetadata.defaultZoom,
+		m_mbtilesMetadata.centerLat,
+		m_mbtilesMetadata.centerLng,
+		m_mbtilesMetadata.hasCenter ? "true" : "false");
+	html += config;
+
+	CStringA status;
+	if (!m_mbtilesReader.IsOpen())
+	{
+		CStringA pathA(m_mbtilesPath);
+		status.Format("const statusText='MBTiles open failed: %s';", pathA.GetString());
+	}
+	else if (m_mbtilesMetadata.format.CompareNoCase(_T("pbf")) == 0)
+	{
+		status = "const statusText='MBTiles format is PBF (vector). Current renderer supports raster only.';";
+	}
+	else
+	{
+		status = "const statusText='Offline map loaded';";
+	}
+	html += status;
+
+	html += R"(
+const mapEl = document.getElementById('map');
+const statusEl = document.getElementById('status');
+statusEl.textContent = statusText;
+const tileSize = 256;
+const minZoom = mapConfig.minZoom ?? 0;
+const maxZoom = mapConfig.maxZoom ?? 18;
+let zoom = Math.max(minZoom, Math.min(maxZoom, mapConfig.zoom ?? 10));
+let center = { lat: mapConfig.centerLat ?? 0, lng: mapConfig.centerLng ?? 0 };
+let offset = { x: 0, y: 0 };
+let dragging = false;
+let last = { x: 0, y: 0 };
+
+function latLngToPoint(lat, lng, zoomLevel) {
+  const sin = Math.sin(lat * Math.PI / 180);
+  const scale = tileSize * Math.pow(2, zoomLevel);
+  const x = (lng + 180) / 360 * scale;
+  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale;
+  return { x, y };
+}
+
+function pointToLatLng(x, y, zoomLevel) {
+  const scale = tileSize * Math.pow(2, zoomLevel);
+  const lng = x / scale * 360 - 180;
+  const n = Math.PI - 2 * Math.PI * y / scale;
+  const lat = 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  return { lat, lng };
+}
+
+function render() {
+  const width = mapEl.clientWidth;
+  const height = mapEl.clientHeight;
+  const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+  const topLeft = { x: centerPoint.x - width / 2 + offset.x, y: centerPoint.y - height / 2 + offset.y };
+  const startX = Math.floor(topLeft.x / tileSize);
+  const startY = Math.floor(topLeft.y / tileSize);
+  const endX = Math.floor((topLeft.x + width) / tileSize);
+  const endY = Math.floor((topLeft.y + height) / tileSize);
+  const max = Math.pow(2, zoom);
+
+  mapEl.textContent = '';
+  for (let ty = startY; ty <= endY; ty++) {
+    for (let tx = startX; tx <= endX; tx++) {
+      const tileX = ((tx % max) + max) % max;
+      const tileY = ((ty % max) + max) % max;
+      const img = new Image();
+      img.className = 'tile';
+      img.style.left = (tx * tileSize - topLeft.x) + 'px';
+      img.style.top = (ty * tileSize - topLeft.y) + 'px';
+      img.src = mapConfig.tileUrl
+        .replace('{z}', zoom)
+        .replace('{x}', tileX)
+        .replace('{y}', tileY);
+      mapEl.appendChild(img);
+    }
+  }
+}
+
+mapEl.addEventListener('mousedown', (e) => {
+  dragging = true;
+  last = { x: e.clientX, y: e.clientY };
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  const dx = e.clientX - last.x;
+  const dy = e.clientY - last.y;
+  offset.x += dx;
+  offset.y += dy;
+  last = { x: e.clientX, y: e.clientY };
+  render();
+});
+
+window.addEventListener('mouseup', () => {
+  if (!dragging) return;
+  dragging = false;
+  const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+  const newCenter = pointToLatLng(centerPoint.x - offset.x, centerPoint.y - offset.y, zoom);
+  center = newCenter;
+  offset = { x: 0, y: 0 };
+  render();
+});
+
+mapEl.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 1 : -1;
+  const nextZoom = Math.max(minZoom, Math.min(maxZoom, zoom + delta));
+  if (nextZoom !== zoom) {
+    zoom = nextZoom;
+    render();
+  }
+}, { passive: false });
+
+window.addEventListener('resize', render);
+render();
+)";
+
+	html += "</script></body></html>";
+	return CString(html);
+}
+
+CString CFWGCSDlgDlg::GetDefaultMbtilesPath() const
+{
+	wchar_t buffer[MAX_PATH] = {};
+	DWORD len = ::GetEnvironmentVariableW(L"FW_GCS_MBTILES", buffer, MAX_PATH);
+	if (len > 0 && len < MAX_PATH)
+	{
+		return CString(buffer);
+	}
+
+	wchar_t exePath[MAX_PATH] = {};
+	::GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+	CString exeDir(exePath);
+	int pos = exeDir.ReverseFind(L'\\');
+	if (pos >= 0)
+	{
+		exeDir = exeDir.Left(pos);
+	}
+
+	// 优先查找 OUTPUT_FILE.mbtiles（QGIS 默认输出文件名）
+	CString outputFile = exeDir + _T("\\maps\\OUTPUT_FILE.mbtiles");
+	DWORD attr = ::GetFileAttributesW(outputFile);
+	if (attr != INVALID_FILE_ATTRIBUTES)
+	{
+		return outputFile;
+	}
+
+	// 如果 maps 文件夹不存在，尝试直接在 exe 目录查找
+	outputFile = exeDir + _T("\\OUTPUT_FILE.mbtiles");
+	attr = ::GetFileAttributesW(outputFile);
+	if (attr != INVALID_FILE_ATTRIBUTES)
+	{
+		return outputFile;
+	}
+
+	// 回退到原来的文件名
+	CString oldFile = exeDir + _T("\\maps\\osm-2020-02-10-v3.11_china_nanchang.mbtiles");
+	attr = ::GetFileAttributesW(oldFile);
+	if (attr != INVALID_FILE_ATTRIBUTES)
+	{
+		return oldFile;
+	}
+
+	// 如果都不存在，返回 OUTPUT_FILE.mbtiles 作为默认（用户需要创建）
+	return exeDir + _T("\\maps\\OUTPUT_FILE.mbtiles");
 }

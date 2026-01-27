@@ -1,4 +1,4 @@
-﻿
+
 // FW_GCS_DlgDlg.h: 头文件
 //
 
@@ -12,6 +12,19 @@
 #pragma comment(lib, "ws2_32.lib")
 #include "Page1Dlg.h"
 #include "Page2Dlg.h"
+#include "MbtilesReader.h"
+#include <wrl.h>
+
+#if defined(__has_include)
+#if __has_include(<WebView2.h>)
+#include <WebView2.h>
+#define FW_GCS_WITH_WEBVIEW2 1
+#else
+#define FW_GCS_WITH_WEBVIEW2 0
+#endif
+#else
+#define FW_GCS_WITH_WEBVIEW2 0
+#endif
 
 // UDP配置参数宏
 // 注意：UDP_REMOTE_IP 和 UDP_REMOTE_PORT 对应 Simulink（发送端）的本地地址和端口，用于：
@@ -235,4 +248,22 @@ public:
 public:
 	// 提供给子对话框安全调用的UDP发送封装
 	BOOL SendUdpDataPublic(const void* pData, int nSize) { return SendUdpData(pData, nSize); }
+
+private:
+	// 离线地图（MBTiles + WebView2）
+	HWND m_hMapHostWnd = nullptr;
+#if FW_GCS_WITH_WEBVIEW2
+	Microsoft::WRL::ComPtr<ICoreWebView2Environment> m_webViewEnvironment;
+	Microsoft::WRL::ComPtr<ICoreWebView2Controller> m_webViewController;
+	Microsoft::WRL::ComPtr<ICoreWebView2> m_webView;
+#endif
+	CMbtilesReader m_mbtilesReader;
+	MbtilesMetadata m_mbtilesMetadata;
+	CString m_mbtilesPath;
+	bool m_comInitialized = false;
+
+	void InitMapWebView();
+	void ResizeMapWebView(int cx, int cy);
+	CString BuildMapHtml() const;
+	CString GetDefaultMbtilesPath() const;
 };
