@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 #include <cstdarg>
+// #include <algorithm>
+#include <minwindef.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -311,6 +313,51 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动执行此操作
 	SetIcon(m_hIcon, TRUE);		// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
+
+	// 调整窗口样式，启用系统菜单/最小化/最大化，并允许调整大小
+	{
+		const LONG newStyleAdd = WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME;
+		const LONG newStyleRemove = WS_HSCROLL | WS_VSCROLL;
+		LONG style = ::GetWindowLong(m_hWnd, GWL_STYLE);
+		style |= newStyleAdd;
+		style &= ~newStyleRemove;
+		::SetWindowLong(m_hWnd, GWL_STYLE, style);
+
+		::SetWindowPos(m_hWnd, nullptr, 0, 0, 0, 0,
+			SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+	}
+
+	// 设置启动默认大小
+	{
+		// 期望的客户区大小
+		const int reqClientW = 1920;
+		const int reqClientH = 1080;
+
+		// 获取当前屏幕工作区大小（不包含任务栏）
+		RECT workArea;
+		SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0);
+		int screenW = workArea.right - workArea.left;
+		int screenH = workArea.bottom - workArea.top;
+
+		// 计算需要的窗口总大小
+		CRect rc(0, 0, reqClientW, reqClientH);
+		AdjustWindowRectEx(&rc, GetStyle(), FALSE, GetExStyle());
+		int reqWinW = rc.Width();
+		int reqWinH = rc.Height();
+
+		if (reqWinW <= screenW && reqWinH <= screenH)
+		{
+			// 屏幕够大，居中显示
+			int x = workArea.left + (screenW - reqWinW) / 2;
+			int y = workArea.top + (screenH - reqWinH) / 2;
+			SetWindowPos(NULL, x, y, reqWinW, reqWinH, SWP_NOZORDER | SWP_NOACTIVATE);
+		}
+		else
+		{
+			// 屏幕不够大，最大化
+			ShowWindow(SW_SHOWMAXIMIZED);
+		}
+	}
 
 	// 初始化Winsock库
 	WSADATA wsaData;

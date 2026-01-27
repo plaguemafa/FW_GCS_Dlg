@@ -46,7 +46,7 @@
 #define SERIAL_PORT_NAME   "COM20"        // 目标串口名称（RS422串口，格式：COM1-COM256）
 #define SERIAL_BAUD_RATE   115200         // 波特率（常用值：9600, 19200, 38400, 57600, 115200）
 
-#define   UI_UPDATE_INTERVAL_MS 250  // 显示控件刷新频率
+#define   UI_UPDATE_INTERVAL_MS 25		  // 显示控件刷新频率
 
 // 自定义消息：UDP数据接收
 #define WM_UDP_DATA_RECEIVED  (WM_USER + 200)

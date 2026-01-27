@@ -86,7 +86,7 @@ bool CMbtilesReader::Open(const CString& path, CString& errorMessage)
 	return true;
 }
 
-void CMbtilesReader::Close()
+void CMbtilesReader::Close() //关闭
 {
 	if (m_db != nullptr && m_api.close != nullptr)
 	{
@@ -97,12 +97,12 @@ void CMbtilesReader::Close()
 	UnloadSqliteApi();
 }
 
-bool CMbtilesReader::IsOpen() const
+bool CMbtilesReader::IsOpen() const //判断是否打开
 {
 	return m_db != nullptr;
 }
 
-bool CMbtilesReader::GetTile(int zoom, int x, int y, std::vector<unsigned char>& outData, CString& outMimeType, bool& outIsGzip)
+bool CMbtilesReader::GetTile(int zoom, int x, int y, std::vector<unsigned char>& outData, CString& outMimeType, bool& outIsGzip) //获取瓦片数据
 {
 	outData.clear();
 	outMimeType.Empty();
@@ -112,7 +112,7 @@ bool CMbtilesReader::GetTile(int zoom, int x, int y, std::vector<unsigned char>&
 		return false;
 	}
 
-	// MBTiles使用TMS坐标系，需要翻转Y轴
+	// MBTiles使用TMS坐标系，需翻转Y轴
 	const int maxIndex = 1 << zoom;
 	const int tmsY = (maxIndex - 1) - y;
 
@@ -160,7 +160,7 @@ bool CMbtilesReader::GetTile(int zoom, int x, int y, std::vector<unsigned char>&
 	return !outData.empty();
 }
 
-bool CMbtilesReader::GetMetadata(MbtilesMetadata& outMetadata) const
+bool CMbtilesReader::GetMetadata(MbtilesMetadata& outMetadata) const //获取元数据
 {
 	if (m_db == nullptr)
 	{
@@ -170,7 +170,7 @@ bool CMbtilesReader::GetMetadata(MbtilesMetadata& outMetadata) const
 	return true;
 }
 
-bool CMbtilesReader::LoadSqliteApi(CString& errorMessage)
+bool CMbtilesReader::LoadSqliteApi(CString& errorMessage) //加载sqlite3.dll
 {
 	if (m_api.dll != nullptr)
 	{
