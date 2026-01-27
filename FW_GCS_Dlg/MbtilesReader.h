@@ -43,6 +43,7 @@ private:
 		int (*step)(sqlite3_stmt*) = nullptr;
 		const void* (*column_blob)(sqlite3_stmt*, int) = nullptr;
 		int (*column_bytes)(sqlite3_stmt*, int) = nullptr;
+		int (*column_int)(sqlite3_stmt*, int) = nullptr;
 		const unsigned char* (*column_text)(sqlite3_stmt*, int) = nullptr;
 		int (*finalize)(sqlite3_stmt*) = nullptr;
 		const char* (*errmsg)(sqlite3*) = nullptr;

@@ -211,13 +211,14 @@ bool CMbtilesReader::LoadSqliteApi(CString& errorMessage)
 	m_api.step = reinterpret_cast<decltype(m_api.step)>(::GetProcAddress(m_api.dll, "sqlite3_step"));
 	m_api.column_blob = reinterpret_cast<decltype(m_api.column_blob)>(::GetProcAddress(m_api.dll, "sqlite3_column_blob"));
 	m_api.column_bytes = reinterpret_cast<decltype(m_api.column_bytes)>(::GetProcAddress(m_api.dll, "sqlite3_column_bytes"));
+	m_api.column_int = reinterpret_cast<decltype(m_api.column_int)>(::GetProcAddress(m_api.dll, "sqlite3_column_int"));
 	m_api.column_text = reinterpret_cast<decltype(m_api.column_text)>(::GetProcAddress(m_api.dll, "sqlite3_column_text"));
 	m_api.finalize = reinterpret_cast<decltype(m_api.finalize)>(::GetProcAddress(m_api.dll, "sqlite3_finalize"));
 	m_api.errmsg = reinterpret_cast<decltype(m_api.errmsg)>(::GetProcAddress(m_api.dll, "sqlite3_errmsg"));
 
 	if (m_api.open_v2 == nullptr || m_api.close == nullptr || m_api.prepare_v2 == nullptr ||
 		m_api.bind_int == nullptr || m_api.step == nullptr || m_api.column_blob == nullptr ||
-		m_api.column_bytes == nullptr || m_api.column_text == nullptr || m_api.finalize == nullptr)
+		m_api.column_bytes == nullptr || m_api.column_int == nullptr || m_api.column_text == nullptr || m_api.finalize == nullptr)
 	{
 		errorMessage = _T("sqlite3.dll missing required exports");
 		UnloadSqliteApi();
@@ -245,13 +246,40 @@ bool CMbtilesReader::LoadMetadata(CString& errorMessage)
 	{
 		m_metadata.format = value.c_str();
 	}
-	if (QueryMetadataValue("minzoom", value))
+	bool hasMinZoom = QueryMetadataValue("minzoom", value);
+	if (hasMinZoom)
 	{
 		m_metadata.minZoom = std::atoi(value.c_str());
 	}
-	if (QueryMetadataValue("maxzoom", value))
+	bool hasMaxZoom = QueryMetadataValue("maxzoom", value);
+	if (hasMaxZoom)
 	{
 		m_metadata.maxZoom = std::atoi(value.c_str());
+	}
+	
+	// 如果 metadata 表中没有 minzoom/maxzoom，从 tiles 表查询实际范围
+	if (!hasMinZoom || !hasMaxZoom)
+	{
+		const char* sql = "SELECT MIN(zoom_level), MAX(zoom_level) FROM tiles;";
+		sqlite3_stmt* stmt = nullptr;
+		const char* tail = nullptr;
+		int rc = m_api.prepare_v2(m_db, sql, -1, &stmt, &tail);
+		if (rc == SQLITE_OK && stmt != nullptr)
+		{
+			rc = m_api.step(stmt);
+			if (rc == SQLITE_ROW)
+			{
+				if (!hasMinZoom && m_api.column_int != nullptr)
+				{
+					m_metadata.minZoom = m_api.column_int(stmt, 0);
+				}
+				if (!hasMaxZoom && m_api.column_int != nullptr)
+				{
+					m_metadata.maxZoom = m_api.column_int(stmt, 1);
+				}
+			}
+			m_api.finalize(stmt);
+		}
 	}
 	if (QueryMetadataValue("center", value))
 	{

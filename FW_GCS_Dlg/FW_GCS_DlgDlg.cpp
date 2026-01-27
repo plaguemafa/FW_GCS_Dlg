@@ -550,6 +550,26 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			m_mbtilesMetadata.centerLat,
 			m_mbtilesMetadata.centerLng,
 			m_mbtilesMetadata.format.GetString());
+		
+		// 如果 defaultZoom 太低，设置为 minZoom 和 maxZoom 的中间值
+		if (m_mbtilesMetadata.defaultZoom < m_mbtilesMetadata.minZoom || 
+			m_mbtilesMetadata.defaultZoom > m_mbtilesMetadata.maxZoom ||
+			(m_mbtilesMetadata.defaultZoom == 10 && m_mbtilesMetadata.maxZoom > 15))
+		{
+			// 如果 maxZoom 很高但 defaultZoom 还是默认的 10，设置为更合适的值
+			int suggestedZoom = (m_mbtilesMetadata.minZoom + m_mbtilesMetadata.maxZoom) / 2;
+			if (suggestedZoom < m_mbtilesMetadata.minZoom)
+			{
+				suggestedZoom = m_mbtilesMetadata.minZoom;
+			}
+			else if (suggestedZoom > m_mbtilesMetadata.maxZoom)
+			{
+				suggestedZoom = m_mbtilesMetadata.maxZoom;
+			}
+			m_mbtilesMetadata.defaultZoom = suggestedZoom;
+			LogMap(L"[Map] Adjusted defaultZoom to %d (midpoint of %d..%d)", 
+				suggestedZoom, m_mbtilesMetadata.minZoom, m_mbtilesMetadata.maxZoom);
+		}
 	}
 #if FW_GCS_WITH_WEBVIEW2
 	if (!m_comInitialized)
@@ -2977,9 +2997,10 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 	html += "<!doctype html><html><head><meta charset=\"utf-8\">";
 	html += "<style>";
 	html += "html,body,#map{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b0f14;}";
-	html += ".tile{position:absolute;width:256px;height:256px;}";
+	html += "#map{position:relative;cursor:grab;}";
+	html += ".tile{position:absolute;width:256px;height:256px;pointer-events:none;}";
 	html += "#status{position:absolute;left:12px;top:12px;color:#e0e0e0;font-family:Segoe UI,Arial;font-size:12px;";
-	html += "background:rgba(0,0,0,0.45);padding:6px 8px;border-radius:4px;z-index:10;}";
+	html += "background:rgba(0,0,0,0.45);padding:6px 8px;border-radius:4px;z-index:10;pointer-events:none;}";
 	html += "</style></head><body>";
 	html += "<div id=\"map\"></div><div id=\"status\"></div>";
 	html += "<script>";
@@ -3011,18 +3032,22 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 	}
 	html += status;
 
-	html += R"(
+html += R"(
 const mapEl = document.getElementById('map');
 const statusEl = document.getElementById('status');
-statusEl.textContent = statusText;
+if (!mapEl) {
+  console.error('Map element not found!');
+} else {
+  statusEl.textContent = statusText;
+}
 const tileSize = 256;
 const minZoom = mapConfig.minZoom ?? 0;
 const maxZoom = mapConfig.maxZoom ?? 18;
 let zoom = Math.max(minZoom, Math.min(maxZoom, mapConfig.zoom ?? 10));
 let center = { lat: mapConfig.centerLat ?? 0, lng: mapConfig.centerLng ?? 0 };
-let offset = { x: 0, y: 0 };
 let dragging = false;
-let last = { x: 0, y: 0 };
+let dragStart = { x: 0, y: 0 };
+let dragStartCenter = { lat: 0, lng: 0 };
 
 function latLngToPoint(lat, lng, zoomLevel) {
   const sin = Math.sin(lat * Math.PI / 180);
@@ -3041,68 +3066,108 @@ function pointToLatLng(x, y, zoomLevel) {
 }
 
 function render() {
-  const width = mapEl.clientWidth;
-  const height = mapEl.clientHeight;
-  const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
-  const topLeft = { x: centerPoint.x - width / 2 + offset.x, y: centerPoint.y - height / 2 + offset.y };
-  const startX = Math.floor(topLeft.x / tileSize);
-  const startY = Math.floor(topLeft.y / tileSize);
-  const endX = Math.floor((topLeft.x + width) / tileSize);
-  const endY = Math.floor((topLeft.y + height) / tileSize);
-  const max = Math.pow(2, zoom);
+  if (!mapEl) return;
+  try {
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    if (width === 0 || height === 0) return;
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+    const startX = Math.floor(topLeft.x / tileSize);
+    const startY = Math.floor(topLeft.y / tileSize);
+    const endX = Math.floor((topLeft.x + width) / tileSize);
+    const endY = Math.floor((topLeft.y + height) / tileSize);
+    const max = Math.pow(2, zoom);
 
-  mapEl.textContent = '';
-  for (let ty = startY; ty <= endY; ty++) {
-    for (let tx = startX; tx <= endX; tx++) {
-      const tileX = ((tx % max) + max) % max;
-      const tileY = ((ty % max) + max) % max;
-      const img = new Image();
-      img.className = 'tile';
-      img.style.left = (tx * tileSize - topLeft.x) + 'px';
-      img.style.top = (ty * tileSize - topLeft.y) + 'px';
-      img.src = mapConfig.tileUrl
-        .replace('{z}', zoom)
-        .replace('{x}', tileX)
-        .replace('{y}', tileY);
-      mapEl.appendChild(img);
+    mapEl.textContent = '';
+    for (let ty = startY; ty <= endY; ty++) {
+      for (let tx = startX; tx <= endX; tx++) {
+        const tileX = ((tx % max) + max) % max;
+        const tileY = ((ty % max) + max) % max;
+        const img = new Image();
+        img.className = 'tile';
+        img.style.left = (tx * tileSize - topLeft.x) + 'px';
+        img.style.top = (ty * tileSize - topLeft.y) + 'px';
+        img.src = mapConfig.tileUrl
+          .replace('{z}', zoom)
+          .replace('{x}', tileX)
+          .replace('{y}', tileY);
+        mapEl.appendChild(img);
+      }
     }
+  } catch (err) {
+    console.error('Error in render:', err);
   }
 }
 
-mapEl.addEventListener('mousedown', (e) => {
-  dragging = true;
-  last = { x: e.clientX, y: e.clientY };
-});
+if (mapEl) {
+  mapEl.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    dragging = true;
+    dragStart = { x: e.clientX, y: e.clientY };
+    dragStartCenter = { lat: center.lat, lng: center.lng };
+    mapEl.style.cursor = 'grabbing';
+  });
 
-window.addEventListener('mousemove', (e) => {
-  if (!dragging) return;
-  const dx = e.clientX - last.x;
-  const dy = e.clientY - last.y;
-  offset.x += dx;
-  offset.y += dy;
-  last = { x: e.clientX, y: e.clientY };
-  render();
-});
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging || !mapEl) return;
+    e.preventDefault();
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
 
-window.addEventListener('mouseup', () => {
-  if (!dragging) return;
-  dragging = false;
-  const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
-  const newCenter = pointToLatLng(centerPoint.x - offset.x, centerPoint.y - offset.y, zoom);
-  center = newCenter;
-  offset = { x: 0, y: 0 };
-  render();
-});
+    const scale = tileSize * Math.pow(2, zoom);
+    const dLng = -dx / scale * 360;
+    const dLat = dy / scale * 360;
 
-mapEl.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  const delta = e.deltaY < 0 ? 1 : -1;
-  const nextZoom = Math.max(minZoom, Math.min(maxZoom, zoom + delta));
-  if (nextZoom !== zoom) {
-    zoom = nextZoom;
+    center.lat = dragStartCenter.lat + dLat;
+    center.lng = dragStartCenter.lng + dLng;
+
+    center.lat = Math.max(-85, Math.min(85, center.lat));
+    center.lng = ((center.lng % 360) + 360) % 360;
+    if (center.lng > 180) center.lng -= 360;
+
     render();
-  }
-}, { passive: false });
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    if (mapEl) {
+      mapEl.style.cursor = 'grab';
+    }
+  });
+
+  mapEl.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = mapEl.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    if (mouseX < 0 || mouseX > rect.width || mouseY < 0 || mouseY > rect.height) {
+      return;
+    }
+
+    const delta = e.deltaY < 0 ? 1 : -1;
+    const nextZoom = Math.max(minZoom, Math.min(maxZoom, zoom + delta));
+    if (nextZoom === zoom) return;
+
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const mouseMapX = centerPoint.x - mapEl.clientWidth / 2 + mouseX;
+    const mouseMapY = centerPoint.y - mapEl.clientHeight / 2 + mouseY;
+    const mouseLatLng = pointToLatLng(mouseMapX, mouseMapY, zoom);
+
+    zoom = nextZoom;
+
+    const newCenterPoint = latLngToPoint(mouseLatLng.lat, mouseLatLng.lng, zoom);
+    const newCenterX = newCenterPoint.x - mouseX + mapEl.clientWidth / 2;
+    const newCenterY = newCenterPoint.y - mouseY + mapEl.clientHeight / 2;
+    center = pointToLatLng(newCenterX, newCenterY, zoom);
+
+    render();
+  }, { passive: false });
+
+  mapEl.style.cursor = 'grab';
+}
 
 window.addEventListener('resize', render);
 render();
