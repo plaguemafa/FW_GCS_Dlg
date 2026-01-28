@@ -45,6 +45,9 @@
     <ClInclude Include="MbtilesReader.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="HudOverlay.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FW_GCS_Dlg.cpp">

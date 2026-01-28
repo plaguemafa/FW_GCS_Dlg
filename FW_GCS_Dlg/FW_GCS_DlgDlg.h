@@ -92,6 +92,7 @@ protected:
 	BYTE m_serialBuffer[2048];             // 串口接收缓冲区（用于处理不完整数据包，增大到2048避免溢出）
 	int m_nSerialBufferSize;               // 缓冲区中已有数据大小
 	
+#if 0
 	// UI控件变量（保留用于兼容，但数据将显示在子对话框中）
 	CEdit m_editData1;                     // data1数据显示控件（IDC_Display0）
 	CEdit m_editData2;                     // data2数据显示控件（IDC_Display1）
@@ -198,6 +199,7 @@ protected:
 	CButton m_radioFlag19;                  // 起落架收放状态-1（IDC_RADIO_Flag19）
 	CButton m_radioFlag20;                  // 开伞状态（IDC_RADIO_Flag20）
 	CButton m_radioFlag21;                  // 夜航灯开关状态（IDC_RADIO_Flag21）
+#endif
 	
 	// 子对话框（分页）
 	CPage1Dlg* m_pPage1Dlg;                // 第一页子对话框指针
@@ -244,7 +246,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedSeriallink();
-	afx_msg void OnBnClickedButton1();
+	//afx_msg void OnBnClickedButton1();
 public:
 	// 提供给子对话框安全调用的UDP发送封装
 	BOOL SendUdpDataPublic(const void* pData, int nSize) { return SendUdpData(pData, nSize); }
@@ -266,4 +268,5 @@ private:
 	void ResizeMapWebView(int cx, int cy);
 	CString BuildMapHtml() const;
 	CString GetDefaultMbtilesPath() const;
+	void SendHudMessage(const UdpRecvDataPacket* pPacket);  // 向 WebView2 推送 HUD 数据
 };

@@ -190,6 +190,7 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="FW_GCS_Dlg.h" />
     <ClInclude Include="FW_GCS_DlgDlg.h" />
+    <ClInclude Include="HudOverlay.h" />
     <ClInclude Include="MbtilesReader.h" />
     <ClInclude Include="Page1Dlg.h" />
     <ClInclude Include="Page2Dlg.h" />

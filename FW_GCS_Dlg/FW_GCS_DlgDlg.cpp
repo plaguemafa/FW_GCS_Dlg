@@ -7,6 +7,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>  // 用于 inet_pton()
 #include "UdpData.h"   // 必须在其他头文件之前包含，确保类型定义完整
+#include "HudOverlay.h"
 #include "FW_GCS_Dlg.h"
 #include "FW_GCS_DlgDlg.h"
 #include "afxdialogex.h"
@@ -131,6 +132,7 @@ CFWGCSDlgDlg::~CFWGCSDlgDlg()
 void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+#if 0  // 已移除地图上的传统数据显示控件，保留占位以兼容历史代码
 	DDX_Control(pDX, IDC_Display0, m_editData1);   // 绑定data1显示控件
 	DDX_Control(pDX, IDC_Display1, m_editData2);  // 绑定data2显示控件
 	DDX_Control(pDX, IDC_Display2, m_editData3);  // 绑定data3显示控件
@@ -213,6 +215,7 @@ void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 	
 	// 扩展协议 Radio Button 控件绑定（在 OnInitDialog 中手动绑定，避免 DDX_Control 异常）
 	// 注意：Radio Button 控件使用 SubclassWindow 方式绑定，更安全
+#endif
 }
 
 BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
@@ -231,74 +234,74 @@ END_MESSAGE_MAP()
 // 在消息到达控件之前拦截鼠标点击，阻止只读 Radio Button 的交互
 BOOL CFWGCSDlgDlg::PreTranslateMessage(MSG* pMsg)
 {
-	// 拦截鼠标左键按下和弹起消息
-	if (pMsg->message == WM_LBUTTONDOWN || pMsg->message == WM_LBUTTONUP)
-	{
-		// 检查消息的目标窗口是否是只读 Radio Button
-		CWnd* pWnd = CWnd::FromHandle(pMsg->hwnd);
-		if (pWnd != NULL)
-		{
-			UINT nID = pWnd->GetDlgCtrlID();
-			// 如果是只读显示的 Radio Button，阻止鼠标消息
-			if (nID >= IDC_RADIO_Flag1 && nID <= IDC_RADIO_Flag21)
-			{
-				return TRUE;  // 返回 TRUE 表示消息已处理，阻止进一步处理
-			}
-		}
-	}
+	// // 拦截鼠标左键按下和弹起消息
+	// if (pMsg->message == WM_LBUTTONDOWN || pMsg->message == WM_LBUTTONUP)
+	// {
+	// 	// 检查消息的目标窗口是否是只读 Radio Button
+	// 	CWnd* pWnd = CWnd::FromHandle(pMsg->hwnd);
+	// 	if (pWnd != NULL)
+	// 	{
+	// 		UINT nID = pWnd->GetDlgCtrlID();
+	// 		// 如果是只读显示的 Radio Button，阻止鼠标消息
+	// 		if (nID >= IDC_RADIO_Flag1 && nID <= IDC_RADIO_Flag21)
+	// 		{
+	// 			return TRUE;  // 返回 TRUE 表示消息已处理，阻止进一步处理
+	// 		}
+	// 	}
+	// }
 	
 	// 其他消息正常处理
 	return CDialogEx::PreTranslateMessage(pMsg);
 }
 
-// 拦截只读 Radio Button 的点击消息，作为双重保护
+// 拦截只读 Radio Button 的点击消息，作为双重保护 
 BOOL CFWGCSDlgDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 {
-	// 检查是否是 Radio Button 的点击消息（BN_CLICKED）
-	if (HIWORD(wParam) == BN_CLICKED)
-	{
-		UINT nID = LOWORD(wParam);
-		// 如果是只读显示的 Radio Button，阻止点击
-		if (nID >= IDC_RADIO_Flag1 && nID <= IDC_RADIO_Flag21)
-		{
-			// 获取对应的按钮并恢复之前的状态（防止状态被改变）
-			CButton* pBtn = NULL;
-			switch (nID)
-			{
-			case IDC_RADIO_Flag1: pBtn = &m_radioFlag1; break;
-			case IDC_RADIO_Flag2: pBtn = &m_radioFlag2; break;
-			case IDC_RADIO_Flag3: pBtn = &m_radioFlag3; break;
-			case IDC_RADIO_Flag4: pBtn = &m_radioFlag4; break;
-			case IDC_RADIO_Flag5: pBtn = &m_radioFlag5; break;
-			case IDC_RADIO_Flag6: pBtn = &m_radioFlag6; break;
-			case IDC_RADIO_Flag7: pBtn = &m_radioFlag7; break;
-			case IDC_RADIO_Flag8: pBtn = &m_radioFlag8; break;
-			case IDC_RADIO_Flag9: pBtn = &m_radioFlag9; break;
-			case IDC_RADIO_Flag10: pBtn = &m_radioFlag10; break;
-			case IDC_RADIO_Flag11: pBtn = &m_radioFlag11; break;
-			case IDC_RADIO_Flag12: pBtn = &m_radioFlag12; break;
-			case IDC_RADIO_Flag13: pBtn = &m_radioFlag13; break;
-			case IDC_RADIO_Flag14: pBtn = &m_radioFlag14; break;
-			case IDC_RADIO_Flag15: pBtn = &m_radioFlag15; break;
-			case IDC_RADIO_Flag16: pBtn = &m_radioFlag16; break;
-			case IDC_RADIO_Flag17: pBtn = &m_radioFlag17; break;
-			case IDC_RADIO_Flag18: pBtn = &m_radioFlag18; break;
-			case IDC_RADIO_Flag19: pBtn = &m_radioFlag19; break;
-			case IDC_RADIO_Flag20: pBtn = &m_radioFlag20; break;
-			case IDC_RADIO_Flag21: pBtn = &m_radioFlag21; break;
-			}
+	// // 检查是否是 Radio Button 的点击消息（BN_CLICKED）
+	// if (HIWORD(wParam) == BN_CLICKED)
+	// {
+	// 	UINT nID = LOWORD(wParam);
+	// 	// 如果是只读显示的 Radio Button，阻止点击
+	// 	if (nID >= IDC_RADIO_Flag1 && nID <= IDC_RADIO_Flag21)
+	// 	{
+	// 		// 获取对应的按钮并恢复之前的状态（防止状态被改变）
+	// 		CButton* pBtn = NULL;
+	// 		switch (nID)
+	// 		{
+	// 		case IDC_RADIO_Flag1: pBtn = &m_radioFlag1; break;
+	// 		case IDC_RADIO_Flag2: pBtn = &m_radioFlag2; break;
+	// 		case IDC_RADIO_Flag3: pBtn = &m_radioFlag3; break;
+	// 		case IDC_RADIO_Flag4: pBtn = &m_radioFlag4; break;
+	// 		case IDC_RADIO_Flag5: pBtn = &m_radioFlag5; break;
+	// 		case IDC_RADIO_Flag6: pBtn = &m_radioFlag6; break;
+	// 		case IDC_RADIO_Flag7: pBtn = &m_radioFlag7; break;
+	// 		case IDC_RADIO_Flag8: pBtn = &m_radioFlag8; break;
+	// 		case IDC_RADIO_Flag9: pBtn = &m_radioFlag9; break;
+	// 		case IDC_RADIO_Flag10: pBtn = &m_radioFlag10; break;
+	// 		case IDC_RADIO_Flag11: pBtn = &m_radioFlag11; break;
+	// 		case IDC_RADIO_Flag12: pBtn = &m_radioFlag12; break;
+	// 		case IDC_RADIO_Flag13: pBtn = &m_radioFlag13; break;
+	// 		case IDC_RADIO_Flag14: pBtn = &m_radioFlag14; break;
+	// 		case IDC_RADIO_Flag15: pBtn = &m_radioFlag15; break;
+	// 		case IDC_RADIO_Flag16: pBtn = &m_radioFlag16; break;
+	// 		case IDC_RADIO_Flag17: pBtn = &m_radioFlag17; break;
+	// 		case IDC_RADIO_Flag18: pBtn = &m_radioFlag18; break;
+	// 		case IDC_RADIO_Flag19: pBtn = &m_radioFlag19; break;
+	// 		case IDC_RADIO_Flag20: pBtn = &m_radioFlag20; break;
+	// 		case IDC_RADIO_Flag21: pBtn = &m_radioFlag21; break;
+	// 		}
 			
-			// 如果状态已经被改变，立即恢复（双重保护）
-			if (pBtn != NULL && pBtn->GetSafeHwnd() != NULL)
-			{
-				// 这里我们需要知道之前的状态，但由于 Radio Button 的特殊性
-				// 最好的方法是在 PreTranslateMessage 中完全阻止
-				// 这里作为备用保护
-			}
+	// 		// 如果状态已经被改变，立即恢复（双重保护）
+	// 		if (pBtn != NULL && pBtn->GetSafeHwnd() != NULL)
+	// 		{
+	// 			// 这里我们需要知道之前的状态，但由于 Radio Button 的特殊性
+	// 			// 最好的方法是在 PreTranslateMessage 中完全阻止
+	// 			// 这里作为备用保护
+	// 		}
 			
-			return TRUE;  // 返回 TRUE 表示已处理，阻止默认行为
-		}
-	}
+	// 		return TRUE;  // 返回 TRUE 表示已处理，阻止默认行为
+	// 	}
+	// }
 	
 	// 其他消息正常处理
 	return CDialogEx::OnCommand(wParam, lParam);
@@ -370,6 +373,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	// 初始化UDP Socket（但不连接）
 	InitUdpSocket();
 
+#if 0
 	// 初始化显示控件（保留用于兼容）
 	m_editData1.SetWindowText(_T("0.00"));  // 初始化data1显示
 	m_editData2.SetWindowText(_T("0.00"));  // 初始化data2显示
@@ -450,10 +454,12 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	m_editDisplay60.SetWindowText(_T("0"));
 	m_editDisplay61.SetWindowText(_T("0"));
 	m_editDisplay62.SetWindowText(_T("0"));
+#endif
 	
 	// ============================================================
 	// 绑定扩展协议 Radio Button 控件（使用 SubclassWindow 方式，只读显示0/1状态，不灰色但不可交互）
 	// ============================================================
+#if 0
 	CWnd* pWnd = NULL;
 	
 	// 视窗组4-5：控制指令标志
@@ -505,6 +511,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	if (pWnd != NULL) { m_radioFlag20.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag20.ModifyStyle(WS_TABSTOP, 0); }
 	pWnd = GetDlgItem(IDC_RADIO_Flag21);
 	if (pWnd != NULL) { m_radioFlag21.SubclassWindow(pWnd->GetSafeHwnd()); m_radioFlag21.ModifyStyle(WS_TABSTOP, 0); }
+#endif
 	
 	TRACE(_T("OnInitDialog: 所有数据显示控件已初始化\n"));
 	
@@ -878,12 +885,12 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	BOOL bReceived = FALSE;
 	const int nWaitTimeMs = 5000;  // 等待5秒，给Simulink更多时间
 	const int nCheckIntervalMs = 50;  // 每50ms检查一次
-	DWORD dwStartTime = GetTickCount();
+	DWORD dwStartTime = GetTickCount64();
 	int nCheckCount = 0;
 
 	TRACE(_T("ConnectUdp: 开始等待远程地址响应，最多等待 %d 毫秒\n"), nWaitTimeMs);
 
-	while ((GetTickCount() - dwStartTime) < nWaitTimeMs)
+	while ((GetTickCount64() - dwStartTime) < nWaitTimeMs)
 	{
 		// 处理Windows消息，保持UI响应
 		// 每次处理一条消息后立即检查响应标志，避免在处理大量消息时延迟检查
@@ -902,7 +909,7 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 			if (m_bUdpRemoteResponded)
 			{
 				bReceived = TRUE;
-				DWORD dwElapsed = GetTickCount() - dwStartTime;
+				DWORD dwElapsed = GetTickCount64() - dwStartTime;
 				TRACE(_T("ConnectUdp: 检测到响应标志已设置（在处理消息后），耗时 %d 毫秒\n"), dwElapsed);
 				lock.Unlock();
 				break;
@@ -924,7 +931,7 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 			if (m_bUdpRemoteResponded)
 			{
 				bReceived = TRUE;
-				DWORD dwElapsed = GetTickCount() - dwStartTime;
+				DWORD dwElapsed = GetTickCount64() - dwStartTime;
 				TRACE(_T("ConnectUdp: 检测到响应标志已设置，耗时 %d 毫秒\n"), dwElapsed);
 				lock.Unlock();
 				break;
@@ -936,7 +943,7 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 		nCheckCount++;
 		if (nCheckCount % 20 == 0)  // 每20次检查（约1秒）输出一次
 		{
-			DWORD dwElapsed = GetTickCount() - dwStartTime;
+			DWORD dwElapsed = GetTickCount64() - dwStartTime;
 			TRACE(_T("ConnectUdp: 等待中... 已等待 %d 毫秒，响应标志=%d\n"), 
 				dwElapsed, m_bUdpRemoteResponded);
 		}
@@ -948,7 +955,7 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	if (!bReceived)
 	{
 		// 超时未收到响应，连接失败
-		DWORD dwElapsed = GetTickCount() - dwStartTime;
+		DWORD dwElapsed = GetTickCount64() - dwStartTime;
 		TRACE(_T("UDP连接失败: 等待远程地址响应超时 (%s:%d)，已等待 %d 毫秒，响应标志=%d\n"), 
 			UDP_REMOTE_IP, UDP_REMOTE_PORT, dwElapsed, m_bUdpRemoteResponded);
 		m_bUdpThreadRunning = FALSE;
@@ -1176,7 +1183,7 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 		// ============================================================
 		// 限制UI刷新频率，避免高频数据导致UI卡顿（例如拖动窗口困难）
 		const DWORD kUiUpdateIntervalMs = UI_UPDATE_INTERVAL_MS;
-		DWORD dwNow = GetTickCount();
+		DWORD dwNow = GetTickCount64();
 		if (m_dwLastUdpUiUpdate != 0 && (dwNow - m_dwLastUdpUiUpdate) < kUiUpdateIntervalMs)
 		{
 			// 过于频繁，丢弃本次数据包以保护GUI响应
@@ -1195,6 +1202,35 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+// 将飞行状态数据发送到 WebView2，用于 HUD 绘制（轻量数据通道）
+void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
+{
+#if FW_GCS_WITH_WEBVIEW2
+	if (!pPacket || !m_webView)
+	{
+		return;
+	}
+
+	// 常用字段（后续可扩展协议字段）
+	const float pitch = pPacket->pitchAngle / 1.0f;
+	const float roll  = pPacket->rollAngle / 1.0f;
+	const float yaw   = pPacket->yawAngle / 1.0f;
+	const float ias   = pPacket->indicatedAirspeed / 1.0f;
+	const float tas   = pPacket->baroAirspeed / 1.0f;
+	const float nx    = pPacket->normalOverload / 1.0f;
+	const float ny    = pPacket->longitudinalOverload / 1.0f;
+	const float nz    = pPacket->lateralOverload / 1.0f;
+	const float alt   = pPacket->baroAltitude / 1.0f;
+
+	CStringA json;
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"nx":%.3f,"ny":%.3f,"nz":%.3f,"alt":%.3f})",
+		pitch, roll, yaw, ias, tas, nx, ny, nz, alt);
+
+	std::wstring jsonW(CA2W(json.GetString()));
+	m_webView->PostWebMessageAsJson(jsonW.c_str());
+#endif
+}
+
 // 处理接收到的数据包
 void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
 {
@@ -1204,25 +1240,8 @@ void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
 		return;
 	}
 
-	TRACE(_T("ProcessReceivedData: 开始处理数据包\n"));
-	TRACE(_T("原始值: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
-		pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
-	
-	// 更新子对话框显示（优先使用子对话框）
-	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
-	{
-		m_pPage1Dlg->UpdateDisplay(pPacket);
-	}
-	if (m_pPage2Dlg != NULL && m_pPage2Dlg->GetSafeHwnd() != NULL)
-	{
-		m_pPage2Dlg->UpdateDisplay(pPacket);
-	}
-	
-	// 更新主对话框控件（ProcessSerialReceivedData会处理所有控件的更新）
-	// 注意：如果控件在子对话框中，ProcessSerialReceivedData会优先在子对话框中查找
-	ProcessSerialReceivedData(pPacket);
-	
-	TRACE(_T("ProcessReceivedData: 已更新所有控件显示\n"));
+	// 直接推送 HUD 数据（已移除传统控件/子对话框显示）
+	SendHudMessage(pPacket);
 }
 
 
@@ -1794,6 +1813,11 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 		return;
 	}
 
+	// 将关键数据推送给 WebView2，用于 HUD 渲染（UI 控件已移除）
+	SendHudMessage(pPacket);
+	return;
+
+#if 0  // 以下为旧版控件更新逻辑，已停用
 	// ============================================================
 	// 步骤2：格式化数据为字符串（保留2位小数）
 	// ============================================================
@@ -2704,6 +2728,7 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	}
 	
 	TRACE(_T("ProcessSerialReceivedData: 已更新所有控件显示\n"));
+#endif
 }
 
 // 计算校验和函数 (非必须，仅用于数据完整性校验)
@@ -2907,6 +2932,20 @@ void CFWGCSDlgDlg::InitMapWebView()
 					m_webViewController->get_CoreWebView2(&m_webView);
 					LogMap(L"[Map] WebView2 Controller OK");
 
+					// 设置深色不透明背景（兼容旧版 SDK：尝试 ICoreWebView2Controller2）
+					{
+						Microsoft::WRL::ComPtr<ICoreWebView2Controller2> ctrl2;
+						if (SUCCEEDED(m_webViewController.As(&ctrl2)) && ctrl2)
+						{
+							COREWEBVIEW2_COLOR bg{};
+							bg.A = 255;
+							bg.R = 0x0b;
+							bg.G = 0x0f;
+							bg.B = 0x14;
+							ctrl2->put_DefaultBackgroundColor(bg);
+						}
+					}
+
 					RECT bounds{};
 					::GetClientRect(m_hMapHostWnd, &bounds);
 					m_webViewController->put_Bounds(bounds);
@@ -2915,6 +2954,7 @@ void CFWGCSDlgDlg::InitMapWebView()
 					if (m_webView != nullptr)
 					{
 						LogMap(L"[Map] WebView2 CoreWebView2 OK");
+						// 拦截离线瓦片请求
 						m_webView->AddWebResourceRequestedFilter(
 							L"https://tiles.local/*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_IMAGE);
 
@@ -3046,10 +3086,12 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 	html += "html,body,#map{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b0f14;}";
 	html += "#map{position:relative;cursor:grab;}";
 	html += ".tile{position:absolute;width:256px;height:256px;pointer-events:none;}";
+	html += "#hud{position:absolute;right:12px;top:12px;width:360px;height:260px;pointer-events:none;z-index:20;";
+	html += "background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.08);border-radius:6px;}";
 	html += "#status{position:absolute;left:12px;top:12px;color:#e0e0e0;font-family:Segoe UI,Arial;font-size:12px;";
 	html += "background:rgba(0,0,0,0.45);padding:6px 8px;border-radius:4px;z-index:10;pointer-events:none;}";
 	html += "</style></head><body>";
-	html += "<div id=\"map\"></div><div id=\"status\"></div>";
+	html += "<div id=\"map\"></div><canvas id=\"hud\"></canvas><div id=\"status\"></div>";
 	html += "<script>";
 
 	CStringA config;
@@ -3082,6 +3124,10 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 html += R"(
 const mapEl = document.getElementById('map');
 const statusEl = document.getElementById('status');
+const hudCanvas = document.getElementById('hud');
+const hudCtx = hudCanvas ? hudCanvas.getContext('2d') : null;
+let hudDpr = window.devicePixelRatio || 1;
+let hudState = { pitch:0, roll:0, yaw:0, ias:0, tas:0, alt:0, nx:0, ny:0, nz:1 };
 if (!mapEl) {
   console.error('Map element not found!');
 } else {
@@ -3095,6 +3141,167 @@ let center = { lat: mapConfig.centerLat ?? 0, lng: mapConfig.centerLng ?? 0 };
 let dragging = false;
 let dragStart = { x: 0, y: 0 };
 let dragStartCenter = { lat: 0, lng: 0 };
+
+function resizeHud() {
+  if (!hudCanvas || !hudCtx) return;
+  hudDpr = window.devicePixelRatio || 1;
+  const w = hudCanvas.clientWidth || hudCanvas.offsetWidth || 360;
+  const h = hudCanvas.clientHeight || hudCanvas.offsetHeight || 260;
+  hudCanvas.width = w * hudDpr;
+  hudCanvas.height = h * hudDpr;
+  hudCtx.setTransform(hudDpr, 0, 0, hudDpr, 0, 0);
+}
+
+function drawHud() {
+  if (!hudCanvas || !hudCtx) return;
+  const w = hudCanvas.clientWidth || 360;
+  const h = hudCanvas.clientHeight || 260;
+  hudCtx.clearRect(0, 0, w, h);
+  if (!hudState) return;
+
+  const pitch = hudState.pitch ?? 0;
+  const roll = hudState.roll ?? 0;
+  const yaw = hudState.yaw ?? 0;
+  const centerX = w / 2;
+  const centerY = h / 2;
+
+  // 基础颜色
+  const sky = '#61a8ff';
+  const ground = '#c79d59';
+  const line = '#ffffff';
+  const accent = '#00ff88';
+
+  // 绘制姿态背景（人工地平线）
+  hudCtx.save();
+  hudCtx.translate(centerX, centerY);
+  hudCtx.rotate(roll * Math.PI / 180);
+  const pitchPxPerDeg = 3.0;
+  const pitchOffset = pitch * pitchPxPerDeg;
+  hudCtx.translate(0, pitchOffset);
+
+  hudCtx.fillStyle = sky;
+  hudCtx.fillRect(-w, -h, w * 2, h);
+  hudCtx.fillStyle = ground;
+  hudCtx.fillRect(-w, 0, w * 2, h);
+
+  hudCtx.strokeStyle = line;
+  hudCtx.lineWidth = 2;
+  hudCtx.beginPath();
+  hudCtx.moveTo(-w, 0);
+  hudCtx.lineTo(w, 0);
+  hudCtx.stroke();
+
+  hudCtx.strokeStyle = line;
+  hudCtx.lineWidth = 1.5;
+  for (let deg = -60; deg <= 60; deg += 10) {
+    if (deg === 0) continue;
+    const y = -deg * pitchPxPerDeg;
+    const len = (deg % 20 === 0) ? 50 : 30;
+    hudCtx.beginPath();
+    hudCtx.moveTo(-len, y);
+    hudCtx.lineTo(len, y);
+    hudCtx.stroke();
+    hudCtx.fillStyle = line;
+    hudCtx.font = '12px Segoe UI,Arial';
+    hudCtx.fillText(`${deg}`, len + 6, y + 4);
+    hudCtx.fillText(`${deg}`, -len - 26, y + 4);
+  }
+
+  hudCtx.restore();
+
+  // 机身符号
+  hudCtx.strokeStyle = line;
+  hudCtx.lineWidth = 2;
+  hudCtx.beginPath();
+  hudCtx.moveTo(centerX - 20, centerY);
+  hudCtx.lineTo(centerX - 6, centerY);
+  hudCtx.lineTo(centerX, centerY + 6);
+  hudCtx.lineTo(centerX + 6, centerY);
+  hudCtx.lineTo(centerX + 20, centerY);
+  hudCtx.stroke();
+
+  // 滚转刻度弧
+  hudCtx.save();
+  hudCtx.translate(centerX, centerY - 90);
+  hudCtx.strokeStyle = line;
+  hudCtx.lineWidth = 1.5;
+  hudCtx.beginPath();
+  hudCtx.arc(0, 0, 70, Math.PI, 2 * Math.PI);
+  hudCtx.stroke();
+  for (let deg of [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]) {
+    const rad = (deg - 90) * Math.PI / 180;
+    const r1 = 70;
+    const r2 = (deg % 30 === 0) ? 82 : 76;
+    hudCtx.beginPath();
+    hudCtx.moveTo(r1 * Math.cos(rad), r1 * Math.sin(rad));
+    hudCtx.lineTo(r2 * Math.cos(rad), r2 * Math.sin(rad));
+    hudCtx.stroke();
+  }
+  hudCtx.fillStyle = accent;
+  hudCtx.beginPath();
+  hudCtx.moveTo(0, -90);
+  hudCtx.lineTo(-8, -78);
+  hudCtx.lineTo(8, -78);
+  hudCtx.closePath();
+  hudCtx.fill();
+  hudCtx.restore();
+
+  // 航向带
+  hudCtx.save();
+  const tapeWidth = w - 40;
+  const tapeX = 20;
+  const tapeY = 10;
+  hudCtx.strokeStyle = line;
+  hudCtx.strokeRect(tapeX, tapeY, tapeWidth, 26);
+  const heading = ((yaw % 360) + 360) % 360;
+  const pxPerDeg = tapeWidth / 120;
+  const midX = tapeX + tapeWidth / 2;
+  hudCtx.fillStyle = line;
+  hudCtx.font = '12px Segoe UI,Arial';
+  for (let d = -60; d <= 60; d += 10) {
+    const hdg = Math.round((heading + d + 360) % 360);
+    const x = midX + d * pxPerDeg;
+    hudCtx.beginPath();
+    hudCtx.moveTo(x, tapeY + 2);
+    hudCtx.lineTo(x, tapeY + ((d % 30 === 0) ? 12 : 8));
+    hudCtx.stroke();
+    if (d % 30 === 0) {
+      const txt = hdg.toString().padStart(3, '0');
+      hudCtx.fillText(txt, x - 10, tapeY + 24);
+    }
+  }
+  hudCtx.fillStyle = accent;
+  hudCtx.beginPath();
+  hudCtx.moveTo(midX, tapeY + 2);
+  hudCtx.lineTo(midX - 6, tapeY + 10);
+  hudCtx.lineTo(midX + 6, tapeY + 10);
+  hudCtx.closePath();
+  hudCtx.fill();
+  hudCtx.fillStyle = accent;
+  hudCtx.font = '14px Segoe UI Semibold,Arial';
+  hudCtx.fillText(`HDG ${heading.toFixed(0).padStart(3, '0')}`, tapeX + 8, tapeY + 22);
+  hudCtx.restore();
+
+  // 底部数值
+  hudCtx.fillStyle = accent;
+  hudCtx.font = '14px Segoe UI,Arial';
+  hudCtx.fillText(`IAS ${hudState.ias?.toFixed(1) ?? '-'}`, 12, h - 72);
+  hudCtx.fillText(`ALT ${hudState.alt?.toFixed(1) ?? '-'}`, 12, h - 52);
+  hudCtx.fillText(`ROLL ${roll.toFixed(1)}`, 12, h - 32);
+  hudCtx.fillText(`PITCH ${pitch.toFixed(1)}`, 12, h - 12);
+}
+
+window.addEventListener('resize', () => { resizeHud(); drawHud(); });
+resizeHud();
+drawHud();
+
+// 接收 native HUD 数据
+if (window.chrome && window.chrome.webview) {
+  window.chrome.webview.addEventListener('message', (e) => {
+    hudState = e.data || null;
+    drawHud();
+  });
+}
 
 function latLngToPoint(lat, lng, zoomLevel) {
   const sin = Math.sin(lat * Math.PI / 180);
