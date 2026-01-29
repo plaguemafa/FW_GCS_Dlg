@@ -3078,22 +3078,66 @@ void CFWGCSDlgDlg::ResizeMapWebView(int cx, int cy)
 #endif
 }
 
+// 辅助函数：从文件读取内容
+static CStringA ReadFileContentA(const CString& filePath)
+{
+	CStringA content;
+	CFile file;
+	if (file.Open(filePath, CFile::modeRead | CFile::shareDenyWrite))
+	{
+		ULONGLONG fileSize = file.GetLength();
+		if (fileSize > 0 && fileSize < 10 * 1024 * 1024) // 限制最大10MB
+		{
+			char* buffer = new char[(size_t)fileSize + 1];
+			UINT bytesRead = file.Read(buffer, (UINT)fileSize);
+			buffer[bytesRead] = '\0';
+			content = buffer;
+			delete[] buffer;
+		}
+		file.Close();
+	}
+	return content;
+}
+
+// 辅助函数：获取可执行文件所在目录
+static CString GetExeDirectory()
+{
+	CString exePath;
+	GetModuleFileName(NULL, exePath.GetBuffer(MAX_PATH), MAX_PATH);
+	exePath.ReleaseBuffer();
+	int pos = exePath.ReverseFind(_T('\\'));
+	if (pos > 0)
+		return exePath.Left(pos + 1);
+	return _T("");
+}
+
 CString CFWGCSDlgDlg::BuildMapHtml() const
 {
-	CStringA html;
-	html += "<!doctype html><html><head><meta charset=\"utf-8\">";
-	html += "<style>";
-	html += "html,body,#map{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0b0f14;}";
-	html += "#map{position:relative;cursor:grab;}";
-	html += ".tile{position:absolute;width:256px;height:256px;pointer-events:none;}";
-	html += "#hud{position:absolute;right:12px;top:12px;width:360px;height:260px;pointer-events:none;z-index:20;";
-	html += "background:rgba(0,0,0,0.12);border:1px solid rgba(255,255,255,0.08);border-radius:6px;}";
-	html += "#status{position:absolute;left:12px;top:12px;color:#e0e0e0;font-family:Segoe UI,Arial;font-size:12px;";
-	html += "background:rgba(0,0,0,0.45);padding:6px 8px;border-radius:4px;z-index:10;pointer-events:none;}";
-	html += "</style></head><body>";
-	html += "<div id=\"map\"></div><canvas id=\"hud\"></canvas><div id=\"status\"></div>";
-	html += "<script>";
+	// 获取 map.html 和 map.js 文件路径（与exe同目录）
+	CString exeDir = GetExeDirectory();
+	CString htmlPath = exeDir + _T("map.html");
+	CString jsPath = exeDir + _T("map.js");
 
+	// 读取模板文件
+	CStringA htmlTemplate = ReadFileContentA(htmlPath);
+	CStringA jsContent = ReadFileContentA(jsPath);
+
+	// 如果文件读取失败，返回错误提示页面
+	if (htmlTemplate.IsEmpty())
+	{
+		CStringA errorHtml;
+		CStringA htmlPathA(htmlPath);
+		errorHtml.Format(
+			"<!doctype html><html><body style='background:#1a1a1a;color:#ff6b6b;font-family:Segoe UI;padding:20px;'>"
+			"<h2>Error: Failed to load map.html</h2>"
+			"<p>Expected path: %s</p>"
+			"<p>Please ensure map.html and map.js are in the same directory as the executable.</p>"
+			"</body></html>",
+			htmlPathA.GetString());
+		return CString(errorHtml);
+	}
+
+	// 构建配置字符串
 	CStringA config;
 	config.Format(
 		"const mapConfig={tileUrl:\"https://tiles.local/tiles/{z}/{x}/{y}\",minZoom:%d,maxZoom:%d,zoom:%d,centerLat:%0.8f,centerLng:%0.8f,hasCenter:%s};",
@@ -3103,8 +3147,8 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 		m_mbtilesMetadata.centerLat,
 		m_mbtilesMetadata.centerLng,
 		m_mbtilesMetadata.hasCenter ? "true" : "false");
-	html += config;
 
+	// 构建状态文本
 	CStringA status;
 	if (!m_mbtilesReader.IsOpen())
 	{
@@ -3119,315 +3163,13 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 	{
 		status = "const statusText='Offline map loaded';";
 	}
-	html += status;
 
-html += R"(
-const mapEl = document.getElementById('map');
-const statusEl = document.getElementById('status');
-const hudCanvas = document.getElementById('hud');
-const hudCtx = hudCanvas ? hudCanvas.getContext('2d') : null;
-let hudDpr = window.devicePixelRatio || 1;
-let hudState = { pitch:0, roll:0, yaw:0, ias:0, tas:0, alt:0, nx:0, ny:0, nz:1 };
-if (!mapEl) {
-  console.error('Map element not found!');
-} else {
-  statusEl.textContent = statusText;
-}
-const tileSize = 256;
-const minZoom = mapConfig.minZoom ?? 0;
-const maxZoom = mapConfig.maxZoom ?? 18;
-let zoom = Math.max(minZoom, Math.min(maxZoom, mapConfig.zoom ?? 10));
-let center = { lat: mapConfig.centerLat ?? 0, lng: mapConfig.centerLng ?? 0 };
-let dragging = false;
-let dragStart = { x: 0, y: 0 };
-let dragStartCenter = { lat: 0, lng: 0 };
+	// 替换占位符
+	CStringA html = htmlTemplate;
+	html.Replace("/*{{MAP_CONFIG}}*/", config);
+	html.Replace("/*{{STATUS_TEXT}}*/", status);
+	html.Replace("/*{{MAP_JS}}*/", jsContent);
 
-function resizeHud() {
-  if (!hudCanvas || !hudCtx) return;
-  hudDpr = window.devicePixelRatio || 1;
-  const w = hudCanvas.clientWidth || hudCanvas.offsetWidth || 360;
-  const h = hudCanvas.clientHeight || hudCanvas.offsetHeight || 260;
-  hudCanvas.width = w * hudDpr;
-  hudCanvas.height = h * hudDpr;
-  hudCtx.setTransform(hudDpr, 0, 0, hudDpr, 0, 0);
-}
-
-function drawHud() {
-  if (!hudCanvas || !hudCtx) return;
-  const w = hudCanvas.clientWidth || 360;
-  const h = hudCanvas.clientHeight || 260;
-  hudCtx.clearRect(0, 0, w, h);
-  if (!hudState) return;
-
-  const pitch = hudState.pitch ?? 0;
-  const roll = hudState.roll ?? 0;
-  const yaw = hudState.yaw ?? 0;
-  const centerX = w / 2;
-  const centerY = h / 2;
-
-  // 基础颜色
-  const sky = '#61a8ff';
-  const ground = '#c79d59';
-  const line = '#ffffff';
-  const accent = '#00ff88';
-
-  // 绘制姿态背景（人工地平线）
-  hudCtx.save();
-  hudCtx.translate(centerX, centerY);
-  hudCtx.rotate(roll * Math.PI / 180);
-  const pitchPxPerDeg = 3.0;
-  const pitchOffset = pitch * pitchPxPerDeg;
-  hudCtx.translate(0, pitchOffset);
-
-  hudCtx.fillStyle = sky;
-  hudCtx.fillRect(-w, -h, w * 2, h);
-  hudCtx.fillStyle = ground;
-  hudCtx.fillRect(-w, 0, w * 2, h);
-
-  hudCtx.strokeStyle = line;
-  hudCtx.lineWidth = 2;
-  hudCtx.beginPath();
-  hudCtx.moveTo(-w, 0);
-  hudCtx.lineTo(w, 0);
-  hudCtx.stroke();
-
-  hudCtx.strokeStyle = line;
-  hudCtx.lineWidth = 1.5;
-  for (let deg = -60; deg <= 60; deg += 10) {
-    if (deg === 0) continue;
-    const y = -deg * pitchPxPerDeg;
-    const len = (deg % 20 === 0) ? 50 : 30;
-    hudCtx.beginPath();
-    hudCtx.moveTo(-len, y);
-    hudCtx.lineTo(len, y);
-    hudCtx.stroke();
-    hudCtx.fillStyle = line;
-    hudCtx.font = '12px Segoe UI,Arial';
-    hudCtx.fillText(`${deg}`, len + 6, y + 4);
-    hudCtx.fillText(`${deg}`, -len - 26, y + 4);
-  }
-
-  hudCtx.restore();
-
-  // 机身符号
-  hudCtx.strokeStyle = line;
-  hudCtx.lineWidth = 2;
-  hudCtx.beginPath();
-  hudCtx.moveTo(centerX - 20, centerY);
-  hudCtx.lineTo(centerX - 6, centerY);
-  hudCtx.lineTo(centerX, centerY + 6);
-  hudCtx.lineTo(centerX + 6, centerY);
-  hudCtx.lineTo(centerX + 20, centerY);
-  hudCtx.stroke();
-
-  // 滚转刻度弧
-  hudCtx.save();
-  hudCtx.translate(centerX, centerY - 90);
-  hudCtx.strokeStyle = line;
-  hudCtx.lineWidth = 1.5;
-  hudCtx.beginPath();
-  hudCtx.arc(0, 0, 70, Math.PI, 2 * Math.PI);
-  hudCtx.stroke();
-  for (let deg of [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]) {
-    const rad = (deg - 90) * Math.PI / 180;
-    const r1 = 70;
-    const r2 = (deg % 30 === 0) ? 82 : 76;
-    hudCtx.beginPath();
-    hudCtx.moveTo(r1 * Math.cos(rad), r1 * Math.sin(rad));
-    hudCtx.lineTo(r2 * Math.cos(rad), r2 * Math.sin(rad));
-    hudCtx.stroke();
-  }
-  hudCtx.fillStyle = accent;
-  hudCtx.beginPath();
-  hudCtx.moveTo(0, -90);
-  hudCtx.lineTo(-8, -78);
-  hudCtx.lineTo(8, -78);
-  hudCtx.closePath();
-  hudCtx.fill();
-  hudCtx.restore();
-
-  // 航向带
-  hudCtx.save();
-  const tapeWidth = w - 40;
-  const tapeX = 20;
-  const tapeY = 10;
-  hudCtx.strokeStyle = line;
-  hudCtx.strokeRect(tapeX, tapeY, tapeWidth, 26);
-  const heading = ((yaw % 360) + 360) % 360;
-  const pxPerDeg = tapeWidth / 120;
-  const midX = tapeX + tapeWidth / 2;
-  hudCtx.fillStyle = line;
-  hudCtx.font = '12px Segoe UI,Arial';
-  for (let d = -60; d <= 60; d += 10) {
-    const hdg = Math.round((heading + d + 360) % 360);
-    const x = midX + d * pxPerDeg;
-    hudCtx.beginPath();
-    hudCtx.moveTo(x, tapeY + 2);
-    hudCtx.lineTo(x, tapeY + ((d % 30 === 0) ? 12 : 8));
-    hudCtx.stroke();
-    if (d % 30 === 0) {
-      const txt = hdg.toString().padStart(3, '0');
-      hudCtx.fillText(txt, x - 10, tapeY + 24);
-    }
-  }
-  hudCtx.fillStyle = accent;
-  hudCtx.beginPath();
-  hudCtx.moveTo(midX, tapeY + 2);
-  hudCtx.lineTo(midX - 6, tapeY + 10);
-  hudCtx.lineTo(midX + 6, tapeY + 10);
-  hudCtx.closePath();
-  hudCtx.fill();
-  hudCtx.fillStyle = accent;
-  hudCtx.font = '14px Segoe UI Semibold,Arial';
-  hudCtx.fillText(`HDG ${heading.toFixed(0).padStart(3, '0')}`, tapeX + 8, tapeY + 22);
-  hudCtx.restore();
-
-  // 底部数值
-  hudCtx.fillStyle = accent;
-  hudCtx.font = '14px Segoe UI,Arial';
-  hudCtx.fillText(`IAS ${hudState.ias?.toFixed(1) ?? '-'}`, 12, h - 72);
-  hudCtx.fillText(`ALT ${hudState.alt?.toFixed(1) ?? '-'}`, 12, h - 52);
-  hudCtx.fillText(`ROLL ${roll.toFixed(1)}`, 12, h - 32);
-  hudCtx.fillText(`PITCH ${pitch.toFixed(1)}`, 12, h - 12);
-}
-
-window.addEventListener('resize', () => { resizeHud(); drawHud(); });
-resizeHud();
-drawHud();
-
-// 接收 native HUD 数据
-if (window.chrome && window.chrome.webview) {
-  window.chrome.webview.addEventListener('message', (e) => {
-    hudState = e.data || null;
-    drawHud();
-  });
-}
-
-function latLngToPoint(lat, lng, zoomLevel) {
-  const sin = Math.sin(lat * Math.PI / 180);
-  const scale = tileSize * Math.pow(2, zoomLevel);
-  const x = (lng + 180) / 360 * scale;
-  const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale;
-  return { x, y };
-}
-
-function pointToLatLng(x, y, zoomLevel) {
-  const scale = tileSize * Math.pow(2, zoomLevel);
-  const lng = x / scale * 360 - 180;
-  const n = Math.PI - 2 * Math.PI * y / scale;
-  const lat = 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-  return { lat, lng };
-}
-
-function render() {
-  if (!mapEl) return;
-  try {
-    const width = mapEl.clientWidth;
-    const height = mapEl.clientHeight;
-    if (width === 0 || height === 0) return;
-    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
-    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
-    const startX = Math.floor(topLeft.x / tileSize);
-    const startY = Math.floor(topLeft.y / tileSize);
-    const endX = Math.floor((topLeft.x + width) / tileSize);
-    const endY = Math.floor((topLeft.y + height) / tileSize);
-    const max = Math.pow(2, zoom);
-
-    mapEl.textContent = '';
-    for (let ty = startY; ty <= endY; ty++) {
-      for (let tx = startX; tx <= endX; tx++) {
-        const tileX = ((tx % max) + max) % max;
-        const tileY = ((ty % max) + max) % max;
-        const img = new Image();
-        img.className = 'tile';
-        img.style.left = (tx * tileSize - topLeft.x) + 'px';
-        img.style.top = (ty * tileSize - topLeft.y) + 'px';
-        img.src = mapConfig.tileUrl
-          .replace('{z}', zoom)
-          .replace('{x}', tileX)
-          .replace('{y}', tileY);
-        mapEl.appendChild(img);
-      }
-    }
-  } catch (err) {
-    console.error('Error in render:', err);
-  }
-}
-
-if (mapEl) {
-  mapEl.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    dragging = true;
-    dragStart = { x: e.clientX, y: e.clientY };
-    dragStartCenter = { lat: center.lat, lng: center.lng };
-    mapEl.style.cursor = 'grabbing';
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!dragging || !mapEl) return;
-    e.preventDefault();
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-
-    const scale = tileSize * Math.pow(2, zoom);
-    const dLng = -dx / scale * 360;
-    const dLat = dy / scale * 360;
-
-    center.lat = dragStartCenter.lat + dLat;
-    center.lng = dragStartCenter.lng + dLng;
-
-    center.lat = Math.max(-85, Math.min(85, center.lat));
-    center.lng = ((center.lng % 360) + 360) % 360;
-    if (center.lng > 180) center.lng -= 360;
-
-    render();
-  });
-
-  document.addEventListener('mouseup', () => {
-    if (!dragging) return;
-    dragging = false;
-    if (mapEl) {
-      mapEl.style.cursor = 'grab';
-    }
-  });
-
-  mapEl.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const rect = mapEl.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    if (mouseX < 0 || mouseX > rect.width || mouseY < 0 || mouseY > rect.height) {
-      return;
-    }
-
-    const delta = e.deltaY < 0 ? 1 : -1;
-    const nextZoom = Math.max(minZoom, Math.min(maxZoom, zoom + delta));
-    if (nextZoom === zoom) return;
-
-    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
-    const mouseMapX = centerPoint.x - mapEl.clientWidth / 2 + mouseX;
-    const mouseMapY = centerPoint.y - mapEl.clientHeight / 2 + mouseY;
-    const mouseLatLng = pointToLatLng(mouseMapX, mouseMapY, zoom);
-
-    zoom = nextZoom;
-
-    const newCenterPoint = latLngToPoint(mouseLatLng.lat, mouseLatLng.lng, zoom);
-    const newCenterX = newCenterPoint.x - mouseX + mapEl.clientWidth / 2;
-    const newCenterY = newCenterPoint.y - mouseY + mapEl.clientHeight / 2;
-    center = pointToLatLng(newCenterX, newCenterY, zoom);
-
-    render();
-  }, { passive: false });
-
-  mapEl.style.cursor = 'grab';
-}
-
-window.addEventListener('resize', render);
-render();
-)";
-
-	html += "</script></body></html>";
 	return CString(html);
 }
 
