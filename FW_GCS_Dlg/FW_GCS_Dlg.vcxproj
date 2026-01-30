@@ -216,8 +216,6 @@
     <ResourceCompile Include="FWGCSDlg.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="map.html" />
-    <None Include="map.js" />
     <None Include="packages.config" />
     <None Include="res\FWGCSDlg.rc2" />
   </ItemGroup>

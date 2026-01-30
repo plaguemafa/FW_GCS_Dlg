@@ -79,6 +79,12 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="packages.config" />
+    <None Include="map.html">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="map.js">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\FW_GCS_Dlg.ico">

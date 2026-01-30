@@ -13,7 +13,7 @@ typedef struct {
     // uint16_t dataLength;   // 整个数据帧长度(含帧头和校验和)
     
     // 飞机状态数据 (序号3-74)
-    uint8_t  aircraftID;           // 飞机编号 (3)           系统信息
+    //uint8_t  aircraftID;           // 飞机编号 (3)           系统信息
     int16_t  pitchAngle;           // 俯仰角 (4)             HUD组协议(1)
     int16_t  rollAngle;            // 滚转角 (5)             HUD组协议(2)
     int16_t  yawAngle;             // 航向角 (6)             HUD组协议(3)

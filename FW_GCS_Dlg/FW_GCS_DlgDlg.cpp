@@ -1217,14 +1217,16 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 	const float yaw   = pPacket->yawAngle / 1.0f;
 	const float ias   = pPacket->indicatedAirspeed / 1.0f;
 	const float tas   = pPacket->baroAirspeed / 1.0f;
-	const float nx    = pPacket->normalOverload / 1.0f;
-	const float ny    = pPacket->longitudinalOverload / 1.0f;
-	const float nz    = pPacket->lateralOverload / 1.0f;
 	const float alt   = pPacket->baroAltitude / 1.0f;
+	// HUD 新增字段
+	const float mach  = pPacket->machNumber / 100.0f;       // 马赫数（假设协议中为百分比表示）
+	const float aoa   = pPacket->attackAngle / 10.0f;       // 攻角（假设协议中为0.1度单位）
+	const float g     = pPacket->normalOverload / 10.0f;    // 法向过载（假设协议中为0.1g单位）
+	const float rpm   = pPacket->engineRPM / 1.0f;          // 发动机转速
 
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"nx":%.3f,"ny":%.3f,"nz":%.3f,"alt":%.3f})",
-		pitch, roll, yaw, ias, tas, nx, ny, nz, alt);
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f})",
+		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm);
 
 	std::wstring jsonW(CA2W(json.GetString()));
 	m_webView->PostWebMessageAsJson(jsonW.c_str());
@@ -3115,8 +3117,8 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 {
 	// 获取 map.html 和 map.js 文件路径（与exe同目录）
 	CString exeDir = GetExeDirectory();
-	CString htmlPath = exeDir + _T("map.html");
-	CString jsPath = exeDir + _T("map.js");
+	CString htmlPath = exeDir + _T("/Scripts/map.html");
+	CString jsPath = exeDir + _T("/Scripts/map.js");
 
 	// 读取模板文件
 	CStringA htmlTemplate = ReadFileContentA(htmlPath);
