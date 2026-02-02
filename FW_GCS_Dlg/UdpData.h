@@ -14,17 +14,17 @@ typedef struct {
     
     // 飞机状态数据 (序号3-74)
     //uint8_t  aircraftID;           // 飞机编号 (3)           系统信息
-    int16_t  pitchAngle;           // 俯仰角 (4)             HUD组协议(1)
-    int16_t  rollAngle;            // 滚转角 (5)             HUD组协议(2)
-    int16_t  yawAngle;             // 航向角 (6)             HUD组协议(3)
-    int16_t  normalOverload;       // 法向过载 (7)           HUD组协议(4)
-    int16_t  attackAngle;          // 攻角 (8)               HUD组协议(5)
-    int16_t  sideslipAngle;        // 侧滑角 (9)             HUD组协议(6)
+    int16_t  pitchAngle;           // 俯仰角 (4)             HUD组1 协议(1)
+    int16_t  rollAngle;            // 滚转角 (5)             HUD组1 协议(2)
+    int16_t  yawAngle;             // 航向角 (6)             HUD组1 协议(3)
+    int16_t  normalOverload;       // 法向过载 (7)           HUD组1 协议(4-1)
+    int16_t  attackAngle;          // 攻角 (8)               HUD组1 协议(5)
+    int16_t  sideslipAngle;        // 侧滑角 (9)             HUD组1 协议(6)
     int8_t   rudderCmd1;           // 1#舵偏指令 (10)
     int8_t   rudderCmd2;           // 2#舵偏指令 (11)
     int8_t   rudderCmd3;           // 3#舵偏指令 (12)
     int8_t   rudderCmd4;           // 4#舵偏指令 (13)
-    uint8_t  throttle;             // 油门控制 (14)
+    uint8_t  throttle;             // 油门控制 (14)          HUD组2 协议(1-1)
     //uint8_t  controlCommand;     // 控制指令 (15) 已拆解
     uint8_t controlCommand_D0;        // 开伞指令标志        视窗组4-5 IDC_RADIO_Flag1 扩展协议
     uint8_t controlCommand_D1;        // 开舱指令标志        视窗组4-5 IDC_RADIO_Flag2 扩展协议
@@ -36,44 +36,44 @@ typedef struct {
     int16_t  pitchAcceleration;    // 俯仰角加速度 (20)
     int16_t  rollAcceleration;     // 滚转角加速度 (21)
     int16_t  yawAcceleration;      // 航向角加速度 (22)
-    int16_t  longitudinalOverload; // 纵向过载 (23)
-    int16_t  lateralOverload;      // 横向过载 (24)
-    int16_t  engineTemp;           // 发动机缸温 (25)
-    int16_t  engineRPM;            // 发动机转速 (26)
-    uint8_t  fuelRemaining;        // 剩余油量 (27)
+    int16_t  longitudinalOverload; // 纵向过载 (23)            HUD组1 协议(4-2)
+    int16_t  lateralOverload;      // 横向过载 (24)            HUD组1 协议(4-3)
+    int16_t  engineTemp;           // 发动机缸温 (25)           HUD组2 协议(2-2)
+    int16_t  engineRPM;            // 发动机转速 (26)          HUD组1 协议(7)
+    uint8_t  fuelRemaining;        // 剩余油量 (27)            HUD组2 协议(2-1)
     int16_t  gpsAltitude;          // 卫星高度 (28)
-    uint8_t  gpsStatus;            // 卫星定位状态 (29)
-    uint8_t  satelitesNum;         // 卫星收星数 (30)
-    int16_t  gpsCourse;            // 卫星地速航向 (31)
-    int16_t  gpsGroundSpeed;       // 卫星地速 (32)
-    uint8_t  gpsVerticalSpeed;     // 卫星垂直速度 (33)
-    int32_t  longitude;            // 卫星经度 (34)
-    int32_t  latitude;             // 卫星纬度 (35)
+    uint8_t  gpsStatus;            // 卫星定位状态 (29)        HUD组2 协议(3-2)
+    uint8_t  satelitesNum;         // 卫星收星数 (30)          HUD组2 协议(3-1)
+    int16_t  gpsCourse;            // 卫星地速航向 (31)    HUD层 地图飞机标识方向驱动1
+    int16_t  gpsGroundSpeed;       // 卫星地速 (32)        HUD层 主界面底部信息栏 1-1
+    uint8_t  gpsVerticalSpeed;     // 卫星垂直速度 (33)    HUD层 主界面底部信息栏 1-2
+    int32_t  longitude;            // 卫星经度 (34)        HUD层 地图飞机标识位置驱动1
+    int32_t  latitude;             // 卫星纬度 (35)        HUD层 地图飞机标识位置驱动2
     int16_t  eastVelocity;         // 东向速度 (36)
     int16_t  northVelocity;        // 北向速度 (37)
     int16_t  verticalVelocity;     // 天向速度 (38)
     int8_t   airTemperature;       // 大气温度 (39)
-    int16_t  baroAltitude;         // 气压高度 (40)
+    int16_t  baroAltitude;         // 气压高度 (40)         HUD组1 协议(8)
     int16_t  baroAirspeed;         // 气压空速 (41)
-    int16_t  indicatedAirspeed;    // 表速 (42)
-    uint8_t  machNumber;           // 马赫数 (43)
+    int16_t  indicatedAirspeed;    // 表速 (42)             HUD组1 协议(9)
+    uint8_t  machNumber;           // 马赫数 (43)           HUD组1 协议(10)
     uint16_t radioAltitude;        // 无线电高度 (44)
-    uint8_t  navStatus;            // 导航状态 (45)
-    uint8_t  gpsHour;              // GPS时 (46)
-    uint8_t  gpsMinute;            // GPS分 (47)
-    uint8_t  gpsSecond;            // GPS秒 (48)
+    uint8_t  navStatus;            // 导航状态 (45)        HUD组2 协议(4-1)
+    uint8_t  gpsHour;              // GPS时 (46)           HUD组2 协议(1-2.1)
+    uint8_t  gpsMinute;            // GPS分 (47)           HUD组2 协议(1-2.2)
+    uint8_t  gpsSecond;            // GPS秒 (48)           HUD组2 协议(1-2.3)
     uint8_t  routeNumber;          // 当前航线号 (49)
-    uint8_t  targetWaypoint;       // 目标航点 (50)
-    int16_t  crossTrackError;      // 偏航距 (51)
-    int16_t  courseDeviation;      // 偏航角 (52)
-    int16_t  distanceToGo;         // 待飞距 (53)
-    uint8_t  commandHeading;       // 应飞航向 (54)
-    uint16_t commandSpeed;         // 应飞速度 (55)
-    uint16_t commandAltitude;      // 应飞高度 (56)
-    uint8_t  commandTime;          // 应飞时间 (57)
-    uint8_t  payloadType;          // 载荷类型 (58)
-    uint8_t  ammoRemaining;        // 剩余弹量 (59)
-    uint8_t  selfTestResult;       // 自检结果 (60)
+    uint8_t  targetWaypoint;       // 目标航点 (50)           HUD组2 协议(4-2)
+    int16_t  crossTrackError;      // 偏航距 (51)             HUD组2 协议(5-2)
+    int16_t  courseDeviation;      // 偏航角 (52)             HUD组2 协议(6-2)
+    int16_t  distanceToGo;         // 待飞距 (53)             HUD组2 协议(5-1)
+    uint8_t  commandHeading;       // 应飞航向 (54)           HUD组2 协议(6-1)
+    uint16_t commandSpeed;         // 应飞速度 (55)           HUD组2 协议(7-1)
+    uint16_t commandAltitude;      // 应飞高度 (56)           HUD组2 协议(7-2)
+    uint8_t  commandTime;          // 应飞时间 (57)           HUD组2 协议(8-1)
+    uint8_t  payloadType;          // 载荷类型 (58)           HUD组2 协议(8-2)
+    uint8_t  ammoRemaining;        // 剩余弹量 (59)           HUD组2 协议(9-1)
+    uint8_t  selfTestResult;       // 自检结果 (60)           HUD组2 协议(9-2)
     uint8_t  YIS100A_result;         // IMU自检结果     视窗组9-0 IDC_Display66 扩展协议 pag1
     uint8_t  HP5804_result;          // 气压计自检结果  视窗组9-1 IDC_Display67 扩展协议 pag1
     uint8_t  MS4525D_result;         // 空速计自检结果  视窗组9-2 IDC_Display68 扩展协议 pag1
@@ -87,21 +87,21 @@ typedef struct {
     uint8_t     workflowStatus_B0;   // 工作流程标志           视窗组8-4 0时激活IDC_RADIO_Flag4 1时激活IDC_RADIO_Flag4 扩展协议
     uint8_t     workflowStatus_B1;   // 发射状态标志           视窗组8-4 IDC_RADIO_Flag6 扩展协议
     //uint8_t  alarmStatus;        // 报警状态字 (63)  已拆解
-    uint8_t     alarmStatus_B0;      // 电池电压低报警标志     视窗组8-5 IDC_RADIO_Flag7 扩展协议
-    uint8_t     alarmStatus_B1;      // 高度报警标志          视窗组8-5 IDC_RADIO_Flag8 扩展协议
-    uint8_t     alarmStatus_B2;      // 油量低报警标志        视窗组8-5 IDC_RADIO_Flag9 扩展协议
-    uint8_t     alarmStatus_B3;      // 转速异常报警标志      视窗组8-5 IDC_RADIO_Flag10 扩展协议
-    uint8_t     alarmStatus_B4;      // 空速异常报警标志      视窗组8-5 IDC_RADIO_Flag11 扩展协议
-    uint8_t     alarmStatus_B5;      // GPS定位精度低报警标志 视窗组8-5 IDC_RADIO_Flag12 扩展协议
+    uint8_t     alarmStatus_B0;      // 电池电压低报警标志        顶层图层中央横幅报警1
+    uint8_t     alarmStatus_B1;      // 高度报警标志              顶层图层中央横幅报警2
+    uint8_t     alarmStatus_B2;      // 油量低报警标志            顶层图层中央横幅报警3
+    uint8_t     alarmStatus_B3;      // 转速异常报警标志          顶层图层中央横幅报警4
+    uint8_t     alarmStatus_B4;      // 空速异常报警标志          顶层图层中央横幅报警5
+    uint8_t     alarmStatus_B5;      // GPS定位精度低报警标志     顶层图层中央横幅报警6
     // uint8_t  switchStatus;        // 开关量状态 (64) 已拆解
-    uint8_t     switchStatus_B0;     // 发动机并网状态       视窗组8-6 IDC_RADIO_Flag13 扩展协议
-    uint8_t     switchStatus_B1;     // 发动机启动状态       视窗组8-6 IDC_RADIO_Flag14 扩展协议
-    uint8_t     switchStatus_B2;     // 盘旋状态            视窗组8-6 IDC_RADIO_Flag15 扩展协议
-    uint8_t     switchStatus_B3;     // 归航状态            视窗组8-6 IDC_RADIO_Flag16 扩展协议
-    uint8_t     switchStatus_B4;     // 关车状态            视窗组8-6 IDC_RADIO_Flag17 扩展协议
-    uint8_t     switchStatus_B5;     // 起落架收放状态      视窗组8-6 0时激活IDC_RADIO_Flag18 1时激活IDC_RADIO_Flag19 扩展协议
-    uint8_t     switchStatus_B6;     // 开伞状态           视窗组8-6 IDC_RADIO_Flag20 扩展协议
-    uint8_t     switchStatus_B7;     // 夜航灯开关状态      视窗组8-6 IDC_RADIO_Flag21 扩展协议
+    uint8_t     switchStatus_B0;     // 发动机并网状态            HUD组3 协议(3-2)
+    uint8_t     switchStatus_B1;     // 发动机启动状态            HUD组3 协议(1-1)
+    uint8_t     switchStatus_B2;     // 盘旋状态                 HUD组3 协议(2-1)             
+    uint8_t     switchStatus_B3;     // 归航状态                 HUD组3 协议(2-2)
+    uint8_t     switchStatus_B4;     // 关车状态                 HUD组3 协议(1-2)
+    uint8_t     switchStatus_B5;     // 起落架收放状态            HUD组3 协议(3-1)
+    uint8_t     switchStatus_B6;     // 开伞状态                 HUD组3 协议(3-2)
+    uint8_t     switchStatus_B7;     // 夜航灯开关状态           HUD组3 协议(3-1)
     int32_t  targetLongitude;     // 目标经度 (65)
     int32_t  targetLatitude;      // 目标纬度 (66)
     int16_t  targetAltitude;      // 目标高度 (67)
