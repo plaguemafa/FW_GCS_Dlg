@@ -1106,6 +1106,9 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			}
 			
 			// 检查数据包大小是否匹配
+			TRACE(_T("UDP接收: 数据包大小检查 - 期望=%d字节, 实际收到=%d字节\n"), 
+				sizeof(UdpRecvDataPacket), nReceived);
+			
 			if (nReceived == sizeof(UdpRecvDataPacket))
 			{
 				// 动态分配内存保存数据包，注意堆栈释放
@@ -1121,7 +1124,7 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 				// pPacket->attackAngle = ntohs(pPacket->attackAngle);
 				// pPacket->sideslipAngle = ntohs(pPacket->sideslipAngle);
 				
-				// 调试输出：显示接收到的数据（原始int16_t值）
+				// 调试测试输出：显示接收到的前部分数据（原始int16_t值）
 				TRACE(_T("UDP接收: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
 					pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
 				
@@ -1130,6 +1133,56 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 				TRACE(_T("UDP接收原始字节[前10字节]: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n"),
 					pBytes[0], pBytes[1], pBytes[2], pBytes[3], pBytes[4], 
 					pBytes[5], pBytes[6], pBytes[7], pBytes[8], pBytes[9]);
+				
+				// 调试输出：显示结构体大小和字段偏移（用于诊断）
+				size_t longitudeOffset = (BYTE*)&(pPacket->longitude) - (BYTE*)pPacket;
+				size_t latitudeOffset = (BYTE*)&(pPacket->latitude) - (BYTE*)pPacket;
+				size_t gpsCourseOffset = (BYTE*)&(pPacket->gpsCourse) - (BYTE*)pPacket;
+				TRACE(_T("UDP接收[字段偏移]: longitude偏移=%d, latitude偏移=%d, gpsCourse偏移=%d\n"),
+					longitudeOffset, latitudeOffset, gpsCourseOffset);
+				
+				// 调试输出：检查数据包中longitude和latitude位置前后的字节（用于诊断数据包结构是否匹配）
+				// TRACE(_T("UDP接收[数据包上下文]: longitude位置前后字节: [偏移%d-%d] %02X %02X %02X %02X | [偏移%d-%d] %02X %02X %02X %02X | [偏移%d-%d] %02X %02X %02X %02X\n"),
+					// longitudeOffset-4, longitudeOffset-1,
+					// pBytes[longitudeOffset-4], pBytes[longitudeOffset-3], pBytes[longitudeOffset-2], pBytes[longitudeOffset-1],
+					// longitudeOffset, longitudeOffset+3,
+					// pBytes[longitudeOffset], pBytes[longitudeOffset+1], pBytes[longitudeOffset+2], pBytes[longitudeOffset+3],
+					// longitudeOffset+4, longitudeOffset+7,
+					// pBytes[longitudeOffset+4], pBytes[longitudeOffset+5], pBytes[longitudeOffset+6], pBytes[longitudeOffset+7]);
+				
+				// 调试输出：显示经纬度原始值（用于诊断）
+				// TRACE(_T("UDP接收[经纬度原始值]: longitude=%d (0x%08X), latitude=%d (0x%08X), gpsCourse=%d\n"),
+				// 	pPacket->longitude, (unsigned int)pPacket->longitude,
+				// 	pPacket->latitude, (unsigned int)pPacket->latitude,
+				// 	pPacket->gpsCourse);
+				
+				// 调试输出：显示longitude和latitude的原始字节值（用于诊断字节序问题）
+				TRACE(_T("UDP接收[经纬度字节]: longitude偏移=%d, 字节值: %02X %02X %02X %02X (小端解析=%d)\n"),
+					longitudeOffset, pBytes[longitudeOffset], pBytes[longitudeOffset+1], 
+					pBytes[longitudeOffset+2], pBytes[longitudeOffset+3], pPacket->longitude);
+				TRACE(_T("UDP接收[经纬度字节]: latitude偏移=%d, 字节值: %02X %02X %02X %02X (小端解析=%d)\n"),
+					latitudeOffset, pBytes[latitudeOffset], pBytes[latitudeOffset+1], 
+					pBytes[latitudeOffset+2], pBytes[latitudeOffset+3], pPacket->latitude);
+				
+				// 调试输出：手动解析大端字节序（仅发送端是大端时适用）
+				// 注意：先按无符号解析，避免符号扩展问题
+				// uint32_t longitudeBigEndianU = (uint32_t)((pBytes[longitudeOffset] << 24) | 
+				// 	(pBytes[longitudeOffset+1] << 16) | 
+				// 	(pBytes[longitudeOffset+2] << 8) | 
+				// 	pBytes[longitudeOffset+3]);
+				// uint32_t latitudeBigEndianU = (uint32_t)((pBytes[latitudeOffset] << 24) | 
+				// 	(pBytes[latitudeOffset+1] << 16) | 
+				// 	(pBytes[latitudeOffset+2] << 8) | 
+				// 	pBytes[latitudeOffset+3]);
+				// int32_t longitudeBigEndian = (int32_t)longitudeBigEndianU;
+				// int32_t latitudeBigEndian = (int32_t)latitudeBigEndianU;
+				// TRACE(_T("UDP接收[大端解析测试]: longitude=%d (0x%08X), latitude=%d (0x%08X) (若此值看起来正确，启用字节序转换来解包)\n"),
+				// 	longitudeBigEndian, longitudeBigEndianU, latitudeBigEndian, latitudeBigEndianU);
+				
+				// 调试输出：计算期望值范围（用于判断数据是否正确）
+				// 例如：116.123度 × 100000 = 11612300
+				TRACE(_T("UDP接收[数据验证]: 当前小端值(longitude=%d, latitude=%d)\n"),
+					pPacket->longitude, pPacket->latitude);
 				
 				// 发送消息到主线程处理
 				pDlg->PostMessage(WM_UDP_DATA_RECEIVED, (WPARAM)pPacket, 0);
@@ -1202,7 +1255,7 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-// 将飞行状态数据发送到 WebView2，用于 HUD 绘制（轻量数据通道）
+// 将UDP接收的数据转发到 WebView2，用于JS图层绘制（轻量数据通道）
 void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 {
 #if FW_GCS_WITH_WEBVIEW2
@@ -1211,22 +1264,34 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 		return;
 	}
 
-	// 常用字段（后续可扩展协议字段）
-	const float pitch = pPacket->pitchAngle / 1.0f;
-	const float roll  = pPacket->rollAngle / 1.0f;
-	const float yaw   = pPacket->yawAngle / 1.0f;
-	const float ias   = pPacket->indicatedAirspeed / 1.0f;
-	const float tas   = pPacket->baroAirspeed / 1.0f;
-	const float alt   = pPacket->baroAltitude / 1.0f;
-	// HUD 新增字段
-	const float mach  = pPacket->machNumber / 100.0f;       // 马赫数（假设协议中为百分比表示）
-	const float aoa   = pPacket->attackAngle / 10.0f;       // 攻角（假设协议中为0.1度单位）
-	const float g     = pPacket->normalOverload / 10.0f;    // 法向过载（假设协议中为0.1g单位）
-	const float rpm   = pPacket->engineRPM / 1.0f;          // 发动机转速
+	//根据HUD以及其他js图层显示需求提取数据并转换类型
+	//主HUD部分
+	const float pitch = pPacket->pitchAngle / 10.0f;
+	const float roll  = pPacket->rollAngle / 10.0f;
+	const float yaw   = pPacket->yawAngle / 10.0f;
+	const float ias   = pPacket->indicatedAirspeed / 10.0f;
+	const float tas   = pPacket->baroAirspeed / 10.0f;
+	const float alt   = pPacket->baroAltitude / 10.0f;
+	const float mach  = pPacket->machNumber / 10.0f;        // 马赫数
+	const float aoa   = pPacket->attackAngle / 10.0f;       // 攻角
+	const float g     = pPacket->normalOverload / 10.0f;    // 法向过载
+	const float rpm   = pPacket->engineRPM / 10.0f;         // 发动机转速
+    //地图飞机标识部分
+	const float longitude = pPacket->longitude / 100000.0f; 
+    const float latitude = pPacket->latitude / 100000.0f;
+    const float gpsCourse = pPacket->gpsCourse / 10.0f;
+    
+    // 调试输出：显示经纬度原始值和转换后的值（用于诊断）
+    // TRACE(_T("SendHudMessage[经纬度调试]: longitude原始=%d, 转换后=%.6f度; latitude原始=%d, 转换后=%.6f度; gpsCourse原始=%d, 转换后=%.2f度\n"),
+        // pPacket->longitude, longitude, pPacket->latitude, latitude, pPacket->gpsCourse, gpsCourse);
+    // TRACE(_T("SendHudMessage[数据验证]: 如果原始数据是'经纬度×1e5'，期望值应该在±18000000范围内\n"));
+    // TRACE(_T("SendHudMessage[数据验证]: 当前值(longitude=%d, latitude=%d)太小，请检查发送端是否正确发送了'经纬度×1e5'的值\n"),
+        // pPacket->longitude, pPacket->latitude);
 
+ // 将数据添加到JSON格式字符串中
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f})",
-		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm);
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f})",
+		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse);
 
 	std::wstring jsonW(CA2W(json.GetString()));
 	m_webView->PostWebMessageAsJson(jsonW.c_str());
@@ -1245,8 +1310,6 @@ void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
 	// 直接推送 HUD 数据（已移除传统控件/子对话框显示）
 	SendHudMessage(pPacket);
 }
-
-
 
 // ============================================================================
 // 串口连接按钮事件处理函数（RS422串口）
