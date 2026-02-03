@@ -3115,10 +3115,10 @@ static CString GetExeDirectory()
 
 CString CFWGCSDlgDlg::BuildMapHtml() const
 {
-	// 获取 map.html 和 map.js 文件路径（与exe同目录）
+	// 获取 map.html 和 map.js 文件路径（exe同目录为基路径）
 	CString exeDir = GetExeDirectory();
 	CString htmlPath = exeDir + _T("/Scripts/map.html");
-	CString jsPath = exeDir + _T("/Scripts/map.js");
+	CString jsPath = exeDir + _T("/Scripts/Layers.js");
 
 	// 读取模板文件
 	CStringA htmlTemplate = ReadFileContentA(htmlPath);
