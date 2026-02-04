@@ -51,7 +51,7 @@ typedef struct {
     int32_t  latitude;             // 卫星纬度 (35)        HUD层 地图飞机标识位置驱动2
     int16_t  eastVelocity;         // 东向速度 (36)
     int16_t  northVelocity;        // 北向速度 (37)
-    int16_t  verticalVelocity;     // 天向速度 (38)
+    int16_t  verticalVelocity;     // 天向速度 (38)       
     int8_t   airTemperature;       // 大气温度 (39)
     int16_t  baroAltitude;         // 气压高度 (40)         HUD组1 协议(8)
     int16_t  baroAirspeed;         // 气压空速 (41)
@@ -59,9 +59,9 @@ typedef struct {
     uint8_t  machNumber;           // 马赫数 (43)           HUD组1 协议(10)
     uint16_t radioAltitude;        // 无线电高度 (44)
     uint8_t  navStatus;            // 导航状态 (45)        HUD组2 协议(4-1)
-    uint8_t  gpsHour;              // GPS时 (46)           HUD组2 协议(1-2.1)
-    uint8_t  gpsMinute;            // GPS分 (47)           HUD组2 协议(1-2.2)
-    uint8_t  gpsSecond;            // GPS秒 (48)           HUD组2 协议(1-2.3)
+    uint8_t  gpsHour;              // GPS时 (46)           HUD层 主界面底部信息栏 1-3.1
+    uint8_t  gpsMinute;            // GPS分 (47)           HUD层 主界面底部信息栏 1-3.2
+    uint8_t  gpsSecond;            // GPS秒 (48)           HUD层 主界面底部信息栏 1-3.3
     uint8_t  routeNumber;          // 当前航线号 (49)
     uint8_t  targetWaypoint;       // 目标航点 (50)           HUD组2 协议(4-2)
     int16_t  crossTrackError;      // 偏航距 (51)             HUD组2 协议(5-2)
@@ -74,14 +74,14 @@ typedef struct {
     uint8_t  payloadType;          // 载荷类型 (58)           HUD组2 协议(8-2)
     uint8_t  ammoRemaining;        // 剩余弹量 (59)           HUD组2 协议(9-1)
     uint8_t  selfTestResult;       // 自检结果 (60)           HUD组2 协议(9-2)
-    uint8_t  YIS100A_result;         // IMU自检结果     视窗组9-0 IDC_Display66 扩展协议 pag1
-    uint8_t  HP5804_result;          // 气压计自检结果  视窗组9-1 IDC_Display67 扩展协议 pag1
-    uint8_t  MS4525D_result;         // 空速计自检结果  视窗组9-2 IDC_Display68 扩展协议 pag1
-    uint8_t  M401_result;            // 温度计自检结果  视窗组9-3 IDC_Display69 扩展协议 pag1
-    uint8_t  GPS_result;             // GPS自检结果    视窗组9-4 IDC_Display70 扩展协议 pag1
-    uint8_t  PAC1931_result1;        // 电压自检结果    视窗组9-5 IDC_Display71 扩展协议 pag1
-    uint8_t  can_to_pw_result;       // PWM自检结果    视窗组9-6 IDC_Display72 扩展协议 pag1
-    uint8_t  SBUS_result;            // SBUS自检结果   视窗组9-7 IDC_Display73 扩展协议 pag1
+    uint8_t  YIS100A_result;         // IMU自检结果      视窗组9-0 IDC_Display66 扩展协议 pag1
+    uint8_t  HP5804_result;          // 气压计自检结果   视窗组9-1 IDC_Display67 扩展协议 pag1
+    uint8_t  MS4525D_result;         // 空速计自检结果   视窗组9-2 IDC_Display68 扩展协议 pag1
+    uint8_t  M401_result;            // 温度计自检结果   视窗组9-3 IDC_Display69 扩展协议 pag1
+    uint8_t  GPS_result;             // GPS自检结果      视窗组9-4 IDC_Display70 扩展协议 pag1
+    uint8_t  PAC1931_result1;        // 电压自检结果     视窗组9-5 IDC_Display71 扩展协议 pag1
+    uint8_t  can_to_pw_result;       // PWM自检结果     视窗组9-6 IDC_Display72 扩展协议 pag1
+    uint8_t  SBUS_result;            // SBUS自检结果    视窗组9-7 IDC_Display73 扩展协议 pag1
     uint8_t  batteryVoltage;       // 电池电压 (61)
     //uint8_t  workflowStatus;     // 工作流程 (62)    已拆解
     uint8_t     workflowStatus_B0;   // 工作流程标志           视窗组8-4 0时激活IDC_RADIO_Flag4 1时激活IDC_RADIO_Flag4 扩展协议
@@ -101,7 +101,7 @@ typedef struct {
     uint8_t     switchStatus_B4;     // 关车状态                 HUD组3 协议(1-2)
     uint8_t     switchStatus_B5;     // 起落架收放状态            HUD组3 协议(3-1)
     uint8_t     switchStatus_B6;     // 开伞状态                 HUD组3 协议(3-2)
-    uint8_t     switchStatus_B7;     // 夜航灯开关状态           HUD组3 协议(3-1)
+    uint8_t     switchStatus_B7;     // 夜航灯开关状态            HUD组3 协议(3-1)
     int32_t  targetLongitude;     // 目标经度 (65)
     int32_t  targetLatitude;      // 目标纬度 (66)
     int16_t  targetAltitude;      // 目标高度 (67)

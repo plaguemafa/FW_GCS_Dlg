@@ -1279,7 +1279,14 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
     //地图飞机标识部分
 	const float longitude = pPacket->longitude / 100000.0f; 
     const float latitude = pPacket->latitude / 100000.0f;
+	//底部信息栏部分
     const float gpsCourse = pPacket->gpsCourse / 10.0f;
+	const float gpsGroundSpeed = pPacket->gpsGroundSpeed / 10.0f;
+    const float gpsVerticalSpeed = pPacket->gpsVerticalSpeed / 10.0f;
+    const uint8_t gpsHour = pPacket->gpsHour;
+    const uint8_t gpsMinute = pPacket->gpsMinute;
+    const uint8_t gpsSecond = pPacket->gpsSecond;
+    
     
     // 调试输出：显示经纬度原始值和转换后的值（用于诊断）
     // TRACE(_T("SendHudMessage[经纬度调试]: longitude原始=%d, 转换后=%.6f度; latitude原始=%d, 转换后=%.6f度; gpsCourse原始=%d, 转换后=%.2f度\n"),
@@ -1290,8 +1297,10 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 
  // 将数据添加到JSON格式字符串中
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f})",
-		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse);
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u})",
+		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse, 
+		gpsGroundSpeed, gpsVerticalSpeed, gpsHour, gpsMinute, gpsSecond);
+
 
 	std::wstring jsonW(CA2W(json.GetString()));
 	m_webView->PostWebMessageAsJson(jsonW.c_str());
