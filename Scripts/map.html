@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        html, body, #map {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0b0f14;
+        }
+        #map {
+            position: relative;
+            cursor: grab;
+        }
+        .tile {
+            position: absolute;
+            width: 256px;
+            height: 256px;
+            pointer-events: none;
+        }
+        #hud {
+            position: absolute;
+            right: 12px;
+            top: 3.4%;  /* 34/1080 = 3.4%，在1920x1080分辨率下HUD顶端与窗口顶端留出40像素 */
+            width: 360px;
+            height: 360px;
+            pointer-events: none;
+            z-index: 20;
+            background: rgba(0,0,0,0.12);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
+        }
+        #status {
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            color: #e0e0e0;
+            font-family: Segoe UI, Arial;
+            font-size: 12px;
+            background: rgba(0,0,0,0.45);
+            padding: 6px 8px;
+            border-radius: 4px;
+            z-index: 10;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <canvas id="hud"></canvas>
+    <div id="status"></div>
+    <script>
+        // 配置由C++注入
+        /*{{MAP_CONFIG}}*/
+        /*{{STATUS_TEXT}}*/
+    </script>
+    <script>
+        /*{{MAP_JS}}*/
+    </script>
+</body>
+</html>

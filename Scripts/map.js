@@ -1,0 +1,1229 @@
+// map.js - 离线地图 + HUD 渲染
+// 说明：
+// 1) mapConfig / statusText 由 C++ 在 map.html 占位符处注入
+// 2) C++ 调用 PostWebMessageAsJson 推送 HUD 数据，JS 在 webview message 事件里接收并更新 hudState
+// 3) HUD 绘制集中在 drawHud，拆分多个小函数，方便你单独调整配色、位置、尺寸
+
+// DOM 获取
+const mapEl = document.getElementById('map');      // 地图容器（瓦片背景）
+const statusEl = document.getElementById('status'); // 状态提示
+const hudCanvas = document.getElementById('hud');   // HUD 画布
+const hudCtx = hudCanvas ? hudCanvas.getContext('2d') : null;
+let hudDpr = window.devicePixelRatio || 1;          // 设备像素比，用于抗锯齿
+
+// 地图飞机标识Canvas（覆盖在地图上）
+let aircraftCanvas = null;
+let aircraftCtx = null;
+
+// 底部信息栏Canvas（覆盖在整个主界面上）
+let bottomInfoCanvas = null;
+let bottomInfoCtx = null;
+
+// 报警弹窗Canvas（覆盖在最顶层）
+let alarmCanvas = null;
+let alarmCtx = null;
+
+// 顶层图层中央横幅报警数据（根据 UdpData.h 中的协议定义）
+const alarmNames = [
+    '\u7535\u6c60\u7535\u538b\u4f4e\u62a5\u8b66',      // 电池电压低报警 (alarmStatus_B0)
+    '\u9ad8\u5ea6\u62a5\u8b66',                        // 高度报警 (alarmStatus_B1)
+    '\u6cb9\u91cf\u4f4e\u62a5\u8b66',                  // 油量低报警 (alarmStatus_B2)
+    '\u8f6c\u901f\u5f02\u5e38\u62a5\u8b66',            // 转速异常报警 (alarmStatus_B3)
+    '\u7a7a\u901f\u5f02\u5e38\u62a5\u8b66',            // 空速异常报警 (alarmStatus_B4)
+    'GPS\u5b9a\u4f4d\u7cbe\u5ea6\u4f4e\u62a5\u8b66'    // GPS定位精度低报警 (alarmStatus_B5)
+];
+// activeAlarms: [{ index: number, lastSeen: number }]
+let activeAlarms = [];
+
+// HUD 状态（由原生推送的数据结构，可按需扩展）
+let hudState = {
+    pitch: 0, roll: 0, yaw: 0,     // 姿态
+    ias: 0, tas: 0, alt: 0,        // 速度/高度
+    mach: 0, aoa: 0, g: 1.0,       // 马赫/攻角/过载
+    rpm: 0                          // 发动机转速
+};
+
+// HUD层 主界面底部信息栏数据（根据 UdpData.h 中的协议定义）
+let hudBottomInfoData = {
+    gpsGroundSpeed: 0,
+    gpsVerticalSpeed: 0,
+    gpsHour: 0,
+    gpsMinute: 0,
+    gpsSecond: 0
+};
+
+// 飞机位置和航向数据（从UDP协议接收）
+let aircraftData = {
+    longitude: null,   // 经度（度，C++端已缩放）
+    latitude: null,    // 纬度（度，C++端已缩放）
+    course: null       // 航向角（度，0-359，C++端已缩放）
+};
+
+// 飞机轨迹数据（用于绘制轨迹连线）
+let aircraftTrail = [];
+const MAX_TRAIL_POINTS = 1000000;  // 最大轨迹点数
+let lastTrailSaveTime = 0;  // 上次保存轨迹点的时间戳（毫秒）
+const TRAIL_SAVE_INTERVAL_MS = 500;  // 轨迹点保存间隔（毫秒）
+
+if (!mapEl) {
+    console.error('Map element not found!');
+} else {
+    statusEl.textContent = statusText; // 注入的状态文本
+}
+
+// 瓦片相关（地图背景）
+const tileSize = 256;                                // 单张瓦片像素尺寸
+const minZoom = mapConfig.minZoom ?? 0;              // 最小缩放
+const maxZoom = mapConfig.maxZoom ?? 18;             // 最大缩放
+let zoom = Math.max(minZoom, Math.min(maxZoom, mapConfig.zoom ?? 10)); // 当前缩放
+let center = { lat: mapConfig.centerLat ?? 0, lng: mapConfig.centerLng ?? 0 }; // 当前中心经纬度
+
+// 鼠标拖拽相关状态
+let dragging = false;                                // 是否正在拖动
+let dragStart = { x: 0, y: 0 };                      // 鼠标按下时坐标
+let dragStartCenter = { lat: 0, lng: 0 };            // 按下时的地图中心
+
+// 适配屏幕尺寸：按 DPR 放大
+function resizeHud() {
+    if (!hudCanvas || !hudCtx) return;
+    hudDpr = window.devicePixelRatio || 1;
+    // 读取 CSS 尺寸，按 DPR 放大像素避免模糊
+    //HUD画布大小（像素单位）  基于父级容器大小（见html的HUD对象定义），360px*360px
+    const w = hudCanvas.clientWidth || hudCanvas.offsetWidth || 360;  
+    const h = (hudCanvas.clientHeight || hudCanvas.offsetHeight || 360);
+    hudCanvas.width = w * hudDpr;
+    hudCanvas.height = h * hudDpr;
+    hudCtx.setTransform(hudDpr, 0, 0, hudDpr, 0, 0);
+}
+
+// 绘制天空/地面 + 地平线 + 俯仰刻度
+// 参数：
+//   w/h        : 画布尺寸（像素，已按 DPR 缩放）
+//   centerX/Y  : 姿态中心点（地平线居中）
+//   pitch/roll : 俯仰/横滚角（度）
+//   colors     : 配色对象 {sky, ground, line, text, ringDot, horizon}
+function drawBackground(w, h, centerX, centerY, pitch, roll, colors) {
+    hudCtx.save();
+    hudCtx.translate(centerX, centerY);
+    hudCtx.rotate(roll * Math.PI / 180);
+    const pitchPxPerDeg = 3.5;               //刻度间距，单位：像素/度
+    const pitchOffset = pitch * pitchPxPerDeg;
+    hudCtx.translate(0, pitchOffset);
+
+    // 填满整个HUD的天空和地面
+    hudCtx.fillStyle = colors.sky;
+    hudCtx.fillRect(-w, -h, w * 2, h);
+    hudCtx.fillStyle = colors.ground;
+    hudCtx.fillRect(-w, 0, w * 2, h);
+
+    // // 地平线：短绿线  不绘制地平线
+    // hudCtx.strokeStyle = colors.horizon;
+    // hudCtx.lineWidth = 2;
+    // const shortLen = 100;
+    // hudCtx.beginPath();
+    // hudCtx.moveTo(-shortLen, 0);
+    // hudCtx.lineTo(-10, 0);
+    // hudCtx.moveTo(10, 0);
+    // hudCtx.lineTo(shortLen, 0);
+    // hudCtx.stroke();
+
+    // 俯仰刻度
+    hudCtx.strokeStyle = colors.line;
+    hudCtx.fillStyle = colors.text;
+    hudCtx.font = '10px Consolas, monospace';
+    hudCtx.lineWidth = 1.5;
+    for (let deg = -30; deg <= 30; deg += 2) {
+        if (deg === 0) continue;
+        const y = -deg * pitchPxPerDeg;
+        const len = (Math.abs(deg) % 10 === 0) ? 35 : 27;
+        hudCtx.beginPath();
+        hudCtx.moveTo(-len, y);
+        hudCtx.lineTo(-10, y);
+        hudCtx.moveTo(10, y);
+        hudCtx.lineTo(len, y);
+        hudCtx.stroke();
+        if (Math.abs(deg) % 10 === 0) {
+            hudCtx.textAlign = 'right';
+            hudCtx.fillText(`${Math.abs(deg)}`, -len - 4, y + 3);
+            hudCtx.textAlign = 'left';
+            hudCtx.fillText(`${Math.abs(deg)}`, len + 4, y + 3);
+        }
+    }
+
+    hudCtx.restore();
+}
+
+// 飞机固定符号（居中机翼线）
+// 参数：cx, cy 为符号中心；colors.line 用于描边
+function drawAircraftSymbol(cx, cy, colors) {
+    hudCtx.strokeStyle = colors.line;
+    hudCtx.lineWidth = 2;
+    hudCtx.beginPath();
+    hudCtx.moveTo(cx - 50, cy);
+    hudCtx.lineTo(cx - 15, cy);
+    hudCtx.lineTo(cx - 8, cy + 8);
+    hudCtx.lineTo(cx, cy + 4);
+    hudCtx.lineTo(cx + 8, cy + 8);
+    hudCtx.lineTo(cx + 15, cy);
+    hudCtx.lineTo(cx + 50, cy);
+    hudCtx.stroke();
+
+    hudCtx.beginPath();
+    hudCtx.arc(cx, cy, 3, 0, Math.PI * 2);
+    hudCtx.stroke();
+}
+
+// 航向带
+// 参数：
+//   centerX : 航向带居中 X
+//   y       : 顶部 Y 坐标
+//   width   : 航向带宽度
+//   height  : 航向带高度
+//   heading : 当前航向（度，0-359）
+//   colors  : 配色
+function drawHeadingTape(centerX, y, width, height, heading, colors) {
+    // 保存上下文状态，避免被其他绘制影响
+    hudCtx.save();
+    
+    const left = centerX - width / 2;
+    hudCtx.strokeStyle = colors.line;
+    hudCtx.lineWidth = 1;
+    // 只绘制左、右、底三条边，去掉顶部横线
+    hudCtx.beginPath();
+    hudCtx.moveTo(left, y + height);        // 左下角
+    hudCtx.lineTo(left, y + 7);                 // 左上角（但不画顶部）
+    hudCtx.moveTo(left + width, y + 7);         // 右上角
+    hudCtx.lineTo(left + width, y + height); // 右下角
+    hudCtx.moveTo(left, y + height);        // 回到左下角
+    hudCtx.lineTo(left + width, y + height); // 底部横线
+    hudCtx.stroke();
+
+    const pxPerDeg = width / 90; // 90度范围
+    
+    // 设置文字样式（在循环外设置一次，避免重复设置）
+    hudCtx.fillStyle = colors.text;  // 确保使用文字颜色
+    hudCtx.font = '10px Consolas, monospace';
+    hudCtx.textAlign = 'center';
+
+    // 先绘制每1度的小刻度（跳过5的倍数，避免与后续刻度重叠）
+    hudCtx.strokeStyle = colors.line;
+    for (let d = -45; d <= 45; d += 1) {
+        // 跳过5的倍数，这些位置会被后续的短刻度和长刻度覆盖
+        if (d % 5 === 0) continue;
+        
+        const x = centerX + d * pxPerDeg;
+        if (x < left || x > left + width) continue;
+        
+        // 小刻度长度设为2，小于短刻度的4
+        const tickLen = 2;
+        
+        hudCtx.beginPath();
+        hudCtx.moveTo(x, y + height);
+        hudCtx.lineTo(x, y + height - tickLen);
+        hudCtx.stroke();
+    }
+    
+    // 绘制所有刻度（每5度一个短刻度，每10度一个长刻度+数字）
+    for (let d = -45; d <= 45; d += 5) {
+        const hdgRaw = heading + d;
+        const hdg = Math.round((hdgRaw + 360) % 360) + 1;
+        const x = centerX + d * pxPerDeg;
+        if (x < left || x > left + width) continue;
+        
+        // 判断是否为10度倍数：只使用 d % 10 === 0，避免重复绘制
+        // d 是固定步长（每5度），所以 d % 10 === 0 的位置就是每10度的位置
+        const isMajorTick = (d % 10 === 0);
+        const tickLen = isMajorTick ? 8 : 4;
+        
+        // 绘制刻度线
+        hudCtx.strokeStyle = colors.line;
+        hudCtx.beginPath();
+        hudCtx.moveTo(x, y + height);
+        hudCtx.lineTo(x, y + height - tickLen);
+        hudCtx.stroke();
+        
+        // 10度倍数处显示数字标签（只在 d % 10 === 0 时绘制，避免重复）
+        if (isMajorTick) {
+            // 确保 fillStyle 是文字颜色
+            hudCtx.fillStyle = colors.text;
+            // 计算要显示的航向值：确保是10的倍数
+            // 使用 hdgRaw 计算，四舍五入到最近的10的倍数，并确保是0-359范围内的值
+            const displayHdg = Math.round(hdgRaw / 10) * 10;
+            const normalizedHdg = ((displayHdg % 360) + 360) % 360;  // 归一化到 0-359
+            hudCtx.fillText(normalizedHdg.toString().padStart(3, '0'), x, y + height - 14);
+        }
+    }
+
+    // 指示三角（固定在中心）
+    hudCtx.fillStyle = colors.line;  //三角形颜色
+    hudCtx.beginPath();
+    hudCtx.moveTo(centerX, y + height + 2);
+    hudCtx.lineTo(centerX - 5, y + height + 8);
+    hudCtx.lineTo(centerX + 5, y + height + 8);
+    hudCtx.closePath();
+    hudCtx.fill();
+    
+    // 恢复上下文状态
+    hudCtx.restore();
+}
+
+// 数值 + 环形点阵（空速 / 高度）
+// 参数：
+//   x, y     : 圆心
+//   value    : 显示的数值字符串
+//   label    : 标题文本（IAS / ALT）
+//   colors   : 配色（text, ringDot）
+//   options  : {radius, dotCount, dotRadius} 可选
+function drawValueRing(x, y, value, label, colors, options = {}) {
+    const radius = options.radius ?? 34;
+    const dotCount = options.dotCount ?? 24;
+    const dotRadius = options.dotRadius ?? 2.2;
+
+    // 小白点
+    hudCtx.fillStyle = colors.ringDot;
+    for (let i = 0; i < dotCount; i++) {
+        const t = i / dotCount * Math.PI * 2;
+        const dx = Math.cos(t) * radius;
+        const dy = Math.sin(t) * radius;
+        hudCtx.beginPath();
+        hudCtx.arc(x + dx, y + dy, dotRadius, 0, Math.PI * 2);
+        hudCtx.fill();
+    }
+
+    // 文本
+    hudCtx.fillStyle = colors.text;
+    hudCtx.font = '10px Consolas, monospace';
+    hudCtx.textAlign = 'center';
+    hudCtx.fillText(label, x, y - 18);
+
+    hudCtx.font = '14px Consolas, monospace';
+    hudCtx.fillText(value, x, y + 5);
+}
+
+// 底部文本数据（马赫 / AOA / G / RPM）
+// 参数：w/h 画布尺寸；data:{mach,aoa,g,rpm}；colors.text 用于文字
+function drawBottomData(w, h, data, colors) {
+    hudCtx.fillStyle = colors.text;
+    hudCtx.font = '11px Consolas, monospace';
+    hudCtx.textAlign = 'left';
+    const lx = 40;
+    const ly = h - 108;
+    hudCtx.fillText(` M  ${data.mach}`, lx, ly);
+    hudCtx.fillText(`AoA ${data.aoa}`, lx, ly + 14);
+    hudCtx.fillText(` G  ${data.g}`, lx, ly + 28);
+
+    hudCtx.textAlign = 'right';
+    const rx = w - 40;
+    const ry = h - 90;
+    hudCtx.fillText(`RPM ${data.rpm}`, rx, ry);
+}
+
+// 滚转刻度半圆（顶部，正切于画布顶部）
+// 参数：
+//   cx      : 圆心 X（画布中心）
+//   topY    : 画布顶部 Y（通常为 0）
+//   radius  : 半径（直径 = 360 * 0.95 = 342，半径 = 171）
+//   roll    : 当前横滚角（度）
+//   colors  : 配色（line）
+function drawRollScale(cx, topY, radius, roll, colors) {
+    hudCtx.save();
+    // 圆心在 (cx, topY + radius)，这样半圆最高点正好在 topY（正切于顶部）
+    hudCtx.translate(cx, topY + radius);
+    hudCtx.strokeStyle = colors.line;
+    hudCtx.lineWidth = 1;
+
+    // 绘制固定的指示三角（始终在HUD顶部中心，不随roll旋转）
+    // 三角形固定在顶部中心（deg=0的位置），指向圆心
+    hudCtx.fillStyle = colors.line;
+    hudCtx.beginPath();
+    hudCtx.moveTo(0, -radius + 4);  // 在顶部附近（-radius 是顶部）
+    hudCtx.lineTo(-5, -radius + 12);
+    hudCtx.lineTo(5, -radius + 12);
+    hudCtx.closePath();
+    hudCtx.fill();
+
+    // 刻度弧和刻度线：固定在HUD顶部，不随roll旋转
+    // 绘制下半圆（从 π 到 2π），圆心在局部坐标 (0, 0)
+    hudCtx.beginPath();
+    hudCtx.arc(0, 0, radius, Math.PI, 2 * Math.PI);
+    hudCtx.stroke();
+
+    // 刻度线：从半圆弧向外延伸
+    hudCtx.fillStyle = colors.text;
+    hudCtx.font = '10px Consolas, monospace';
+    hudCtx.textAlign = 'center';
+    
+    // 刻度范围：-60到+60度（相对于当前roll角）
+    const scaleRange = 60;  // 刻度范围的一半（±60度）
+    
+    // 计算要显示的滚转角范围（以当前roll为中心）
+    const minDisplayRoll = roll - scaleRange;  // 例如：roll=15时，minDisplayRoll=-45
+    const maxDisplayRoll = roll + scaleRange;  // 例如：roll=15时，maxDisplayRoll=75
+    
+    // 计算需要显示的10的倍数范围
+    const minDisplayRoll10 = Math.floor(minDisplayRoll / 10) * 10;  // 向下取整到10的倍数
+    const maxDisplayRoll10 = Math.ceil(maxDisplayRoll / 10) * 10;   // 向上取整到10的倍数
+    
+    // 先绘制所有刻度线（每1度一个小刻度，每5度一个中等刻度，每10度一个长刻度）
+    for (let deg = -scaleRange; deg <= scaleRange; deg += 1) {
+        // 角度转换：0度在顶部，顺时针为正（-90度偏移使0度在顶部）
+        const rad = (deg - 90) * Math.PI / 180;
+        const r1 = radius - 10;                   // 刻度起点（弧内侧）
+        
+        // 计算这个刻度位置对应的显示值
+        let displayRoll = deg + roll;
+        // 归一化到-180到180范围
+        while (displayRoll > 180) displayRoll -= 360;
+        while (displayRoll < -180) displayRoll += 360;
+        
+        // 判断这个显示值是否接近10的倍数（用于决定刻度长度）
+        const nearest10 = Math.round(displayRoll / 10) * 10;
+        const distTo10 = Math.abs(displayRoll - nearest10);
+        
+        // 根据刻度类型决定长度
+        let r2;
+        if (distTo10 < 0.5) {
+            // 非常接近10的倍数：最长刻度（用于显示数字的位置）
+            r2 = radius + 10;
+        } else if (Math.abs(deg) % 5 === 0) {
+            // 5度倍数：中等刻度
+            r2 = radius + 6;
+        } else {
+            // 其他：短刻度（每1度）
+            r2 = radius + 2;
+        }
+        
+        // 绘制刻度线
+        hudCtx.strokeStyle = colors.line;
+        hudCtx.beginPath();
+        hudCtx.moveTo(r1 * Math.cos(rad), r1 * Math.sin(rad));
+        hudCtx.lineTo(r2 * Math.cos(rad), r2 * Math.sin(rad));
+        hudCtx.stroke();
+    }
+    
+    // 然后绘制数字标签：遍历所有10的倍数显示值
+    for (let displayRoll10 = minDisplayRoll10; displayRoll10 <= maxDisplayRoll10; displayRoll10 += 10) {
+        // 计算对应的刻度位置 deg = displayRoll10 - roll
+        let deg = displayRoll10 - roll;
+        
+        // 归一化deg到-scaleRange到scaleRange范围
+        while (deg > scaleRange) deg -= 360;
+        while (deg < -scaleRange) deg += 360;
+        
+        // 如果deg在显示范围内，绘制数字
+        if (deg >= -scaleRange && deg <= scaleRange) {
+            // 角度转换：0度在顶部，顺时针为正（-90度偏移使0度在顶部）
+            const rad = (deg - 90) * Math.PI / 180;
+            const r2 = radius + 10;  // 数字位置（最长刻度线末端）
+            
+            hudCtx.fillStyle = colors.text;
+            // 归一化显示值到-180到180范围
+            let normalizedRoll = displayRoll10;
+            while (normalizedRoll > 180) normalizedRoll -= 360;
+            while (normalizedRoll < -180) normalizedRoll += 360;
+            
+            const labelX = (r2 + 10) * Math.cos(rad);
+            const labelY = (r2 + 10) * Math.sin(rad);
+            hudCtx.fillText(Math.abs(normalizedRoll).toString(), labelX, labelY + 4);
+        }
+    }
+
+    hudCtx.restore();
+}
+
+function drawHud() {
+    if (!hudCanvas || !hudCtx) return;
+    const w = hudCanvas.clientWidth || 360; 
+    const h = (hudCanvas.clientHeight || 360); // 与 resizeHud 保持一致
+    hudCtx.clearRect(0, 0, w, h);
+    if (!hudState) return;
+
+    const pitch = hudState.pitch ?? 0;
+    const roll = hudState.roll ?? 0;
+    const yaw = hudState.yaw ?? 0;
+    const ias = hudState.ias ?? 0;
+    const alt = hudState.alt ?? 0;
+    const mach = hudState.mach ?? 0;
+    const aoa = hudState.aoa ?? 0;
+    const g = hudState.g ?? 1.0;
+    const rpm = hudState.rpm ?? 0;
+
+    const centerX = w / 2;
+    // 布局：地平线居中；滚转在顶部；航向带靠底部
+    const centerY = h / 2;      // 姿态中心（地平线在此高度）
+    const rollY = 20;            // 滚转刻度顶部Y（画布顶部，正切）
+    const rollRadius = w * 0.95 / 2; // 半径 = 直径(360*0.95) / 2 = 171
+    const headingY = h - 45;    // 底部航向带 Y（避免与姿态区重叠）
+
+    const colors = {
+        // 典型PFD配色：亮蓝天空、土褐地面；线条/文字白，地平线短绿线
+        sky: '#5fa8d3',
+        ground: '#8b5a2b',
+        line: '#f8f8f8',
+        text: '#f8f8f8',
+        ringDot: '#ffffff',
+        horizon: '#6bff6b'
+    };
+
+    // 背景（天空/地面）填满整个HUD
+    drawBackground(w, h, centerX, centerY, pitch, roll, colors);
+
+    // 滚转刻度（顶部，正切于画布顶部，直径 = 360 * 0.95 = 342）
+    drawRollScale(centerX, rollY, rollRadius, roll, colors);
+
+    // 航向带（靠底部上方）
+    drawHeadingTape(centerX, headingY, 240, 22, ((yaw % 360) + 360) % 360, colors);
+
+    // 飞机符号
+    drawAircraftSymbol(centerX, centerY, colors);
+
+    // 左右数值环
+    drawValueRing(60, centerY, Math.round(ias).toString(), 'IAS', colors);
+    drawValueRing(w - 60, centerY, Math.round(alt).toString(), 'ALT', colors);
+
+    // 底部数据
+    drawBottomData(w, h, {
+        mach: mach.toFixed(2),
+        aoa: aoa.toFixed(1),
+        g: g.toFixed(1),
+        rpm: Math.round(rpm)
+    }, colors);
+    
+    // 绘制底部信息栏（地速、垂直速度、GPS时间、累计距离）- 在整个主界面底部
+    const convertHudBottomInfoData = (rawData) => {
+        return {
+            groundSpeed: rawData.gpsGroundSpeed || 0,
+            verticalSpeed: rawData.gpsVerticalSpeed || 0,
+            gpsHour: rawData.gpsHour || 0,
+            gpsMinute: rawData.gpsMinute || 0,
+            gpsSecond: rawData.gpsSecond || 0
+        };
+    };
+    const bottomInfoData = convertHudBottomInfoData(hudBottomInfoData);
+    drawBottomInfoBar(window.innerWidth, window.innerHeight, bottomInfoData, colors);
+}
+
+// 初始化 HUD 尺寸并绘制一次（窗口尺寸变化时也重绘）
+resizeHud();
+drawHud();
+
+// 接收 native HUD 数据（C++ PostWebMessageAsJson 推送）
+if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.addEventListener('message', (e) => {
+        const receivedData = e.data || null;
+        if (!receivedData) {
+            return;
+        }
+        
+        // 更新 HUD 状态
+        hudState = receivedData;
+        
+        // 更新底部信息栏数据
+        if (receivedData.gpsGroundSpeed !== undefined) {
+            hudBottomInfoData.gpsGroundSpeed = receivedData.gpsGroundSpeed;
+        }
+        if (receivedData.gpsVerticalSpeed !== undefined) {
+            hudBottomInfoData.gpsVerticalSpeed = receivedData.gpsVerticalSpeed;
+        }
+        if (receivedData.gpsHour !== undefined) {
+            hudBottomInfoData.gpsHour = receivedData.gpsHour;
+        }
+        if (receivedData.gpsMinute !== undefined) {
+            hudBottomInfoData.gpsMinute = receivedData.gpsMinute;
+        }
+        if (receivedData.gpsSecond !== undefined) {
+            hudBottomInfoData.gpsSecond = receivedData.gpsSecond;
+        }
+
+        // 处理报警数据（顶层图层中央横幅报警）
+        const alarmFields = [
+            'alarmStatus_B0',
+            'alarmStatus_B1',
+            'alarmStatus_B2',
+            'alarmStatus_B3',
+            'alarmStatus_B4',
+            'alarmStatus_B5'
+        ];
+
+        const now = Date.now();
+        for (let i = 0; i < alarmFields.length; i++) {
+            const fieldName = alarmFields[i];
+            if (receivedData[fieldName] === 1) {
+                const existing = activeAlarms.find(a => a.index === i);
+                if (existing) {
+                    // 弹出期间始终收到1，刷新倒计时
+                    existing.lastSeen = now;
+                } else {
+                    // 收到1则新增弹窗
+                    activeAlarms.push({ index: i, lastSeen: now });
+                }
+            }
+            // 收到0不处理（不关闭）
+        }
+
+        drawAlarmPopups();
+        
+        // 更新飞机位置和航向数据（地图飞机标识）
+        if (receivedData.longitude !== undefined) {
+            aircraftData.longitude = receivedData.longitude;
+        }
+        if (receivedData.latitude !== undefined) {
+            aircraftData.latitude = receivedData.latitude;
+        }
+        if (receivedData.gpsCourse !== undefined) {
+            aircraftData.course = receivedData.gpsCourse;
+            // 归一化到0-359度范围
+            aircraftData.course = ((aircraftData.course % 360) + 360) % 360;
+        }
+        
+        // 重新绘制 HUD
+        drawHud();
+        
+        // 确保飞机标识Canvas存在（如果不存在则初始化）
+        if (!aircraftCanvas && mapEl) {
+            initAircraftCanvas();
+        }
+        
+        // 重新绘制飞机标识
+        if (aircraftCanvas && aircraftCtx) {
+            drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+        }
+    });
+}
+
+// 经纬度 -> Web Mercator 像素坐标（用于瓦片定位）
+function latLngToPoint(lat, lng, zoomLevel) {
+    const sin = Math.sin(lat * Math.PI / 180);
+    const scale = tileSize * Math.pow(2, zoomLevel);
+    const x = (lng + 180) / 360 * scale;
+    const y = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale;
+    return { x, y };
+}
+
+// Web Mercator 像素坐标 -> 经纬度（鼠标缩放回推中心）
+function pointToLatLng(x, y, zoomLevel) {
+    const scale = tileSize * Math.pow(2, zoomLevel);
+    const lng = x / scale * 360 - 180;
+    const n = Math.PI - 2 * Math.PI * y / scale;
+    const lat = 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+    return { lat, lng };
+}
+
+// 瓦片渲染：根据中心点和缩放计算需要的瓦片并加载
+function render() {
+    if (!mapEl) return;
+    try {
+        const width = mapEl.clientWidth;
+        const height = mapEl.clientHeight;
+        if (width === 0 || height === 0) return;
+        const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+        const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+        const startX = Math.floor(topLeft.x / tileSize);
+        const startY = Math.floor(topLeft.y / tileSize);
+        const endX = Math.floor((topLeft.x + width) / tileSize);
+        const endY = Math.floor((topLeft.y + height) / tileSize);
+        const max = Math.pow(2, zoom);
+
+        // 清空旧瓦片（只清除img元素，保留Canvas）
+        const tiles = mapEl.querySelectorAll('.tile');
+        tiles.forEach(tile => tile.remove());
+        
+        // 确保飞机标识Canvas存在（如果不存在则初始化）
+        if (!aircraftCanvas && mapEl) {
+            initAircraftCanvas();
+        }
+        
+        for (let ty = startY; ty <= endY; ty++) {
+            for (let tx = startX; tx <= endX; tx++) {
+                const tileX = ((tx % max) + max) % max;
+                const tileY = ((ty % max) + max) % max;
+                const img = new Image();
+                img.className = 'tile';
+                img.style.left = (tx * tileSize - topLeft.x) + 'px';
+                img.style.top = (ty * tileSize - topLeft.y) + 'px';
+                img.src = mapConfig.tileUrl
+                    .replace('{z}', zoom)
+                    .replace('{x}', tileX)
+                    .replace('{y}', tileY);
+                mapEl.appendChild(img);
+            }
+        }
+        
+        // 绘制飞机标识（有数据时才绘制）
+        if (aircraftCanvas && aircraftCtx && aircraftData.latitude !== null && aircraftData.longitude !== null && aircraftData.course !== null) {
+            drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+        }
+    } catch (err) {
+        console.error('Error in render:', err);
+    }
+}
+
+if (mapEl) {
+    // 鼠标按下：记录起点与中心，开始拖拽
+    mapEl.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        dragging = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+        dragStartCenter = { lat: center.lat, lng: center.lng };
+        mapEl.style.cursor = 'grabbing';
+    });
+
+    // 鼠标移动：根据位移调整中心经纬度
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging || !mapEl) return;
+        e.preventDefault();
+        const dx = e.clientX - dragStart.x;
+        const dy = e.clientY - dragStart.y;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+
+        const scale = tileSize * Math.pow(2, zoom);
+        const dLng = -dx / scale * 360;
+        const dLat = dy / scale * 360;
+
+        center.lat = dragStartCenter.lat + dLat;
+        center.lng = dragStartCenter.lng + dLng;
+
+        center.lat = Math.max(-85, Math.min(85, center.lat));
+        center.lng = ((center.lng % 360) + 360) % 360;
+        if (center.lng > 180) center.lng -= 360;
+
+        render();
+    });
+
+    // 鼠标抬起：结束拖拽
+    document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        if (mapEl) {
+            mapEl.style.cursor = 'grab';
+        }
+    });
+
+    // 滚轮缩放：以鼠标位置为锚点，缩放并重新计算中心
+    mapEl.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = mapEl.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        if (mouseX < 0 || mouseX > rect.width || mouseY < 0 || mouseY > rect.height) {
+            return;
+        }
+
+        const delta = e.deltaY < 0 ? 1 : -1;
+        const nextZoom = Math.max(minZoom, Math.min(maxZoom, zoom + delta));
+        if (nextZoom === zoom) return;
+
+        const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+        const mouseMapX = centerPoint.x - mapEl.clientWidth / 2 + mouseX;
+        const mouseMapY = centerPoint.y - mapEl.clientHeight / 2 + mouseY;
+        const mouseLatLng = pointToLatLng(mouseMapX, mouseMapY, zoom);
+
+        zoom = nextZoom;
+
+        const newCenterPoint = latLngToPoint(mouseLatLng.lat, mouseLatLng.lng, zoom);
+        const newCenterX = newCenterPoint.x - mouseX + mapEl.clientWidth / 2;
+        const newCenterY = newCenterPoint.y - mouseY + mapEl.clientHeight / 2;
+        center = pointToLatLng(newCenterX, newCenterY, zoom);
+
+        render();
+    }, { passive: false });
+
+    mapEl.style.cursor = 'grab';
+}
+
+// 初始化飞机标识Canvas
+function initAircraftCanvas() {
+    if (!mapEl) {
+        console.warn('initAircraftCanvas: mapEl not found');
+        return;
+    }
+    
+    if (!aircraftCanvas) {
+        aircraftCanvas = document.createElement('canvas');
+        aircraftCanvas.id = 'aircraft-overlay';
+        aircraftCanvas.style.position = 'absolute';
+        aircraftCanvas.style.top = '0';
+        aircraftCanvas.style.left = '0';
+        aircraftCanvas.style.width = '100%';
+        aircraftCanvas.style.height = '100%';
+        aircraftCanvas.style.pointerEvents = 'none';
+        aircraftCanvas.style.zIndex = '15';
+        mapEl.appendChild(aircraftCanvas);
+        aircraftCtx = aircraftCanvas.getContext('2d');
+        
+        if (!aircraftCtx) {
+            console.error('initAircraftCanvas: Failed to get 2d context');
+            return;
+        }
+    }
+    
+    resizeAircraftCanvas();
+}
+
+// 调整地图飞机标识Canvas尺寸
+function resizeAircraftCanvas() {
+    if (!aircraftCanvas || !aircraftCtx || !mapEl) return;
+    const w = mapEl.clientWidth;
+    const h = mapEl.clientHeight;
+    aircraftCanvas.width = w;
+    aircraftCanvas.height = h;
+}
+
+// 绘制地图上的飞机标识（3D箭头）和轨迹连线
+function drawAircraftOnMap(lat, lng, course) {
+    if (!aircraftCanvas || !aircraftCtx || !mapEl) {
+        console.warn('drawAircraftOnMap: Canvas or context not initialized');
+        return;
+    }
+    
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    
+    aircraftCtx.clearRect(0, 0, width, height);
+    
+    if (lat === null || lng === null || course === null || 
+        isNaN(lat) || isNaN(lng) || isNaN(course)) {
+        drawTrail();
+        return;
+    }
+    
+    const aircraftPoint = latLngToPoint(lat, lng, zoom);
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+    
+    const aircraftX = aircraftPoint.x - topLeft.x;
+    const aircraftY = aircraftPoint.y - topLeft.y;
+    
+    const currentTime = Date.now();
+    if (aircraftTrail.length === 0 || (currentTime - lastTrailSaveTime) >= TRAIL_SAVE_INTERVAL_MS) {
+        const currentPoint = { lat, lng };
+        aircraftTrail.push(currentPoint);
+        lastTrailSaveTime = currentTime;
+        
+        if (aircraftTrail.length > MAX_TRAIL_POINTS) {
+            aircraftTrail.shift();
+        }
+    }
+    
+    drawTrail();
+    
+    if (aircraftX < -50 || aircraftX > width + 50 || aircraftY < -50 || aircraftY > height + 50) {
+        return;
+    }
+    
+    const arrowLength = 28;
+    const arrowBottomWidth = 38;
+    const arrowBottomY = 24;
+    const arrowBottomIndent = 8;
+    
+    aircraftCtx.save();
+    aircraftCtx.translate(aircraftX, aircraftY);
+    const canvasAngle = -course + 90;
+    aircraftCtx.rotate(canvasAngle * Math.PI / 180);
+    
+    aircraftCtx.shadowBlur = 0;
+    aircraftCtx.shadowColor = 'transparent';
+    
+    aircraftCtx.fillStyle = '#cc0000';
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(-arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.lineTo(0, arrowBottomY - arrowBottomIndent);
+    aircraftCtx.lineTo(arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    
+    const centerHighlightWidth = arrowBottomWidth * 0.3;
+    const bottomHighlightY = arrowBottomY - arrowBottomIndent;
+    const highlightStartY = -arrowLength + 8;
+    
+    const centerHighlight = aircraftCtx.createLinearGradient(-centerHighlightWidth / 2, highlightStartY, centerHighlightWidth / 2, bottomHighlightY);
+    centerHighlight.addColorStop(0, 'rgba(255, 200, 200, 0.5)');
+    centerHighlight.addColorStop(0.3, 'rgba(255, 160, 160, 0.4)');
+    centerHighlight.addColorStop(0.7, 'rgba(255, 120, 120, 0.3)');
+    centerHighlight.addColorStop(1, 'rgba(255, 80, 80, 0.2)');
+    
+    aircraftCtx.fillStyle = centerHighlight;
+    aircraftCtx.beginPath();
+    const topHighlightWidth = centerHighlightWidth;
+    const bottomHighlightWidth = centerHighlightWidth * 0.2;
+    aircraftCtx.moveTo(-topHighlightWidth / 2, highlightStartY);
+    aircraftCtx.lineTo(topHighlightWidth / 2, highlightStartY);
+    aircraftCtx.lineTo(bottomHighlightWidth / 2, bottomHighlightY);
+    aircraftCtx.lineTo(-bottomHighlightWidth / 2, bottomHighlightY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    
+    const edgeShadow = aircraftCtx.createLinearGradient(-arrowBottomWidth / 2, arrowBottomY, 0, arrowBottomY);
+    edgeShadow.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+    edgeShadow.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
+    edgeShadow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    
+    aircraftCtx.fillStyle = edgeShadow;
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(-arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.lineTo(0, bottomHighlightY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    
+    const edgeShadowRight = aircraftCtx.createLinearGradient(0, arrowBottomY, arrowBottomWidth / 2, arrowBottomY);
+    edgeShadowRight.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    edgeShadowRight.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
+    edgeShadowRight.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+    aircraftCtx.fillStyle = edgeShadowRight;
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.lineTo(0, bottomHighlightY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    
+    const axisLineWidth = 1.5;
+    const axisLineColor = '#ffffff';
+    const axisLineOpacity = 0.8;
+    
+    aircraftCtx.strokeStyle = axisLineColor;
+    aircraftCtx.globalAlpha = axisLineOpacity;
+    aircraftCtx.lineWidth = axisLineWidth;
+    aircraftCtx.shadowBlur = 0;
+    aircraftCtx.shadowColor = 'transparent';
+    aircraftCtx.lineCap = 'round';
+    
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(0, bottomHighlightY);
+    aircraftCtx.stroke();
+    
+    aircraftCtx.globalAlpha = 1.0;
+    
+    aircraftCtx.strokeStyle = '#ffffff';
+    aircraftCtx.lineWidth = 2;
+    aircraftCtx.shadowBlur = 0;
+    aircraftCtx.shadowColor = '#ffffff';
+    aircraftCtx.lineJoin = 'round';
+    aircraftCtx.lineCap = 'round';
+    
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(-arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.lineTo(0, bottomHighlightY);
+    aircraftCtx.lineTo(arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.closePath();
+    aircraftCtx.stroke();
+    
+    aircraftCtx.restore();
+}
+
+// 绘制飞机轨迹连线
+function drawTrail() {
+    if (!aircraftCtx || aircraftTrail.length < 2) return;
+    
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+    
+    aircraftCtx.strokeStyle = '#ff6b6b';
+    aircraftCtx.lineWidth = 2;
+    aircraftCtx.lineCap = 'round';
+    aircraftCtx.lineJoin = 'round';
+    
+    aircraftCtx.beginPath();
+    let firstPoint = true;
+    
+    for (let i = 0; i < aircraftTrail.length; i++) {
+        const point = latLngToPoint(aircraftTrail[i].lat, aircraftTrail[i].lng, zoom);
+        const x = point.x - topLeft.x;
+        const y = point.y - topLeft.y;
+        
+        if (x >= -10 && x <= width + 10 && y >= -10 && y <= height + 10) {
+            if (firstPoint) {
+                aircraftCtx.moveTo(x, y);
+                firstPoint = false;
+            } else {
+                aircraftCtx.lineTo(x, y);
+            }
+        } else if (!firstPoint) {
+            firstPoint = true;
+        }
+    }
+    aircraftCtx.stroke();
+}
+
+// 初始化底部信息栏Canvas
+function initBottomInfoCanvas() {
+    if (!bottomInfoCanvas) {
+        bottomInfoCanvas = document.createElement('canvas');
+        bottomInfoCanvas.id = 'bottomInfoCanvas';
+        bottomInfoCanvas.style.position = 'fixed';
+        bottomInfoCanvas.style.bottom = '0';
+        bottomInfoCanvas.style.left = '0';
+        bottomInfoCanvas.style.zIndex = '10000';
+        bottomInfoCanvas.style.pointerEvents = 'none';
+        document.body.appendChild(bottomInfoCanvas);
+        bottomInfoCtx = bottomInfoCanvas.getContext('2d');
+    }
+    resizeBottomInfoCanvas();
+}
+
+// 调整底部信息栏Canvas尺寸
+function resizeBottomInfoCanvas() {
+    if (!bottomInfoCanvas || !bottomInfoCtx) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    bottomInfoCanvas.width = w;
+    bottomInfoCanvas.height = h;
+    bottomInfoCanvas.style.width = w + 'px';
+    bottomInfoCanvas.style.height = h + 'px';
+}
+
+// 计算累计飞行距离（使用Haversine公式，不考虑垂直方向）
+function calculateTotalDistance() {
+    if (!aircraftTrail || aircraftTrail.length < 2) {
+        return 0;
+    }
+    
+    let totalDistance = 0;
+    
+    for (let i = 1; i < aircraftTrail.length; i++) {
+        const prev = aircraftTrail[i - 1];
+        const curr = aircraftTrail[i];
+        
+        const R = 6371000;
+        const lat1Rad = prev.lat * Math.PI / 180;
+        const lat2Rad = curr.lat * Math.PI / 180;
+        const deltaLatRad = (curr.lat - prev.lat) * Math.PI / 180;
+        const deltaLngRad = (curr.lng - prev.lng) * Math.PI / 180;
+        
+        const a = Math.sin(deltaLatRad / 2) * Math.sin(deltaLatRad / 2) +
+                  Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+                  Math.sin(deltaLngRad / 2) * Math.sin(deltaLngRad / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+        
+        totalDistance += distance;
+    }
+    
+    return totalDistance;
+}
+
+// 底部信息栏（地速、垂直速度、GPS时间、累计距离）
+function drawBottomInfoBar(w, h, data, colors) {
+    if (!bottomInfoCtx || !bottomInfoCanvas) {
+        initBottomInfoCanvas();
+        if (!bottomInfoCtx) return;
+    }
+    
+    resizeBottomInfoCanvas();
+    
+    const actualW = window.innerWidth;
+    const actualH = window.innerHeight;
+    
+    const barHeight = 42;
+    const barY = actualH - barHeight;
+    
+    bottomInfoCtx.clearRect(0, 0, actualW, actualH);
+    
+    bottomInfoCtx.fillStyle = 'rgba(100, 100, 100, 0.7)';
+    bottomInfoCtx.fillRect(0, barY, actualW, barHeight);
+    
+    bottomInfoCtx.fillStyle = '#ffffff';
+    bottomInfoCtx.font = '14px Consolas, monospace';
+    bottomInfoCtx.textAlign = 'center';
+    bottomInfoCtx.textBaseline = 'middle';
+    
+    const groundSpeed = (data && data.groundSpeed !== undefined) ? data.groundSpeed.toFixed(1) : '0.0';
+    const verticalSpeed = (data && data.verticalSpeed !== undefined) ? data.verticalSpeed.toFixed(1) : '0.0';
+    const hour = (data && data.gpsHour !== undefined) ? String(data.gpsHour).padStart(2, '0') : '00';
+    const minute = (data && data.gpsMinute !== undefined) ? String(data.gpsMinute).padStart(2, '0') : '00';
+    const second = (data && data.gpsSecond !== undefined) ? String(data.gpsSecond).padStart(2, '0') : '00';
+    const gpsTime = hour + ':' + minute + ':' + second;
+    
+    const totalDistance = calculateTotalDistance();
+    let distanceText = '';
+    if (totalDistance >= 1000) {
+        distanceText = (totalDistance / 1000).toFixed(2) + ' km';
+    } else {
+        distanceText = totalDistance.toFixed(1) + ' m';
+    }
+    
+    const text1 = '-> ' + groundSpeed + ' m/s';
+    const text2 = '^ ' + verticalSpeed + ' m/s';
+    const text3 = 'GPS ' + gpsTime;
+    const text4 = 'Dist ' + distanceText;
+    const spacing = 30;
+    
+    const text1Width = bottomInfoCtx.measureText(text1).width;
+    const text2Width = bottomInfoCtx.measureText(text2).width;
+    const text3Width = bottomInfoCtx.measureText(text3).width;
+    const text4Width = bottomInfoCtx.measureText(text4).width;
+    
+    const totalWidth = text1Width + spacing + text2Width + spacing + text3Width + spacing + text4Width;
+    const startX = (actualW - totalWidth) / 2 + text1Width / 2;
+    const centerY = barY + barHeight / 2;
+    
+    bottomInfoCtx.fillText(text1, startX, centerY);
+    bottomInfoCtx.fillText(text2, startX + text1Width / 2 + spacing + text2Width / 2, centerY);
+    bottomInfoCtx.fillText(text3, startX + text1Width / 2 + spacing + text2Width + spacing + text3Width / 2, centerY);
+    bottomInfoCtx.fillText(text4, startX + text1Width / 2 + spacing + text2Width + spacing + text3Width + spacing + text4Width / 2, centerY);
+}
+
+// 初始化报警弹窗Canvas
+function initAlarmCanvas() {
+    if (!alarmCanvas) {
+        alarmCanvas = document.createElement('canvas');
+        alarmCanvas.id = 'alarmCanvas';
+        alarmCanvas.style.position = 'fixed';
+        alarmCanvas.style.top = '0';
+        alarmCanvas.style.left = '0';
+        alarmCanvas.style.zIndex = '20000';  // 最顶层
+        alarmCanvas.style.pointerEvents = 'none';  // 默认不拦截事件
+        document.body.appendChild(alarmCanvas);
+        alarmCtx = alarmCanvas.getContext('2d');
+
+        // 点击事件放在 document 上，避免遮挡地图拖动
+        document.addEventListener('click', (e) => {
+            if (!activeAlarms || activeAlarms.length === 0) {
+                return;
+            }
+
+            const x = e.clientX;
+            const y = e.clientY;
+
+            // 检查点击是否在某个弹窗内
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const centerX = w / 2;
+            const baseY = h * 0.2;  // 窗口高度的1/5处
+            const alarmHeight = 50;
+            const alarmSpacing = 10;
+            const alarmWidth = 400;
+
+            for (let i = 0; i < activeAlarms.length; i++) {
+                const alarmY = baseY + i * (alarmHeight + alarmSpacing);
+
+                if (x >= centerX - alarmWidth / 2 && x <= centerX + alarmWidth / 2 &&
+                    y >= alarmY && y <= alarmY + alarmHeight) {
+                    activeAlarms.splice(i, 1);
+                    drawAlarmPopups();
+                    e.stopPropagation();
+                    break;
+                }
+            }
+        }, true);
+    }
+    resizeAlarmCanvas();
+}
+
+// 调整报警弹窗Canvas尺寸
+function resizeAlarmCanvas() {
+    if (!alarmCanvas || !alarmCtx) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    alarmCanvas.width = w;
+    alarmCanvas.height = h;
+    alarmCanvas.style.width = w + 'px';
+    alarmCanvas.style.height = h + 'px';
+}
+
+// 绘制报警弹窗
+function drawAlarmPopups() {
+    if (!alarmCtx || !alarmCanvas) {
+        initAlarmCanvas();
+        if (!alarmCtx) return;
+    }
+
+    resizeAlarmCanvas();
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    // 清空画布
+    alarmCtx.clearRect(0, 0, w, h);
+
+    if (!activeAlarms || activeAlarms.length === 0) {
+        return;
+    }
+
+    // 弹窗参数
+    const centerX = w / 2;
+    const baseY = h * 0.2;  // 窗口高度的1/5处（第一个弹窗的初始位置）
+    const alarmWidth = 400;
+    const alarmHeight = 50;
+    const alarmSpacing = 10;
+    const cornerRadius = 8;  // 圆角半径
+
+    // 设置文字样式
+    alarmCtx.fillStyle = '#000000';
+    alarmCtx.font = 'bold 18px Consolas, monospace';
+    alarmCtx.textAlign = 'center';
+    alarmCtx.textBaseline = 'middle';
+
+    // 超时未点击则关闭（30s），收到1会刷新倒计时
+    const now = Date.now();
+    activeAlarms = activeAlarms.filter(a => (now - a.lastSeen) < 30000);
+    if (activeAlarms.length === 0) {
+        return;
+    }
+
+    // 绘制每个报警弹窗
+    for (let i = 0; i < activeAlarms.length; i++) {
+        const alarmIndex = activeAlarms[i].index;
+        const alarmY = baseY + i * (alarmHeight + alarmSpacing);
+        const alarmText = alarmNames[alarmIndex] || ('\u62a5\u8b66' + (alarmIndex + 1));
+        const x = centerX - alarmWidth / 2;
+        const y = alarmY;
+
+        // 绘制圆角矩形背景（黄色警告色）
+        alarmCtx.fillStyle = 'rgba(255, 200, 0, 0.9)';  // 黄色警告色
+        alarmCtx.beginPath();
+        alarmCtx.moveTo(x + cornerRadius, y);
+        alarmCtx.lineTo(x + alarmWidth - cornerRadius, y);
+        alarmCtx.quadraticCurveTo(x + alarmWidth, y, x + alarmWidth, y + cornerRadius);
+        alarmCtx.lineTo(x + alarmWidth, y + alarmHeight - cornerRadius);
+        alarmCtx.quadraticCurveTo(x + alarmWidth, y + alarmHeight, x + alarmWidth - cornerRadius, y + alarmHeight);
+        alarmCtx.lineTo(x + cornerRadius, y + alarmHeight);
+        alarmCtx.quadraticCurveTo(x, y + alarmHeight, x, y + alarmHeight - cornerRadius);
+        alarmCtx.lineTo(x, y + cornerRadius);
+        alarmCtx.quadraticCurveTo(x, y, x + cornerRadius, y);
+        alarmCtx.closePath();
+        alarmCtx.fill();
+
+        // 绘制黑色边框
+        alarmCtx.strokeStyle = '#000000';
+        alarmCtx.lineWidth = 2;
+        alarmCtx.stroke();
+
+        // 绘制文字（黑色）
+        alarmCtx.fillStyle = '#000000';
+        alarmCtx.fillText(alarmText, centerX, alarmY + alarmHeight / 2);
+    }
+}
+
+// 窗口大小改变时，调整所有Canvas尺寸并重新渲染
+window.addEventListener('resize', () => {
+    resizeHud();
+    resizeBottomInfoCanvas();
+    resizeAircraftCanvas();
+    resizeAlarmCanvas();
+    drawHud();
+    render();
+    drawAlarmPopups();
+});
+
+// 初始化飞机标识Canvas
+initAircraftCanvas();
+
+// 初始化底部信息栏Canvas（延迟初始化，确保窗口尺寸已确定）
+setTimeout(() => {
+    initBottomInfoCanvas();
+    initAlarmCanvas();
+    if (typeof drawHud === 'function') {
+        drawHud();
+    }
+    drawAlarmPopups();
+}, 100);
+
+// 初始渲染
+render();

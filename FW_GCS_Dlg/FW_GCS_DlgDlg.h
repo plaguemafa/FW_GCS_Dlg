@@ -248,6 +248,12 @@ protected:
 	afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
 	afx_msg void OnNcPaint();
+	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
+	afx_msg void OnBnClickedMenuBtn1();
+	afx_msg void OnBnClickedMenuBtn2();
+	afx_msg void OnBnClickedMenuBtn3();
+	afx_msg void OnBnClickedMenuBtn4();
+	afx_msg void OnBnClickedMenuBtn5();
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);  // 拦截只读 Radio Button 的点击
 	virtual BOOL PreTranslateMessage(MSG* pMsg);  // 拦截鼠标消息，阻止只读 Radio Button 的点击
 	DECLARE_MESSAGE_MAP()
