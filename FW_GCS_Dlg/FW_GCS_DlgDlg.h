@@ -73,6 +73,10 @@ public:
 // 实现
 protected:
 	HICON m_hIcon;
+	CMenu m_mainMenu;					   // 菜单栏
+	CFont m_menuFont;					   // 菜单字体
+	int m_menuItemHeight = 0;			   // 菜单项高度
+	CBrush m_menuBrush;				   // 菜单背景刷
 
 	// UDP通信相关成员变量
 	SOCKET m_udpSocket;                    // UDP Socket句柄
@@ -241,6 +245,9 @@ protected:
 	afx_msg void OnBnClickedPage1();      // 切换到第一页
 	afx_msg void OnBnClickedPage2();      // 切换到第二页
 	afx_msg void OnSize(UINT nType, int cx, int cy);  // 窗口大小改变时调整子对话框位置
+	afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
+	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
+	afx_msg void OnNcPaint();
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);  // 拦截只读 Radio Button 的点击
 	virtual BOOL PreTranslateMessage(MSG* pMsg);  // 拦截鼠标消息，阻止只读 Radio Button 的点击
 	DECLARE_MESSAGE_MAP()

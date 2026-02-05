@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ ���ɵİ����ļ���
-// �� FWGCSDlg.rc ʹ��
+// Microsoft Visual C++ Éú³ÉµÄ°üº¬ÎÄ¼þ¡£
+// ¹© FWGCSDlg.rc Ê¹ÓÃ
 //
 #define IDD_FW_GCS_DLG_DIALOG           102
 #define IDR_MAINFRAME                   128
@@ -156,6 +156,7 @@
 #define IDC_RADIO_Flag20                1153
 #define IDC_RADIO_Flag21                1154
 #define IDC_COMBO1                      1155
+#define ID_MENU_OP_PLACEHOLDER          32771
 
 // Next default values for new objects
 // 

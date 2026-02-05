@@ -229,6 +229,9 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_BN_CLICKED(IDC_BTN_PAGE1, &CFWGCSDlgDlg::OnBnClickedPage1)
 	ON_BN_CLICKED(IDC_BTN_PAGE2, &CFWGCSDlgDlg::OnBnClickedPage2)
 	ON_WM_SIZE()
+	ON_WM_MEASUREITEM()
+	ON_WM_DRAWITEM()
+	ON_WM_NCPAINT()
 END_MESSAGE_MAP()
 
 // 在消息到达控件之前拦截鼠标点击，阻止只读 Radio Button 的交互
@@ -298,7 +301,7 @@ BOOL CFWGCSDlgDlg::OnCommand(WPARAM wParam, LPARAM lParam)
 	// 			// 最好的方法是在 PreTranslateMessage 中完全阻止
 	// 			// 这里作为备用保护
 	// 		}
-			
+
 	// 		return TRUE;  // 返回 TRUE 表示已处理，阻止默认行为
 	// 	}
 	// }
@@ -317,6 +320,95 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);		// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
+	// 初始化菜单栏（顶部预留空间，多列左对齐）
+	{
+		if (m_mainMenu.CreateMenu())
+		{
+			CMenu menu1, menu2, menu3, menu4, menu5,menu6;
+			menu1.CreatePopupMenu();
+			menu2.CreatePopupMenu();
+			menu3.CreatePopupMenu();
+			menu4.CreatePopupMenu();
+			menu5.CreatePopupMenu();
+			menu6.CreatePopupMenu();
+			// 占位扩展
+			menu1.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("手动遥控模式"));
+			menu1.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("半自动模式"));
+			menu1.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("全自动模式"));
+			menu2.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("地面测试流程"));
+			menu2.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发射流程"));
+			menu2.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("参数装订指令"));
+			menu2.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发射指令"));
+			menu3.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("自检指令"));
+			menu3.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("舵面检查"));
+			menu3.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发动机检查"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("航点设置"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位"));
+			menu5.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("UDP通信设置"));
+
+			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu1.Detach()), _T("控制模式"));
+			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu2.Detach()), _T("任务指令"));
+			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu3.Detach()), _T("自检指令"));
+			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu4.Detach()), _T("位置装订"));
+			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu5.Detach()), _T("通信设置"));
+
+			// 计算菜单高度
+			const int desiredHeight = GetSystemMetrics(SM_CYMENU);
+			m_menuItemHeight = desiredHeight;
+
+			// 设置菜单字体（基于系统默认）
+			LOGFONT lf = {};
+			CFont* baseFont = CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
+			if (baseFont)
+			{
+				baseFont->GetLogFont(&lf);
+			}
+			lf.lfHeight = -(max(10, static_cast<int>(desiredHeight * 0.62f)));
+			m_menuFont.DeleteObject();
+			m_menuFont.CreateFontIndirect(&lf);
+
+			// 设置顶层菜单为自绘，便于控制高度
+			const int menuCount = m_mainMenu.GetMenuItemCount();
+			for (int i = 0; i < menuCount; ++i)
+			{
+				MENUITEMINFO mi = {};
+				mi.cbSize = sizeof(mi);
+				mi.fMask = MIIM_FTYPE | MIIM_DATA;
+				mi.fType = MFT_OWNERDRAW;
+				mi.dwItemData = i; // 保存索引用于绘制
+				m_mainMenu.SetMenuItemInfo(i, &mi, TRUE);
+			}
+
+			// 设置菜单栏背景刷与最大高度，确保整条灰色到最右端
+			m_menuBrush.DeleteObject();
+			m_menuBrush.CreateSolidBrush(RGB(100, 100, 100));
+			MENUINFO menuInfo = {};
+			menuInfo.cbSize = sizeof(menuInfo);
+			menuInfo.fMask = MIM_BACKGROUND | MIM_MAXHEIGHT;
+			menuInfo.hbrBack = (HBRUSH)m_menuBrush.GetSafeHandle();
+			menuInfo.cyMax = m_menuItemHeight;
+			::SetMenuInfo(m_mainMenu.GetSafeHmenu(), &menuInfo);
+
+			// 重新挂载菜单，强制刷新高度
+			SetMenu(nullptr);
+			SetMenu(&m_mainMenu);
+			DrawMenuBar();
+
+			// 非最大化时，补偿菜单高度，保持客户区空间
+			if (!IsZoomed())
+			{
+				RECT rcWindow;
+				GetWindowRect(&rcWindow);
+				const int menuH = m_menuItemHeight > 0 ? m_menuItemHeight : GetSystemMetrics(SM_CYMENU);
+				SetWindowPos(nullptr, 0, 0,
+					rcWindow.right - rcWindow.left,
+					(rcWindow.bottom - rcWindow.top) + menuH,
+					SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+			}
+		}
+	}
+
 	// 调整窗口样式，启用系统菜单/最小化/最大化，并允许调整大小
 	{
 		const LONG newStyleAdd = WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME;
@@ -332,7 +424,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 
 	// 设置启动默认大小
 	{
-		// 期望的客户区大小
+		// 期望的客户区大小 默认1920x1080
 		const int reqClientW = 1920;
 		const int reqClientH = 1080;
 
@@ -685,6 +777,14 @@ void CFWGCSDlgDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
+		// 菜单栏与客户区分界线
+		{
+			CClientDC dc(this);
+			CRect rc;
+			GetClientRect(&rc);
+			const COLORREF lineColor = ::GetSysColor(COLOR_3DSHADOW);
+			dc.FillSolidRect(0, 0, rc.Width(), 1, lineColor);
+		}
 	}
 }
 
@@ -1277,8 +1377,8 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 	const float g     = pPacket->normalOverload / 10.0f;    // 法向过载
 	const float rpm   = pPacket->engineRPM / 10.0f;         // 发动机转速
     //地图飞机标识部分
-	const float longitude = pPacket->longitude / 100000.0f; 
-    const float latitude = pPacket->latitude / 100000.0f;
+	const float longitude = pPacket->longitude / 1000000.0f; 
+    const float latitude = pPacket->latitude / 1000000.0f;
 	//底部信息栏部分
     const float gpsCourse = pPacket->gpsCourse / 10.0f;
 	const float gpsGroundSpeed = pPacket->gpsGroundSpeed / 10.0f;
@@ -1297,9 +1397,11 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 
  // 将数据添加到JSON格式字符串中
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u})",
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"alarmStatus_B0":%u,"alarmStatus_B1":%u,"alarmStatus_B2":%u,"alarmStatus_B3":%u,"alarmStatus_B4":%u,"alarmStatus_B5":%u})",
 		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse, 
-		gpsGroundSpeed, gpsVerticalSpeed, gpsHour, gpsMinute, gpsSecond);
+		gpsGroundSpeed, gpsVerticalSpeed, gpsHour, gpsMinute, gpsSecond,
+		pPacket->alarmStatus_B0, pPacket->alarmStatus_B1, pPacket->alarmStatus_B2,
+		pPacket->alarmStatus_B3, pPacket->alarmStatus_B4, pPacket->alarmStatus_B5);
 
 
 	std::wstring jsonW(CA2W(json.GetString()));
@@ -2961,6 +3063,103 @@ void CFWGCSDlgDlg::OnSize(UINT nType, int cx, int cy)
 	ResizeMapWebView(cx, cy);
 }
 
+void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct)
+{
+	if (lpMeasureItemStruct && lpMeasureItemStruct->CtlType == ODT_MENU)
+	{
+		CString text;
+		m_mainMenu.GetMenuString(static_cast<UINT>(lpMeasureItemStruct->itemData), text, MF_BYPOSITION);
+
+		CClientDC dc(this);
+		CFont* pFont = m_menuFont.GetSafeHandle()
+			? &m_menuFont
+			: CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
+		CFont* pOld = dc.SelectObject(pFont);
+		CSize sz = dc.GetTextExtent(text);
+		dc.SelectObject(pOld);
+
+		lpMeasureItemStruct->itemWidth = sz.cx + 24;
+		lpMeasureItemStruct->itemHeight = max(m_menuItemHeight, sz.cy + 6);
+		return;
+	}
+
+	CDialogEx::OnMeasureItem(nIDCtl, lpMeasureItemStruct);
+}
+
+void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
+{
+	if (lpDrawItemStruct && lpDrawItemStruct->CtlType == ODT_MENU)
+	{
+		CDC dc;
+		dc.Attach(lpDrawItemStruct->hDC);
+		CRect rc(lpDrawItemStruct->rcItem);
+		const bool selected = (lpDrawItemStruct->itemState & ODS_SELECTED) != 0;
+
+		// 菜单栏背景（半透明灰色效果用实色近似）
+		const COLORREF bg = selected ? ::GetSysColor(COLOR_HIGHLIGHT) : RGB(100, 100, 100);
+		const COLORREF fg = RGB(255, 255, 255);
+		dc.FillSolidRect(&rc, bg);
+
+		CString text;
+		m_mainMenu.GetMenuString(static_cast<UINT>(lpDrawItemStruct->itemData), text, MF_BYPOSITION);
+
+		CFont* pFont = m_menuFont.GetSafeHandle()
+			? &m_menuFont
+			: CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
+		CFont* pOld = dc.SelectObject(pFont);
+		dc.SetTextColor(fg);
+		dc.SetBkMode(TRANSPARENT);
+
+		rc.left += 12;
+		dc.DrawText(text, &rc, DT_SINGLELINE | DT_VCENTER | DT_LEFT);
+		dc.SelectObject(pOld);
+		dc.Detach();
+		return;
+	}
+
+	CDialogEx::OnDrawItem(nIDCtl, lpDrawItemStruct);
+}
+
+void CFWGCSDlgDlg::OnNcPaint()
+{
+	CDialogEx::OnNcPaint();
+
+	// 在菜单栏上下绘制分界线（非客户区绘制）
+	CWindowDC dc(this);
+	CRect rcWindow;
+	CRect rcClient;
+	GetWindowRect(&rcWindow);
+	GetClientRect(&rcClient);
+	ClientToScreen(&rcClient);
+
+	// 客户区顶边在屏幕坐标中的 Y
+	const int yClientTop = rcClient.top - rcWindow.top;
+	const COLORREF lineColor = ::GetSysColor(COLOR_3DSHADOW);
+
+	// 尝试获取菜单栏真实矩形，确保顶部线可见
+	MENUBARINFO mbi = {};
+	mbi.cbSize = sizeof(mbi);
+	if (GetMenuBarInfo(m_hWnd, OBJID_MENU, 0, &mbi))
+	{
+		const int yMenuTop = mbi.rcBar.top - rcWindow.top;
+		const int yMenuBottom = mbi.rcBar.bottom - rcWindow.top;
+		// 整条菜单栏灰色填充（半透明效果用实色近似）
+		dc.FillSolidRect(0, yMenuTop, rcWindow.Width(), yMenuBottom - yMenuTop, RGB(100, 100, 100));
+		// 菜单栏顶部边
+		if (yMenuTop >= 0)
+		{
+			dc.FillSolidRect(0, yMenuTop, rcWindow.Width(), 1, lineColor);
+		}
+		// 菜单栏底部边
+		dc.FillSolidRect(0, yMenuBottom, rcWindow.Width(), 1, lineColor);
+	}
+	else
+	{
+		// 兜底：只画客户区顶边
+		dc.FillSolidRect(0, yClientTop, rcWindow.Width(), 1, lineColor);
+	}
+}
+
 #if FW_GCS_WITH_WEBVIEW2
 void CFWGCSDlgDlg::InitMapWebView()
 {
@@ -3190,7 +3389,7 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 	// 获取 map.html 和 map.js 文件路径（exe同目录为基路径）
 	CString exeDir = GetExeDirectory();
 	CString htmlPath = exeDir + _T("/Scripts/map.html");
-	CString jsPath = exeDir + _T("/Scripts/Layers.js");
+	CString jsPath = exeDir + _T("/Scripts/map.js");
 
 	// 读取模板文件
 	CStringA htmlTemplate = ReadFileContentA(htmlPath);
