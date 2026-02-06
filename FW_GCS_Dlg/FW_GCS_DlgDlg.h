@@ -8,11 +8,14 @@
 #include <afxmt.h>       // MFC同步对象（CCriticalSection, CSingleLock）
 #include <afxdialogex.h> // CDialogEx
 #include "UdpData.h"
+#include "UdpConfig.h"
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 #include "Page1Dlg.h"
 #include "Page2Dlg.h"
 #include "MbtilesReader.h"
+#include "UdpSettingsDlg.h"
+#include "SerialSettingsDlg.h"
 #include <wrl.h>
 
 #if defined(__has_include)
@@ -25,22 +28,6 @@
 #else
 #define FW_GCS_WITH_WEBVIEW2 0
 #endif
-
-// UDP配置参数宏
-// 注意：UDP_REMOTE_IP 和 UDP_REMOTE_PORT 对应 Simulink（发送端）的本地地址和端口，用于：
-//   1. 接收验证：检查收到的数据包是否来自这个地址（Simulink的源地址）
-//   2. 发送目标：程序发送数据时发送到这个地址（Simulink的监听地址）
-//
-// Simulink 配置对应关系：
-//   Simulink 本地地址 = UDP_REMOTE_IP (127.0.0.1)
-//   Simulink 本地端口 = UDP_REMOTE_PORT (5000) - Simulink需要监听此端口接收程序发送的数据
-//   Simulink 远程地址 = 127.0.0.1 (程序所在地址)
-//   Simulink 远程端口 = UDP_LOCAL_PORT (5001) - Simulink发送数据的目标端口
-//
-#define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
-//#define UDP_REMOTE_IP      "127.0.0.1"         // Simulink的本地IP（用于本地测试）
-#define UDP_REMOTE_PORT     50000                // Simulink的本地端口（用于本地测试）地面站远程端口
-#define UDP_LOCAL_PORT      50001                 // 本程序监听端口（接收Simulink发送的数据）
 
 // 串口配置参数宏
 #define SERIAL_PORT_NAME   "COM20"        // 目标串口名称（RS422串口，格式：COM1-COM256）
@@ -87,6 +74,12 @@ protected:
 	BOOL m_bUdpRemoteResponded;           // 远程地址响应标志（用于验证连接）
 	CCriticalSection m_csUdpResponse;      // 保护响应标志的临界区
 	DWORD m_dwLastUdpUiUpdate;            // 上次UI更新时间（用于限频）
+	
+	// UDP配置参数（运行时配置，优先于宏定义）
+	CString m_strUdpLocalIP;               // 本机IP（通常为"0.0.0.0"表示监听所有接口）
+	int m_nUdpLocalPort;                  // 本机端口
+	CString m_strUdpRemoteIP;             // 远程IP
+	int m_nUdpRemotePort;                 // 远程端口
 	
 	// 串口通信相关成员变量
 	HANDLE m_hSerialPort;                  // 串口句柄
@@ -227,6 +220,10 @@ protected:
 	static UINT UdpRecvThread(LPVOID pParam);  // UDP接收线程函数（静态）
 	void UpdateControlText(UINT nID, const CString& strText);  // 辅助函数：更新控件文本（优先在子对话框中查找）
 	
+	// UDP配置管理函数
+	void LoadUdpConfig();                 // 从注册表加载UDP配置（如果没有则使用宏默认值）
+	void SaveUdpConfig();                 // 保存UDP配置到注册表
+	
 	// 串口通信相关函数
 	BOOL OpenSerialPort();                 // 打开串口
 	void CloseSerialPort();                // 关闭串口
@@ -247,6 +244,8 @@ protected:
 	afx_msg void OnSize(UINT nType, int cx, int cy);  // 窗口大小改变时调整子对话框位置
 	afx_msg void OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct);
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
+	afx_msg void OnMenuUdpSettings();      // UDP通信设置菜单项
+	afx_msg void OnMenuSerialSettings();   // 串口通信设置菜单项
 	afx_msg void OnNcPaint();
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	afx_msg void OnBnClickedMenuBtn1();

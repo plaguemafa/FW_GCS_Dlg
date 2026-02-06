@@ -202,8 +202,10 @@
     <ClInclude Include="Page2Dlg.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SerialSettingsDlg.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="UdpData.h" />
+    <ClInclude Include="UdpSettingsDlg.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FW_GCS_Dlg.cpp" />
@@ -217,11 +219,15 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="SerialSettingsDlg.cpp" />
+    <ClCompile Include="UdpSettingsDlg.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FWGCSDlg.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Scripts\map.html" />
+    <None Include="..\Scripts\map.js" />
     <None Include="packages.config" />
     <None Include="res\FWGCSDlg.rc2" />
   </ItemGroup>

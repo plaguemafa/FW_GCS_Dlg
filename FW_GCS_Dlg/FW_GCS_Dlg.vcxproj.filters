@@ -48,6 +48,12 @@
     <ClInclude Include="HudOverlay.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="UdpSettingsDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SerialSettingsDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FW_GCS_Dlg.cpp">
@@ -68,6 +74,12 @@
     <ClCompile Include="MbtilesReader.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="SerialSettingsDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="UdpSettingsDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FWGCSDlg.rc">
@@ -79,10 +91,10 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="packages.config" />
-    <None Include="map.html">
+    <None Include="..\Scripts\map.html">
       <Filter>资源文件</Filter>
     </None>
-    <None Include="map.js">
+    <None Include="..\Scripts\map.js">
       <Filter>资源文件</Filter>
     </None>
   </ItemGroup>

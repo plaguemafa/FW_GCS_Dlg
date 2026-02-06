@@ -59,6 +59,17 @@ let aircraftData = {
     course: null       // 航向角（度，0-359，C++端已缩放）
 };
 
+// 目标位置和航向数据（从UDP协议接收）
+// 根据 UdpData.h：
+//   targetLongitude (65) - 目标经度 (int32_t) - HUD层 地图目标标识位置驱动2
+//   targetLatitude (66) - 目标纬度 (int32_t) - HUD层 地图目标标识位置驱动2
+//   targetCourse (69) - 目标航向 (int16_t) - HUD层 地图目标标识方向驱动2
+let targetData = {
+    longitude: null,   // 经度（度，C++端已缩放）
+    latitude: null,    // 纬度（度，C++端已缩放）
+    course: null       // 航向角（度，0-359，C++端已缩放）
+};
+
 // 飞机轨迹数据（用于绘制轨迹连线）
 let aircraftTrail = [];
 const MAX_TRAIL_POINTS = 1000000;  // 最大轨迹点数
@@ -159,13 +170,13 @@ function drawAircraftSymbol(cx, cy, colors) {
     hudCtx.strokeStyle = colors.line;
     hudCtx.lineWidth = 2;
     hudCtx.beginPath();
-    hudCtx.moveTo(cx - 50, cy);
-    hudCtx.lineTo(cx - 15, cy);
+    hudCtx.moveTo(cx - 36, cy);
+    hudCtx.lineTo(cx - 13, cy);
     hudCtx.lineTo(cx - 8, cy + 8);
     hudCtx.lineTo(cx, cy + 4);
     hudCtx.lineTo(cx + 8, cy + 8);
-    hudCtx.lineTo(cx + 15, cy);
-    hudCtx.lineTo(cx + 50, cy);
+    hudCtx.lineTo(cx + 13, cy);
+    hudCtx.lineTo(cx + 36, cy);
     hudCtx.stroke();
 
     hudCtx.beginPath();
@@ -576,6 +587,19 @@ if (window.chrome && window.chrome.webview) {
             aircraftData.course = ((aircraftData.course % 360) + 360) % 360;
         }
         
+        // 更新目标位置和航向数据（地图目标标识）
+        if (receivedData.targetLongitude !== undefined) {
+            targetData.longitude = receivedData.targetLongitude;
+        }
+        if (receivedData.targetLatitude !== undefined) {
+            targetData.latitude = receivedData.targetLatitude;
+        }
+        if (receivedData.targetCourse !== undefined) {
+            targetData.course = receivedData.targetCourse;
+            // 归一化到0-359度范围
+            targetData.course = ((targetData.course % 360) + 360) % 360;
+        }
+        
         // 重新绘制 HUD
         drawHud();
         
@@ -584,9 +608,10 @@ if (window.chrome && window.chrome.webview) {
             initAircraftCanvas();
         }
         
-        // 重新绘制飞机标识
+        // 重新绘制飞机标识和目标标识
         if (aircraftCanvas && aircraftCtx) {
             drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+            drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
         }
     });
 }
@@ -649,9 +674,14 @@ function render() {
             }
         }
         
-        // 绘制飞机标识（有数据时才绘制）
-        if (aircraftCanvas && aircraftCtx && aircraftData.latitude !== null && aircraftData.longitude !== null && aircraftData.course !== null) {
-            drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+        // 绘制飞机标识和目标标识（有数据时才绘制）
+        if (aircraftCanvas && aircraftCtx) {
+            if (aircraftData.latitude !== null && aircraftData.longitude !== null && aircraftData.course !== null) {
+                drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+            }
+            if (targetData.latitude !== null && targetData.longitude !== null && targetData.course !== null) {
+                drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
+            }
         }
     } catch (err) {
         console.error('Error in render:', err);
@@ -901,6 +931,152 @@ function drawAircraftOnMap(lat, lng, course) {
     aircraftCtx.lineWidth = 2;
     aircraftCtx.shadowBlur = 0;
     aircraftCtx.shadowColor = '#ffffff';
+    aircraftCtx.lineJoin = 'round';
+    aircraftCtx.lineCap = 'round';
+    
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(-arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.lineTo(0, bottomHighlightY);
+    aircraftCtx.lineTo(arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.closePath();
+    aircraftCtx.stroke();
+    
+    aircraftCtx.restore();
+}
+
+// 绘制地图上的目标标识（3D箭头）- 深灰色主题
+// 参数：
+//   lat, lng  : 目标经纬度（度）
+//   course    : 目标航向角（度，0-359，0度为北，顺时针为正）
+function drawTargetOnMap(lat, lng, course) {
+    if (!aircraftCanvas || !aircraftCtx || !mapEl) {
+        console.warn('drawTargetOnMap: Canvas or context not initialized');
+        return;
+    }
+    
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    
+    // 注意：不清空Canvas，因为本机标识和目标标识共享同一个Canvas
+    // 清空操作在 drawAircraftOnMap 中完成
+    
+    if (lat === null || lng === null || course === null || 
+        isNaN(lat) || isNaN(lng) || isNaN(course)) {
+        return;
+    }
+    
+    const targetPoint = latLngToPoint(lat, lng, zoom);
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+    
+    const targetX = targetPoint.x - topLeft.x;
+    const targetY = targetPoint.y - topLeft.y;
+    
+    // 检查目标是否在地图可见区域内（留50像素边距）
+    if (targetX < -50 || targetX > width + 50 || targetY < -50 || targetY > height + 50) {
+        return;
+    }
+    
+    // 箭头尺寸参数（与本机标识相同）
+    const arrowLength = 28;
+    const arrowBottomWidth = 38;
+    const arrowBottomY = 24;
+    const arrowBottomIndent = 8;
+    
+    aircraftCtx.save();
+    aircraftCtx.translate(targetX, targetY);
+    const canvasAngle = -course + 90;
+    aircraftCtx.rotate(canvasAngle * Math.PI / 180);
+    
+    aircraftCtx.shadowBlur = 0;
+    aircraftCtx.shadowColor = 'transparent';
+    
+    // 深灰色主体（#555555 替代红色 #cc0000）
+    aircraftCtx.fillStyle = '#555555';
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(-arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.lineTo(0, arrowBottomY - arrowBottomIndent);
+    aircraftCtx.lineTo(arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    
+    // 中间垂直高光带（深灰色主题，使用较暗的高光）
+    const centerHighlightWidth = arrowBottomWidth * 0.3;
+    const bottomHighlightY = arrowBottomY - arrowBottomIndent;
+    const highlightStartY = -arrowLength + 8;
+    
+    const centerHighlight = aircraftCtx.createLinearGradient(-centerHighlightWidth / 2, highlightStartY, centerHighlightWidth / 2, bottomHighlightY);
+    centerHighlight.addColorStop(0, 'rgba(150, 150, 150, 0.4)');  // 深灰色高光起始
+    centerHighlight.addColorStop(0.3, 'rgba(120, 120, 120, 0.3)');
+    centerHighlight.addColorStop(0.7, 'rgba(100, 100, 100, 0.2)');
+    centerHighlight.addColorStop(1, 'rgba(80, 80, 80, 0.1)');  // 底部较暗
+    
+    aircraftCtx.fillStyle = centerHighlight;
+    aircraftCtx.beginPath();
+    const topHighlightWidth = centerHighlightWidth;
+    const bottomHighlightWidth = centerHighlightWidth * 0.2;
+    aircraftCtx.moveTo(-topHighlightWidth / 2, highlightStartY);
+    aircraftCtx.lineTo(topHighlightWidth / 2, highlightStartY);
+    aircraftCtx.lineTo(bottomHighlightWidth / 2, bottomHighlightY);
+    aircraftCtx.lineTo(-bottomHighlightWidth / 2, bottomHighlightY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    
+    // 边缘阴影效果（两侧较暗）
+    const edgeShadow = aircraftCtx.createLinearGradient(-arrowBottomWidth / 2, arrowBottomY, 0, arrowBottomY);
+    edgeShadow.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+    edgeShadow.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
+    edgeShadow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    
+    // 左侧阴影
+    aircraftCtx.fillStyle = edgeShadow;
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(-arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.lineTo(0, bottomHighlightY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    
+    // 右侧阴影（对称）
+    const edgeShadowRight = aircraftCtx.createLinearGradient(0, arrowBottomY, arrowBottomWidth / 2, arrowBottomY);
+    edgeShadowRight.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    edgeShadowRight.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
+    edgeShadowRight.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+    aircraftCtx.fillStyle = edgeShadowRight;
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(arrowBottomWidth / 2, arrowBottomY);
+    aircraftCtx.lineTo(0, bottomHighlightY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    
+    // 对称轴连线（从顶部到底部的垂直线）- 使用浅灰色
+    const axisLineWidth = 1.5;
+    const axisLineColor = '#cccccc';  // 浅灰色替代白色
+    const axisLineOpacity = 0.8;
+    
+    aircraftCtx.strokeStyle = axisLineColor;
+    aircraftCtx.globalAlpha = axisLineOpacity;
+    aircraftCtx.lineWidth = axisLineWidth;
+    aircraftCtx.shadowBlur = 0;
+    aircraftCtx.shadowColor = 'transparent';
+    aircraftCtx.lineCap = 'round';
+    
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -arrowLength);
+    aircraftCtx.lineTo(0, bottomHighlightY);
+    aircraftCtx.stroke();
+    
+    // 恢复全局透明度
+    aircraftCtx.globalAlpha = 1.0;
+    
+    // 浅灰色发光边缘（外圈）- 替代白色
+    aircraftCtx.strokeStyle = '#aaaaaa';  // 浅灰色替代白色
+    aircraftCtx.lineWidth = 2;
+    aircraftCtx.shadowBlur = 0;
+    aircraftCtx.shadowColor = '#aaaaaa';
     aircraftCtx.lineJoin = 'round';
     aircraftCtx.lineCap = 'round';
     

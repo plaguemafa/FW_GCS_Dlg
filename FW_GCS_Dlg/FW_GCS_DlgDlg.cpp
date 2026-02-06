@@ -14,6 +14,7 @@
 #include "Page1Dlg.h"
 #include "Page2Dlg.h"
 #include <objbase.h>
+#include <atlbase.h>  // 用于CRegKey注册表操作
 #include <string>
 #include <vector>
 #include <cstdarg>
@@ -104,6 +105,12 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_bUdpRemoteResponded = FALSE; 				// 初始化远程响应标志为未响应
 	m_dwLastUdpUiUpdate = 0;                   // 上次UI更新时间（限频用）
 	memset(&m_udpRemoteAddr, 0, sizeof(m_udpRemoteAddr)); // 清空远程地址结构
+	
+	// UDP配置初始化（使用宏定义的默认值）
+	m_strUdpLocalIP = CString(UDP_LOCAL_IP);   // 本机IP默认值
+	m_nUdpLocalPort = UDP_LOCAL_PORT;          // 本机端口默认值
+	m_strUdpRemoteIP = CString(UDP_REMOTE_IP); // 远程IP默认值
+	m_nUdpRemotePort = UDP_REMOTE_PORT;        // 远程端口默认值
 	
 	// 串口初始化
 	m_hSerialPort = INVALID_HANDLE_VALUE;       // 串口句柄初始化为无效值
@@ -228,6 +235,8 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_BN_CLICKED(IDC_SerialLink, &CFWGCSDlgDlg::OnBnClickedSeriallink)
 	ON_BN_CLICKED(IDC_BTN_PAGE1, &CFWGCSDlgDlg::OnBnClickedPage1)
 	ON_BN_CLICKED(IDC_BTN_PAGE2, &CFWGCSDlgDlg::OnBnClickedPage2)
+	ON_COMMAND(ID_MENU_UDP_SETTINGS, &CFWGCSDlgDlg::OnMenuUdpSettings)
+	ON_COMMAND(ID_MENU_SERIAL_SETTINGS, &CFWGCSDlgDlg::OnMenuSerialSettings)
 	ON_WM_SIZE()
 	ON_WM_MEASUREITEM()
 	ON_WM_DRAWITEM()
@@ -347,11 +356,12 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 		
 
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("航点设置"));
-			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位"));
-			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位符"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位符"));
 			
-			menu5.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("UDP通信设置"));
-
+			menu5.AppendMenu(MF_STRING, ID_MENU_UDP_SETTINGS, _T("UDP通信设置"));
+			menu5.AppendMenu(MF_STRING, ID_MENU_SERIAL_SETTINGS, _T("串口通信设置"));
+			
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu1.Detach()), _T("控制模式"));
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu2.Detach()), _T("任务指令"));
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu3.Detach()), _T("自检指令"));
@@ -426,6 +436,9 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 		::SetWindowPos(m_hWnd, nullptr, 0, 0, 0, 0,
 			SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
 	}
+
+	// 加载UDP配置（从注册表读取，如果没有则使用宏默认值）
+	LoadUdpConfig();
 
 	// 设置启动默认大小
 	{
@@ -809,7 +822,7 @@ void CFWGCSDlgDlg::OnBnClickedUdplink()
 		{
 			CString strMsg;
 			strMsg.Format(_T("UDP连接成功！\n\n本地端口: %d\n远程地址: %s:%d"), 
-				UDP_LOCAL_PORT, _T(UDP_REMOTE_IP), UDP_REMOTE_PORT);
+				m_nUdpLocalPort, m_strUdpRemoteIP, m_nUdpRemotePort);
 			MessageBox(strMsg, _T("UDP回报窗口"), MB_OK | MB_ICONINFORMATION);
 			
 			// 连接成功后启用功能按钮
@@ -823,7 +836,7 @@ void CFWGCSDlgDlg::OnBnClickedUdplink()
 			int nError = WSAGetLastError(); // 获取错误代码
 			CString strError; // 错误字符串
 			strError.Format(_T("UDP连接失败！\n\n远程地址: %s:%d\n错误代码: %d\n\n可能的原因：\n1. 远程设备(%s)不存在或无法访问\n2. 远程设备未运行或未监听端口%d\n3. 本地端口%d是否被占用\n4. 网络连接问题\n5. 防火墙阻止了连接\n\n请检查网络连接和远程设备状态，查看调试输出获取详细信息"), 
-				_T(UDP_REMOTE_IP), UDP_REMOTE_PORT, nError, _T(UDP_REMOTE_IP), UDP_REMOTE_PORT, UDP_LOCAL_PORT); // 格式化错误字符串
+				m_strUdpRemoteIP, m_nUdpRemotePort, nError, m_strUdpRemoteIP, m_nUdpRemotePort, m_nUdpLocalPort); // 格式化错误字符串
 			MessageBox(strError, _T("错误"), MB_OK | MB_ICONERROR); // 显示错误消息
 		}
 	}
@@ -904,19 +917,32 @@ BOOL CFWGCSDlgDlg::InitUdpSocket()
 	sockaddr_in localAddr;
 	memset(&localAddr, 0, sizeof(localAddr));
 	localAddr.sin_family = AF_INET;
-	localAddr.sin_addr.s_addr = INADDR_ANY;
-	localAddr.sin_port = htons(UDP_LOCAL_PORT);
+	// 根据本机IP选择绑定网口：0.0.0.0 表示监听所有网口
+	if (m_strUdpLocalIP.CompareNoCase(_T("0.0.0.0")) == 0 || m_strUdpLocalIP.IsEmpty())
+	{
+		localAddr.sin_addr.s_addr = INADDR_ANY;
+	}
+	else
+	{
+		CT2A localIpA(m_strUdpLocalIP, CP_ACP);
+		if (inet_pton(AF_INET, localIpA, &localAddr.sin_addr) != 1)
+		{
+			TRACE(_T("UDP端口绑定失败: 本机IP地址转换失败 (%s)\n"), m_strUdpLocalIP);
+			return FALSE;
+		}
+	}
+	localAddr.sin_port = htons(m_nUdpLocalPort);  // 使用配置的本地端口
 	
 	if (bind(m_udpSocket, (sockaddr*)&localAddr, sizeof(localAddr)) == SOCKET_ERROR)
 	{
 		int nError = WSAGetLastError();
-		TRACE(_T("UDP端口绑定失败 (端口%d)，错误代码: %d\n"), UDP_LOCAL_PORT, nError);
+		TRACE(_T("UDP端口绑定失败 (端口%d)，错误代码: %d\n"), m_nUdpLocalPort, nError);
 		// 如果端口被占用，尝试不绑定（UDP可以发送但不一定能接收）
 		// 这里不返回错误，继续执行，但接收可能失败
 	}
 	else
 	{
-		TRACE(_T("UDP Socket初始化成功，本地端口: %d\n"), UDP_LOCAL_PORT);
+		TRACE(_T("UDP Socket初始化成功，本地端口: %d\n"), m_nUdpLocalPort);
 	}
 
 	return TRUE;
@@ -940,16 +966,19 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 		}
 	}
 
-	// 设置远程地址
+	// 设置远程地址（使用配置的远程IP和端口）
 	memset(&m_udpRemoteAddr, 0, sizeof(m_udpRemoteAddr));
 	m_udpRemoteAddr.sin_family = AF_INET;
-	m_udpRemoteAddr.sin_port = htons(UDP_REMOTE_PORT);
+	m_udpRemoteAddr.sin_port = htons(m_nUdpRemotePort);
+	
+	// 将CString转换为ANSI字符串
+	CT2A remoteIpA(m_strUdpRemoteIP, CP_ACP);
 	
 	// 使用 inet_pton() 替代已弃用的 inet_addr()
-	if (inet_pton(AF_INET, UDP_REMOTE_IP, &m_udpRemoteAddr.sin_addr) != 1)
+	if (inet_pton(AF_INET, remoteIpA, &m_udpRemoteAddr.sin_addr) != 1)
 	{
 		// IP地址转换失败
-		TRACE(_T("UDP连接失败: IP地址转换失败 (%s)\n"), UDP_REMOTE_IP);
+		TRACE(_T("UDP连接失败: IP地址转换失败 (%s)\n"), m_strUdpRemoteIP);
 		return FALSE;
 	}
 
@@ -1391,6 +1420,10 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
     const uint8_t gpsHour = pPacket->gpsHour;
     const uint8_t gpsMinute = pPacket->gpsMinute;
     const uint8_t gpsSecond = pPacket->gpsSecond;
+    //地图目标机标识部分
+    const float targetLongitude = pPacket->targetLongitude / 1000000.0f;
+    const float targetLatitude = pPacket->targetLatitude / 1000000.0f;
+    const float targetCourse = pPacket->targetCourse / 10.0f;
     
     
     // 调试输出：显示经纬度原始值和转换后的值（用于诊断）
@@ -1402,9 +1435,10 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 
  // 将数据添加到JSON格式字符串中
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"alarmStatus_B0":%u,"alarmStatus_B1":%u,"alarmStatus_B2":%u,"alarmStatus_B3":%u,"alarmStatus_B4":%u,"alarmStatus_B5":%u})",
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_B0":%u,"alarmStatus_B1":%u,"alarmStatus_B2":%u,"alarmStatus_B3":%u,"alarmStatus_B4":%u,"alarmStatus_B5":%u})",
 		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse, 
 		gpsGroundSpeed, gpsVerticalSpeed, gpsHour, gpsMinute, gpsSecond,
+		targetLongitude, targetLatitude, targetCourse,
 		pPacket->alarmStatus_B0, pPacket->alarmStatus_B1, pPacket->alarmStatus_B2,
 		pPacket->alarmStatus_B3, pPacket->alarmStatus_B4, pPacket->alarmStatus_B5);
 
@@ -3495,4 +3529,101 @@ CString CFWGCSDlgDlg::GetDefaultMbtilesPath() const
 
 	// 如果都不存在，返回 OUTPUT_FILE.mbtiles 作为默认（用户需要创建）
 	return exeDir + _T("\\maps\\OUTPUT_FILE.mbtiles");
+}
+
+// UDP通信设置菜单项处理函数
+void CFWGCSDlgDlg::OnMenuUdpSettings()
+{
+	CUdpSettingsDlg dlg(this);
+	
+	// 设置当前UDP配置值（从当前配置读取，而不是宏定义）
+	dlg.SetLocalIP(m_strUdpLocalIP);
+	dlg.SetLocalPort(m_nUdpLocalPort);
+	dlg.SetRemoteIP(m_strUdpRemoteIP);
+	dlg.SetRemotePort(m_nUdpRemotePort);
+	
+	// 显示对话框
+	if (dlg.DoModal() == IDOK)
+	{
+		// 用户点击了确定按钮，获取设置值
+		CString strLocalIP = dlg.GetLocalIP();
+		int nLocalPort = dlg.GetLocalPort();
+		CString strRemoteIP = dlg.GetRemoteIP();
+		int nRemotePort = dlg.GetRemotePort();
+		
+		// 检查是否有变化
+		BOOL bChanged = (strLocalIP != m_strUdpLocalIP) || 
+		                (nLocalPort != m_nUdpLocalPort) ||
+		                (strRemoteIP != m_strUdpRemoteIP) ||
+		                (nRemotePort != m_nUdpRemotePort);
+		
+		if (bChanged)
+		{
+			// 更新配置
+			m_strUdpLocalIP = strLocalIP;
+			m_nUdpLocalPort = nLocalPort;
+			m_strUdpRemoteIP = strRemoteIP;
+			m_nUdpRemotePort = nRemotePort;
+			
+			// 如果UDP已连接，提示用户需要重新连接以应用新设置
+			if (m_bUdpConnected)
+			{
+				CString strMsg;
+				strMsg.Format(_T("UDP设置已更新：\n\n本机IP: %s\n本机端口: %d\n远程IP: %s\n远程端口: %d\n\n注意：当前UDP已连接，新设置将在下次连接时生效。\n是否立即断开并重新连接？"), 
+					strLocalIP, nLocalPort, strRemoteIP, nRemotePort);
+				
+				if (MessageBox(strMsg, _T("UDP设置"), MB_YESNO | MB_ICONQUESTION) == IDYES)
+				{
+					// 断开当前连接
+					DisconnectUdp();
+					// 重新连接
+					if (ConnectUdp())
+					{
+						MessageBox(_T("UDP已重新连接，新设置已生效！"), _T("UDP设置"), MB_OK | MB_ICONINFORMATION);
+					}
+					else
+					{
+						MessageBox(_T("UDP重新连接失败，请检查设置后手动连接。"), _T("UDP设置"), MB_OK | MB_ICONWARNING);
+					}
+				}
+			}
+			else
+			{
+				CString strMsg;
+				strMsg.Format(_T("UDP设置已更新（本次运行有效）：\n\n本机IP: %s\n本机端口: %d\n远程IP: %s\n远程端口: %d\n\n设置将在下次连接时生效。"), 
+					strLocalIP, nLocalPort, strRemoteIP, nRemotePort);
+				MessageBox(strMsg, _T("UDP设置"), MB_OK | MB_ICONINFORMATION);
+			}
+		}
+		else
+		{
+			// 没有变化，不需要保存
+			MessageBox(_T("UDP设置未更改。"), _T("UDP设置"), MB_OK | MB_ICONINFORMATION);
+		}
+	}
+}
+
+// 串口通信设置菜单项处理函数
+void CFWGCSDlgDlg::OnMenuSerialSettings()
+{
+	CSerialSettingsDlg dlg(this);
+	dlg.DoModal();  // 占位对话框会自动显示提示信息
+}
+
+// 从注册表加载UDP配置（如果没有则使用宏默认值）
+void CFWGCSDlgDlg::LoadUdpConfig()
+{
+	// 忽略注册表，每次启动都使用宏默认值
+	m_strUdpLocalIP = CString(UDP_LOCAL_IP);
+	m_nUdpLocalPort = UDP_LOCAL_PORT;
+	m_strUdpRemoteIP = CString(UDP_REMOTE_IP);
+	m_nUdpRemotePort = UDP_REMOTE_PORT;
+	TRACE(_T("LoadUdpConfig: 忽略注册表，使用宏默认值\n"));
+}
+
+// 保存UDP配置到注册表
+void CFWGCSDlgDlg::SaveUdpConfig()
+{
+	// 忽略注册表，不保存配置
+	TRACE(_T("SaveUdpConfig: 忽略注册表，不保存配置\n"));
 }

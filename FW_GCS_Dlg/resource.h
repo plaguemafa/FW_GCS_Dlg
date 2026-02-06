@@ -1,12 +1,14 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ Éú³ÉµÄ°üº¬ÎÄ¼þ¡£
-// ¹© FWGCSDlg.rc Ê¹ÓÃ
+// Microsoft Visual C++ ?????????????
+// ?? FWGCSDlg.rc ???
 //
 #define IDD_FW_GCS_DLG_DIALOG           102
 #define IDR_MAINFRAME                   128
 #define IDD_PAGE1_DIALOG                130
 #define IDD_DIALOG2                     133
 #define IDD_PAGE2_DIALOG                136
+#define IDD_UDP_SETTINGS_DIALOG         138
+#define IDD_SERIAL_SETTINGS_DIALOG      139
 #define IDC_UDPlink                     1000
 #define IDC_SerialLink                  1001
 #define IDC_Display                     1017
@@ -93,6 +95,7 @@
 #define IDC_Display72                   1092
 #define IDC_Display73                   1093
 #define IDC_Display_EditData1           1094
+#define IDC_Display76                   1094
 #define IDC_Display_EditData2           1095
 #define IDC_Display_EditData3           1096
 #define IDC_Display_EditData4           1097
@@ -156,15 +159,25 @@
 #define IDC_RADIO_Flag20                1153
 #define IDC_RADIO_Flag21                1154
 #define IDC_COMBO1                      1155
+#define IDC_EDIT_LOCAL_IP               1156
+#define IDC_EDIT_LOCAL_PORT             1157
+#define IDC_EDIT_REMOTE_IP              1158
+#define IDC_EDIT_REMOTE_PORT            1159
+#define IDC_IPADDRESS1                  1160
+#define IDC_IPADDRESS2                  1161
+#define IDC_DisplayPort1                1162
+#define IDC_DisplayPort2                1163
 #define ID_MENU_OP_PLACEHOLDER          32771
+#define ID_MENU_UDP_SETTINGS            32772
+#define ID_MENU_SERIAL_SETTINGS         32773
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        138
-#define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1156
+#define _APS_NEXT_RESOURCE_VALUE        142
+#define _APS_NEXT_COMMAND_VALUE         32774
+#define _APS_NEXT_CONTROL_VALUE         1164
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
