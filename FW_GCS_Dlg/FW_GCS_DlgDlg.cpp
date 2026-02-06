@@ -1425,8 +1425,9 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
     const float targetLatitude = pPacket->targetLatitude / 1000000.0f;
     const float targetCourse = pPacket->targetCourse / 10.0f;
     
-    // HUD组2数据 - 第一批：添加第一行数据 (1-1, 2-1, 2-2)
+    // HUD组2数据 - 第一批：添加第一行数据 (1-1, 1-2, 2-1, 2-2)
     const uint8_t throttle = pPacket->throttle;                    // (1-1) 油门控制
+    const uint8_t batteryVoltage = pPacket->batteryVoltage;       // (1-2) 电池电压
     const uint8_t fuelRemaining = pPacket->fuelRemaining;          // (2-1) 剩余油量
     const float engineTemp = pPacket->engineTemp / 10.0f;          // (2-2) 发动机缸温
     // HUD组2数据 - 第二批：添加第二行数据 (3-1, 3-2, 4-1, 4-2)
@@ -1466,13 +1467,13 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 
  // 将数据添加到JSON格式字符串中
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_B0":%u,"alarmStatus_B1":%u,"alarmStatus_B2":%u,"alarmStatus_B3":%u,"alarmStatus_B4":%u,"alarmStatus_B5":%u,"throttle":%u,"fuelRemaining":%u,"engineTemp":%.1f,"satelitesNum":%u,"gpsStatus":%u,"navStatus":%u,"targetWaypoint":%u,"distanceToGo":%.1f,"crossTrackError":%.1f,"commandHeading":%u,"courseDeviation":%.1f,"commandSpeed":%.1f,"commandAltitude":%.1f,"commandTime":%u,"payloadType":%u,"ammoRemaining":%u,"selfTestResult":%u,"switchStatus_B1":%u,"switchStatus_B4":%u,"switchStatus_B2":%u,"switchStatus_B3":%u,"switchStatus_B0":%u,"switchStatus_B6":%u,"switchStatus_B5":%u,"switchStatus_B7":%u})",
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_B0":%u,"alarmStatus_B1":%u,"alarmStatus_B2":%u,"alarmStatus_B3":%u,"alarmStatus_B4":%u,"alarmStatus_B5":%u,"throttle":%u,"batteryVoltage":%u,"fuelRemaining":%u,"engineTemp":%.1f,"satelitesNum":%u,"gpsStatus":%u,"navStatus":%u,"targetWaypoint":%u,"distanceToGo":%.1f,"crossTrackError":%.1f,"commandHeading":%u,"courseDeviation":%.1f,"commandSpeed":%.1f,"commandAltitude":%.1f,"commandTime":%u,"payloadType":%u,"ammoRemaining":%u,"selfTestResult":%u,"switchStatus_B1":%u,"switchStatus_B4":%u,"switchStatus_B2":%u,"switchStatus_B3":%u,"switchStatus_B0":%u,"switchStatus_B6":%u,"switchStatus_B5":%u,"switchStatus_B7":%u})",
 		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse, 
 		gpsGroundSpeed, gpsVerticalSpeed, gpsHour, gpsMinute, gpsSecond,
 		targetLongitude, targetLatitude, targetCourse,
 		pPacket->alarmStatus_B0, pPacket->alarmStatus_B1, pPacket->alarmStatus_B2,
 		pPacket->alarmStatus_B3, pPacket->alarmStatus_B4, pPacket->alarmStatus_B5,
-		throttle, fuelRemaining, engineTemp, satelitesNum, gpsStatus, navStatus, targetWaypoint,
+		throttle, batteryVoltage, fuelRemaining, engineTemp, satelitesNum, gpsStatus, navStatus, targetWaypoint,
 		distanceToGo, crossTrackError, commandHeading, courseDeviation,
 		commandSpeed, commandAltitude, commandTime, payloadType, ammoRemaining, selfTestResult,
 		switchStatus_B1, switchStatus_B4, switchStatus_B2, switchStatus_B3, switchStatus_B0,

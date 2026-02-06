@@ -60,6 +60,40 @@ let hudBottomInfoData = {
     gpsSecond: 0
 };
 
+// HUD组2数据（根据 UdpData.h 中的协议定义,排序见UdpData.h协议注释，此不重复）
+let hudGroup2Data = {
+    throttle: 0,              // (1-1) 油门控制
+    batteryVoltage: 0,        // (1-2) 电池电压
+    fuelRemaining: 0,         // (2-1) 剩余油量
+    engineTemp: 0,            // (2-2) 发动机缸温
+    satelitesNum: 0,          //  卫星收星数
+    gpsStatus: 0,             //  卫星定位状态
+    navStatus: 0,             //  导航状态
+    targetWaypoint: 0,        //  目标航点
+    distanceToGo: 0,          //  待飞距
+    crossTrackError: 0,       //  偏航距
+    commandHeading: 0,        //  应飞航向
+    courseDeviation: 0,       //  偏航角
+    commandSpeed: 0,          //  应飞速度
+    commandAltitude: 0,       //  应飞高度
+    commandTime: 0,           //  应飞时间
+    payloadType: 0,           //  载荷类型
+    ammoRemaining: 0,         //  剩余弹量
+    selfTestResult: 0         //  自检结果
+};
+
+// HUD组3数据（根据 UdpData.h 中的协议定义，排序见UdpData.h协议注释，此不重复）
+let hudGroup3Data = {
+    switchStatus_B1: 0,       //  发动机启动状态
+    switchStatus_B4: 0,       //  关车状态
+    switchStatus_B2: 0,       //  盘旋状态
+    switchStatus_B3: 0,       //  归航状态
+    switchStatus_B0: 0,       //  发动机并网状态
+    switchStatus_B6: 0,       //  开伞状态
+    switchStatus_B5: 0,       //  起落架收放状态
+    switchStatus_B7: 0        //  夜航灯开关状态
+};
+
 // 飞机位置和航向数据（从UDP协议接收）
 let aircraftData = {
     longitude: null,   // 经度（度，C++端已缩放）
@@ -571,6 +605,7 @@ function resizeHudGroup3Canvas() {
 }
 
 // 第五步：绘制HUD组2（只绘制背景和边框，不绘制复杂内容）
+// 第六步：添加网格布局和标签
 function drawHudGroup2() {
     if (!hudGroup2Canvas || !hudGroup2Ctx) {
         initHudGroup2Canvas();
@@ -591,9 +626,112 @@ function drawHudGroup2() {
     hudGroup2Ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
     hudGroup2Ctx.lineWidth = 1;
     hudGroup2Ctx.strokeRect(0, 0, w, h);
+    
+    // 第六步：网格布局：9行2列（根据UdpData.h协议）
+    const rows = 9;
+    const cols = 2;
+    const cellWidth = (w - 20) / cols;  // 留出左右边距
+    const cellHeight = (h - 20) / rows; // 留出上下边距
+    const startX = 10;
+    const startY = 10;
+    
+    // HUD组2数据标签和数据字段映射（根据UdpData.h协议注释）- 使用Unicode转义序列
+    // 格式：9行2列的二维数组，[行][列] = [标签, 数据字段]
+    // 协议格式(n-m)表示第n行第m列
+    const dataFields = [
+        // 第1行
+        [
+            ['\u6cb9\u95e8', 'throttle'],        // (1-1) 油门控制
+            ['\u7535\u6c60\u7535\u538b', 'batteryVoltage']  // (1-2) 电池电压
+        ],
+        // 第2行
+        [
+            ['\u6cb9\u91cf', 'fuelRemaining'],  // (2-1) 剩余油量
+            ['\u53d1\u52a8\u673a\u7f38\u6e29', 'engineTemp']  // (2-2) 发动机缸温
+        ],
+        // 第3行
+        [
+            ['\u536b\u661f\u6570\u76ee', 'satelitesNum'],  // (3-1) 卫星收星数
+            ['\u5b9a\u4f4d\u7cbe\u5ea6', 'gpsStatus']       // (3-2) 卫星定位状态
+        ],
+        // 第4行
+        [
+            ['\u5bfc\u822a\u72b6\u6001', 'navStatus'],      // (4-1) 导航状态
+            ['\u76ee\u6807\u822a\u70b9', 'targetWaypoint']  // (4-2) 目标航点
+        ],
+        // 第5行
+        [
+            ['\u5f85\u98de\u8ddd', 'distanceToGo'],         // (5-1) 待飞距
+            ['\u504f\u822a\u8ddd', 'crossTrackError']       // (5-2) 偏航距
+        ],
+        // 第6行
+        [
+            ['\u5e94\u98de\u822a\u5411', 'commandHeading'], // (6-1) 应飞航向
+            ['\u504f\u822a\u89d2', 'courseDeviation']       // (6-2) 偏航角
+        ],
+        // 第7行
+        [
+            ['\u5e94\u98de\u901f\u5ea6', 'commandSpeed'],   // (7-1) 应飞速度
+            ['\u5e94\u98de\u9ad8\u5ea6', 'commandAltitude'] // (7-2) 应飞高度
+        ],
+        // 第8行
+        [
+            ['\u5e94\u98de\u65f6\u95f4', 'commandTime'],    // (8-1) 应飞时间
+            ['\u8f7d\u8377\u7c7b\u578b', 'payloadType']      // (8-2) 载荷类型
+        ],
+        // 第9行
+        [
+            ['\u5269\u4f59\u5f39\u91cf', 'ammoRemaining'],  // (9-1) 剩余弹量
+            ['\u81ea\u68c0\u7ed3\u679c', 'selfTestResult']  // (9-2) 自检结果
+        ]
+    ];
+    //HUD组2的字体大小配置
+    hudGroup2Ctx.font = '14px Consolas, monospace';
+    hudGroup2Ctx.textAlign = 'left';
+    hudGroup2Ctx.textBaseline = 'middle';
+    
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const [label, field] = dataFields[row][col];
+            
+            // 如果该位置有数据，则绘制
+            if (label && field) {
+                const x = startX + col * cellWidth;
+                const y = startY + row * cellHeight;
+                
+                // 标签背景（浅灰色）
+                hudGroup2Ctx.fillStyle = 'rgba(150, 150, 150, 0.6)';
+                hudGroup2Ctx.fillRect(x, y, cellWidth * 0.4, cellHeight);
+                
+                // 标签文字
+                hudGroup2Ctx.fillStyle = '#000000';
+                hudGroup2Ctx.fillText(label, x + 5, y + cellHeight / 2);
+                
+                // 数据显示框（绿色矩形条）
+                const dataBoxX = x + cellWidth * 0.4 + 2;
+                const dataBoxWidth = cellWidth * 0.6 - 2;
+                hudGroup2Ctx.fillStyle = '#00ff00';  // 绿色
+                hudGroup2Ctx.fillRect(dataBoxX, y + 2, dataBoxWidth, cellHeight - 4);
+                
+                // 数据显示框边框
+                hudGroup2Ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                hudGroup2Ctx.lineWidth = 1;
+                hudGroup2Ctx.strokeRect(dataBoxX, y + 2, dataBoxWidth, cellHeight - 4);
+                
+                // 数据值（从hudGroup2Data读取）
+                const value = hudGroup2Data[field] !== undefined ? hudGroup2Data[field] : null;
+                hudGroup2Ctx.fillStyle = '#000000';
+                hudGroup2Ctx.textAlign = 'center';
+                const displayText = value !== null ? String(value) : '---';
+                hudGroup2Ctx.fillText(displayText, dataBoxX + dataBoxWidth / 2, y + cellHeight / 2);
+                hudGroup2Ctx.textAlign = 'left';
+            }
+        }
+    }
 }
 
 // 第五步：绘制HUD组3（只绘制背景和边框，不绘制复杂内容）
+// 第六步：添加网格布局和标签
 function drawHudGroup3() {
     if (!hudGroup3Canvas || !hudGroup3Ctx) {
         initHudGroup3Canvas();
@@ -614,6 +752,71 @@ function drawHudGroup3() {
     hudGroup3Ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
     hudGroup3Ctx.lineWidth = 1;
     hudGroup3Ctx.strokeRect(0, 0, w, h);
+    
+    // 第六步：网格布局：4行2列（根据UdpData.h协议，HUD组3只有8个字段）
+    const rows = 4;
+    const cols = 2;
+    const cellWidth = (w - 20) / cols;
+    const cellHeight = (h - 20) / rows;
+    const startX = 10;
+    const startY = 10;
+    
+    // HUD组3按钮标签和数据字段映射（根据UdpData.h协议注释）- 使用Unicode转义序列
+    // 格式：4行2列的二维数组，[行][列] = [标签, 数据字段]
+    // 协议格式(n-m)表示第n行第m列
+    const dataFields = [
+        // 第1行
+        [
+            ['\u53d1\u52a8\u673a\u542f\u52a8', 'switchStatus_B1'],  // (1-1) 发动机启动状态
+            ['\u5173\u8f66', 'switchStatus_B4']                     // (1-2) 关车状态
+        ],
+        // 第2行
+        [
+            ['\u76f8\u65cb', 'switchStatus_B2'],                    // (2-1) 盘旋状态
+            ['\u5f52\u822a', 'switchStatus_B3']                     // (2-2) 归航状态
+        ],
+        // 第3行
+        [
+            ['\u53d1\u52a8\u673a\u5e76\u7f51', 'switchStatus_B0'],  // (3-1) 发动机并网状态
+            ['\u5f00\u4f1e', 'switchStatus_B6']                     // (3-2) 开伞状态
+        ],
+        // 第4行
+        [
+            ['\u8d77\u843d\u67b6', 'switchStatus_B5'],              // (4-1) 起落架收放状态
+            ['\u591c\u822a\u706f', 'switchStatus_B7']               // (4-2) 夜航灯开关状态
+        ]
+    ];
+    //HUD组3的字体大小配置
+    hudGroup3Ctx.font = '14px Consolas, monospace';
+    hudGroup3Ctx.textAlign = 'center';
+    hudGroup3Ctx.textBaseline = 'middle';
+    
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const [label, field] = dataFields[row][col];
+            
+            // 如果该位置有数据，则绘制
+            if (label && field) {
+                const x = startX + col * cellWidth;
+                const y = startY + row * cellHeight;
+                const value = hudGroup3Data[field] !== undefined ? hudGroup3Data[field] : 0;
+                const isActive = value === 1;
+                
+                // 按钮背景（激活时亮色，未激活时浅灰色）
+                hudGroup3Ctx.fillStyle = isActive ? 'rgba(100, 200, 100, 0.8)' : 'rgba(150, 150, 150, 0.6)';
+                hudGroup3Ctx.fillRect(x + 2, y + 2, cellWidth - 4, cellHeight - 4);
+                
+                // 按钮边框
+                hudGroup3Ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                hudGroup3Ctx.lineWidth = 1;
+                hudGroup3Ctx.strokeRect(x + 2, y + 2, cellWidth - 4, cellHeight - 4);
+                
+                // 按钮文字
+                hudGroup3Ctx.fillStyle = '#000000';
+                hudGroup3Ctx.fillText(label, x + cellWidth / 2, y + cellHeight / 2);
+            }
+        }
+    }
 }
 
 // 初始化 HUD 尺寸并绘制一次（窗口尺寸变化时也重绘）
@@ -647,6 +850,36 @@ if (window.chrome && window.chrome.webview) {
         if (receivedData.gpsSecond !== undefined) {
             hudBottomInfoData.gpsSecond = receivedData.gpsSecond;
         }
+
+        // 更新HUD组2数据（根据UdpData.h协议）
+        if (receivedData.throttle !== undefined) hudGroup2Data.throttle = receivedData.throttle;
+        if (receivedData.batteryVoltage !== undefined) hudGroup2Data.batteryVoltage = receivedData.batteryVoltage;
+        if (receivedData.fuelRemaining !== undefined) hudGroup2Data.fuelRemaining = receivedData.fuelRemaining;
+        if (receivedData.engineTemp !== undefined) hudGroup2Data.engineTemp = receivedData.engineTemp;
+        if (receivedData.satelitesNum !== undefined) hudGroup2Data.satelitesNum = receivedData.satelitesNum;
+        if (receivedData.gpsStatus !== undefined) hudGroup2Data.gpsStatus = receivedData.gpsStatus;
+        if (receivedData.navStatus !== undefined) hudGroup2Data.navStatus = receivedData.navStatus;
+        if (receivedData.targetWaypoint !== undefined) hudGroup2Data.targetWaypoint = receivedData.targetWaypoint;
+        if (receivedData.distanceToGo !== undefined) hudGroup2Data.distanceToGo = receivedData.distanceToGo;
+        if (receivedData.crossTrackError !== undefined) hudGroup2Data.crossTrackError = receivedData.crossTrackError;
+        if (receivedData.commandHeading !== undefined) hudGroup2Data.commandHeading = receivedData.commandHeading;
+        if (receivedData.courseDeviation !== undefined) hudGroup2Data.courseDeviation = receivedData.courseDeviation;
+        if (receivedData.commandSpeed !== undefined) hudGroup2Data.commandSpeed = receivedData.commandSpeed;
+        if (receivedData.commandAltitude !== undefined) hudGroup2Data.commandAltitude = receivedData.commandAltitude;
+        if (receivedData.commandTime !== undefined) hudGroup2Data.commandTime = receivedData.commandTime;
+        if (receivedData.payloadType !== undefined) hudGroup2Data.payloadType = receivedData.payloadType;
+        if (receivedData.ammoRemaining !== undefined) hudGroup2Data.ammoRemaining = receivedData.ammoRemaining;
+        if (receivedData.selfTestResult !== undefined) hudGroup2Data.selfTestResult = receivedData.selfTestResult;
+
+        // 更新HUD组3数据（根据UdpData.h协议）
+        if (receivedData.switchStatus_B1 !== undefined) hudGroup3Data.switchStatus_B1 = receivedData.switchStatus_B1;
+        if (receivedData.switchStatus_B4 !== undefined) hudGroup3Data.switchStatus_B4 = receivedData.switchStatus_B4;
+        if (receivedData.switchStatus_B2 !== undefined) hudGroup3Data.switchStatus_B2 = receivedData.switchStatus_B2;
+        if (receivedData.switchStatus_B3 !== undefined) hudGroup3Data.switchStatus_B3 = receivedData.switchStatus_B3;
+        if (receivedData.switchStatus_B0 !== undefined) hudGroup3Data.switchStatus_B0 = receivedData.switchStatus_B0;
+        if (receivedData.switchStatus_B6 !== undefined) hudGroup3Data.switchStatus_B6 = receivedData.switchStatus_B6;
+        if (receivedData.switchStatus_B5 !== undefined) hudGroup3Data.switchStatus_B5 = receivedData.switchStatus_B5;
+        if (receivedData.switchStatus_B7 !== undefined) hudGroup3Data.switchStatus_B7 = receivedData.switchStatus_B7;
 
         // 处理报警数据（顶层图层中央横幅报警）
         const alarmFields = [

@@ -38,7 +38,7 @@ BOOL CSerialSettingsDlg::OnInitDialog()
 	CDialogEx::OnInitDialog();
 
 	// 占位对话框，显示提示信息
-	MessageBox(_T("串口通信设置功能尚未实现，敬请期待！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+	MessageBox(_T("串口通信设置功能尚未实现！"), _T("提示"), MB_OK | MB_ICONINFORMATION);
 	
 	return TRUE;
 }

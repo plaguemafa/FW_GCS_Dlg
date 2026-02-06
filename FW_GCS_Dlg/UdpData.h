@@ -62,7 +62,7 @@ typedef struct {
     uint8_t  gpsHour;              // GPS时 (46)              HUD层 主界面底部信息栏 1-3.1
     uint8_t  gpsMinute;            // GPS分 (47)              HUD层 主界面底部信息栏 1-3.2
     uint8_t  gpsSecond;            // GPS秒 (48)              HUD层 主界面底部信息栏 1-3.3
-    uint8_t  routeNumber;          // 当前航线号 (49)
+    uint8_t  routeNumber;          // 当前航线号 (49)          
     uint8_t  targetWaypoint;       // 目标航点 (50)            HUD组2 协议(4-2)
     int16_t  crossTrackError;      // 偏航距 (51)              HUD组2 协议(5-2)
     int16_t  courseDeviation;      // 偏航角 (52)              HUD组2 协议(6-2)
@@ -82,7 +82,7 @@ typedef struct {
     uint8_t  PAC1931_result1;        // 电压自检结果         视窗组9-5 IDC_Display71 扩展协议 pag1
     uint8_t  can_to_pw_result;       // PWM自检结果          视窗组9-6 IDC_Display72 扩展协议 pag1
     uint8_t  SBUS_result;            // SBUS自检结果         视窗组9-7 IDC_Display73 扩展协议 pag1
-    uint8_t  batteryVoltage;       // 电池电压 (61)
+    uint8_t  batteryVoltage;       // 电池电压 (61)            HUD组2 协议(1-2)
     //uint8_t  workflowStatus;     // 工作流程 (62) 已拆解
     uint8_t     workflowStatus_B0;   // 工作流程标志           视窗组8-4 0时激活IDC_RADIO_Flag4 1时激活IDC_RADIO_Flag4 扩展协议
     uint8_t     workflowStatus_B1;   // 发射状态标志           视窗组8-4 IDC_RADIO_Flag6 扩展协议
@@ -93,10 +93,10 @@ typedef struct {
     uint8_t     alarmStatus_B3;      // 转速异常报警标志          顶层图层中央横幅报警4
     uint8_t     alarmStatus_B4;      // 空速异常报警标志          顶层图层中央横幅报警5
     uint8_t     alarmStatus_B5;      // GPS定位精度低报警标志     顶层图层中央横幅报警6
-    // uint8_t  switchStatus;        // 开关量状态 (64) 已拆解
+    // uint8_t  switchStatus;        // 开关量状态 (64) 已拆解B0-B7
     uint8_t     switchStatus_B0;     // 发动机并网状态            HUD组3 协议(3-1)
     uint8_t     switchStatus_B1;     // 发动机启动状态            HUD组3 协议(1-1)
-    uint8_t     switchStatus_B2;     // 盘旋状态                  HUD组3 协议(2-1)             
+    uint8_t     switchStatus_B2;     // 盘旋状态                  HUD组3 协议(2-1)      
     uint8_t     switchStatus_B3;     // 归航状态                  HUD组3 协议(2-2)
     uint8_t     switchStatus_B4;     // 关车状态                  HUD组3 协议(1-2)
     uint8_t     switchStatus_B5;     // 起落架收放状态            HUD组3 协议(4-1)
@@ -105,8 +105,8 @@ typedef struct {
     int32_t   targetLongitude;     // 目标经度 (65)          HUD层 地图目标标识位置1
     int32_t   targetLatitude;      // 目标纬度 (66)          HUD层 地图目标标识位置2
     int16_t   targetAltitude;      // 目标高度 (67)          HUD层 地图目标标识位置3
-    int8_t    targetSpeed;         // 目标速度 (68)          HUD层 地图目标标识速度
-    int16_t   targetCourse;        // 目标航向 (69)          HUD层 地图目标标识方向
+    int8_t    targetSpeed;         // 目标速度 (68)          HUD层 地图目标标识速度 （当前未实现）
+    int16_t   targetCourse;        // 目标航向 (69)          HUD层 地图目标标识方向 （当前未实现）
 
     // int32_t  reserved1;           // 预留1 (70)             
     // int32_t  reserved2;           // 预留2 (71)
