@@ -356,7 +356,7 @@ function drawRollScale(cx, topY, radius, roll, colors) {
     // 刻度弧和刻度线：固定在HUD顶部，不随roll旋转
     // 绘制下半圆（从 π 到 2π），圆心在局部坐标 (0, 0)
     hudCtx.beginPath();
-    hudCtx.arc(0, 0, radius, Math.PI, 2 * Math.PI);
+    hudCtx.arc(0, 0, radius, 1.07* Math.PI, 0.97*2 * Math.PI); //0.97修正基线长度（仅美观微调）
     hudCtx.stroke();
 
     // 刻度线：从半圆弧向外延伸
@@ -462,9 +462,9 @@ function drawHud() {
     const centerX = w / 2;
     // 布局：地平线居中；滚转在顶部；航向带靠底部
     const centerY = h / 2;      // 姿态中心（地平线在此高度）
-    const rollY = 20;            // 滚转刻度顶部Y（画布顶部，正切）
+    const rollY = 27;            // 滚转刻度顶部Y（画布顶部，正切）
     const rollRadius = w * 0.95 / 2; // 半径 = 直径(360*0.95) / 2 = 171
-    const headingY = h - 45;    // 底部航向带 Y（避免与姿态区重叠）
+    const headingY = h - 34;    // 底部航向带 Y（避免与姿态区重叠）
 
     const colors = {
         // 典型PFD配色：亮蓝天空、土褐地面；线条/文字白，地平线短绿线

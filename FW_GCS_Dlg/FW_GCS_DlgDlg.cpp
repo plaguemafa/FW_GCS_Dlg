@@ -1389,7 +1389,7 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-// 将UDP接收的数据转发到 WebView2，用于JS图层绘制（轻量数据通道）
+// 将UDP接收的数据推送至webview前端引擎，用于JS图层绘制
 void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 {
 #if FW_GCS_WITH_WEBVIEW2
@@ -1425,6 +1425,37 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
     const float targetLatitude = pPacket->targetLatitude / 1000000.0f;
     const float targetCourse = pPacket->targetCourse / 10.0f;
     
+    // HUD组2数据 - 第一批：添加第一行数据 (1-1, 2-1, 2-2)
+    const uint8_t throttle = pPacket->throttle;                    // (1-1) 油门控制
+    const uint8_t fuelRemaining = pPacket->fuelRemaining;          // (2-1) 剩余油量
+    const float engineTemp = pPacket->engineTemp / 10.0f;          // (2-2) 发动机缸温
+    // HUD组2数据 - 第二批：添加第二行数据 (3-1, 3-2, 4-1, 4-2)
+    const uint8_t satelitesNum = pPacket->satelitesNum;            // (3-1) 卫星收星数
+    const uint8_t gpsStatus = pPacket->gpsStatus;                   // (3-2) 卫星定位状态
+    const uint8_t navStatus = pPacket->navStatus;                   // (4-1) 导航状态
+    const uint8_t targetWaypoint = pPacket->targetWaypoint;         // (4-2) 目标航点
+    // HUD组2数据 - 第三批：添加第三行数据 (5-1, 5-2, 6-1, 6-2)
+    const float distanceToGo = pPacket->distanceToGo / 10.0f;       // (5-1) 待飞距
+    const float crossTrackError = pPacket->crossTrackError / 10.0f; // (5-2) 偏航距
+    const uint8_t commandHeading = pPacket->commandHeading;        // (6-1) 应飞航向
+    const float courseDeviation = pPacket->courseDeviation / 10.0f; // (6-2) 偏航角
+    // HUD组2数据 - 第四批：添加剩余数据 (7-1, 7-2, 8-1, 8-2, 9-1, 9-2)
+    const float commandSpeed = pPacket->commandSpeed / 10.0f;       // (7-1) 应飞速度
+    const float commandAltitude = pPacket->commandAltitude / 10.0f; // (7-2) 应飞高度
+    const uint8_t commandTime = pPacket->commandTime;               // (8-1) 应飞时间
+    const uint8_t payloadType = pPacket->payloadType;               // (8-2) 载荷类型
+    const uint8_t ammoRemaining = pPacket->ammoRemaining;          // (9-1) 剩余弹量
+    const uint8_t selfTestResult = pPacket->selfTestResult;        // (9-2) 自检结果
+    
+    // HUD组3数据（开关状态显示区域）
+    const uint8_t switchStatus_B1 = pPacket->switchStatus_B1;      // (1-1) 发动机启动状态
+    const uint8_t switchStatus_B4 = pPacket->switchStatus_B4;      // (1-2) 关车状态
+    const uint8_t switchStatus_B2 = pPacket->switchStatus_B2;      // (2-1) 盘旋状态
+    const uint8_t switchStatus_B3 = pPacket->switchStatus_B3;      // (2-2) 归航状态
+    const uint8_t switchStatus_B0 = pPacket->switchStatus_B0;      // (3-1) 发动机并网状态
+    const uint8_t switchStatus_B6 = pPacket->switchStatus_B6;      // (3-2) 开伞状态
+    const uint8_t switchStatus_B5 = pPacket->switchStatus_B5;      // (4-1) 起落架收放状态
+    const uint8_t switchStatus_B7 = pPacket->switchStatus_B7;      // (4-2) 夜航灯开关状态
     
     // 调试输出：显示经纬度原始值和转换后的值（用于诊断）
     // TRACE(_T("SendHudMessage[经纬度调试]: longitude原始=%d, 转换后=%.6f度; latitude原始=%d, 转换后=%.6f度; gpsCourse原始=%d, 转换后=%.2f度\n"),
@@ -1435,13 +1466,17 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 
  // 将数据添加到JSON格式字符串中
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_B0":%u,"alarmStatus_B1":%u,"alarmStatus_B2":%u,"alarmStatus_B3":%u,"alarmStatus_B4":%u,"alarmStatus_B5":%u})",
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_B0":%u,"alarmStatus_B1":%u,"alarmStatus_B2":%u,"alarmStatus_B3":%u,"alarmStatus_B4":%u,"alarmStatus_B5":%u,"throttle":%u,"fuelRemaining":%u,"engineTemp":%.1f,"satelitesNum":%u,"gpsStatus":%u,"navStatus":%u,"targetWaypoint":%u,"distanceToGo":%.1f,"crossTrackError":%.1f,"commandHeading":%u,"courseDeviation":%.1f,"commandSpeed":%.1f,"commandAltitude":%.1f,"commandTime":%u,"payloadType":%u,"ammoRemaining":%u,"selfTestResult":%u,"switchStatus_B1":%u,"switchStatus_B4":%u,"switchStatus_B2":%u,"switchStatus_B3":%u,"switchStatus_B0":%u,"switchStatus_B6":%u,"switchStatus_B5":%u,"switchStatus_B7":%u})",
 		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse, 
 		gpsGroundSpeed, gpsVerticalSpeed, gpsHour, gpsMinute, gpsSecond,
 		targetLongitude, targetLatitude, targetCourse,
 		pPacket->alarmStatus_B0, pPacket->alarmStatus_B1, pPacket->alarmStatus_B2,
-		pPacket->alarmStatus_B3, pPacket->alarmStatus_B4, pPacket->alarmStatus_B5);
-
+		pPacket->alarmStatus_B3, pPacket->alarmStatus_B4, pPacket->alarmStatus_B5,
+		throttle, fuelRemaining, engineTemp, satelitesNum, gpsStatus, navStatus, targetWaypoint,
+		distanceToGo, crossTrackError, commandHeading, courseDeviation,
+		commandSpeed, commandAltitude, commandTime, payloadType, ammoRemaining, selfTestResult,
+		switchStatus_B1, switchStatus_B4, switchStatus_B2, switchStatus_B3, switchStatus_B0,
+		switchStatus_B6, switchStatus_B5, switchStatus_B7);
 
 	std::wstring jsonW(CA2W(json.GetString()));
 	m_webView->PostWebMessageAsJson(jsonW.c_str());
