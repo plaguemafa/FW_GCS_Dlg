@@ -23,6 +23,14 @@ let bottomInfoCtx = null;
 let alarmCanvas = null;
 let alarmCtx = null;
 
+// HUD组2 Canvas（数据参数显示区域）- 第一步：只添加变量声明
+let hudGroup2Canvas = null;
+let hudGroup2Ctx = null;
+
+// HUD组3 Canvas（开关状态显示区域）- 第一步：只添加变量声明
+let hudGroup3Canvas = null;
+let hudGroup3Ctx = null;
+
 // 顶层图层中央横幅报警数据（根据 UdpData.h 中的协议定义）
 const alarmNames = [
     '\u7535\u6c60\u7535\u538b\u4f4e\u62a5\u8b66',      // 电池电压低报警 (alarmStatus_B0)
@@ -512,6 +520,100 @@ function drawHud() {
     };
     const bottomInfoData = convertHudBottomInfoData(hudBottomInfoData);
     drawBottomInfoBar(window.innerWidth, window.innerHeight, bottomInfoData, colors);
+    
+    // 第五步：绘制HUD组2和HUD组3（只绘制背景和边框）
+    drawHudGroup2();
+    drawHudGroup3();
+}
+
+// 第三步：初始化HUD组2 Canvas（只获取元素和context，不绘制）
+function initHudGroup2Canvas() {
+    if (!hudGroup2Canvas) {
+        hudGroup2Canvas = document.getElementById('hudGroup2');
+        if (hudGroup2Canvas) {
+            hudGroup2Ctx = hudGroup2Canvas.getContext('2d');
+            resizeHudGroup2Canvas();  // 第四步：初始化时调整尺寸
+        }
+    }
+}
+
+// 第三步：初始化HUD组3 Canvas（只获取元素和context，不绘制）
+function initHudGroup3Canvas() {
+    if (!hudGroup3Canvas) {
+        hudGroup3Canvas = document.getElementById('hudGroup3');
+        if (hudGroup3Canvas) {
+            hudGroup3Ctx = hudGroup3Canvas.getContext('2d');
+            resizeHudGroup3Canvas();  // 第四步：初始化时调整尺寸
+        }
+    }
+}
+
+// 第四步：调整HUD组2 Canvas尺寸（按DPR缩放，避免模糊）
+function resizeHudGroup2Canvas() {
+    if (!hudGroup2Canvas || !hudGroup2Ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = hudGroup2Canvas.clientWidth || 600;
+    const h = hudGroup2Canvas.clientHeight || 360;
+    hudGroup2Canvas.width = w * dpr;
+    hudGroup2Canvas.height = h * dpr;
+    hudGroup2Ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// 第四步：调整HUD组3 Canvas尺寸（按DPR缩放，避免模糊）
+function resizeHudGroup3Canvas() {
+    if (!hudGroup3Canvas || !hudGroup3Ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = hudGroup3Canvas.clientWidth || 600;
+    const h = hudGroup3Canvas.clientHeight || 200;
+    hudGroup3Canvas.width = w * dpr;
+    hudGroup3Canvas.height = h * dpr;
+    hudGroup3Ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// 第五步：绘制HUD组2（只绘制背景和边框，不绘制复杂内容）
+function drawHudGroup2() {
+    if (!hudGroup2Canvas || !hudGroup2Ctx) {
+        initHudGroup2Canvas();
+        if (!hudGroup2Ctx) return;
+    }
+    
+    resizeHudGroup2Canvas();
+    
+    const w = hudGroup2Canvas.clientWidth || 600;
+    const h = hudGroup2Canvas.clientHeight || 360;
+    hudGroup2Ctx.clearRect(0, 0, w, h);
+    
+    // 背景
+    hudGroup2Ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+    hudGroup2Ctx.fillRect(0, 0, w, h);
+    
+    // 边框
+    hudGroup2Ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+    hudGroup2Ctx.lineWidth = 1;
+    hudGroup2Ctx.strokeRect(0, 0, w, h);
+}
+
+// 第五步：绘制HUD组3（只绘制背景和边框，不绘制复杂内容）
+function drawHudGroup3() {
+    if (!hudGroup3Canvas || !hudGroup3Ctx) {
+        initHudGroup3Canvas();
+        if (!hudGroup3Ctx) return;
+    }
+    
+    resizeHudGroup3Canvas();
+    
+    const w = hudGroup3Canvas.clientWidth || 600;
+    const h = hudGroup3Canvas.clientHeight || 200;
+    hudGroup3Ctx.clearRect(0, 0, w, h);
+    
+    // 背景
+    hudGroup3Ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+    hudGroup3Ctx.fillRect(0, 0, w, h);
+    
+    // 边框
+    hudGroup3Ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+    hudGroup3Ctx.lineWidth = 1;
+    hudGroup3Ctx.strokeRect(0, 0, w, h);
 }
 
 // 初始化 HUD 尺寸并绘制一次（窗口尺寸变化时也重绘）
@@ -1395,6 +1497,8 @@ initAircraftCanvas();
 setTimeout(() => {
     initBottomInfoCanvas();
     initAlarmCanvas();
+    initHudGroup2Canvas();  // 第三步：初始化HUD组2 Canvas
+    initHudGroup3Canvas();  // 第三步：初始化HUD组3 Canvas
     if (typeof drawHud === 'function') {
         drawHud();
     }

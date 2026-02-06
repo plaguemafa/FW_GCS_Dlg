@@ -23,8 +23,8 @@
         }
         #hud {
             position: absolute;
-            right: 12px;
-            top: 1.0%;              /*  在1920x1080分辨率下HUD顶端与窗口顶端留出1.0%像素 */
+            right: 6px;/*right: 12px;*/
+            top: 0.5%;              /*  在1920x1080分辨率下HUD顶端与窗口顶端留出0.0%像素 */
             width: 360px;
             height: 360px;
             pointer-events: none;
@@ -46,11 +46,32 @@
             z-index: 10;
             pointer-events: none;
         }
+        /* 添加HUD组2和HUD组3的Canvas样式 - 修正：位于HUD下方，右对齐 */
+        #hudGroup2 {
+            position: absolute;
+            right: 6px;
+            top: 372px;
+            width: 360px;
+            height: 360px;
+            pointer-events: none;
+            z-index: 20;
+        }
+        #hudGroup3 {
+            position: absolute;
+            right: 6px;
+            top: 738px;
+            width: 360px;
+            height: 200px;
+            pointer-events: none;
+            z-index: 20;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <canvas id="hud"></canvas>
+    <canvas id="hudGroup2"></canvas>
+    <canvas id="hudGroup3"></canvas>
     <div id="status"></div>
     <script>
         // 配置由C++注入
