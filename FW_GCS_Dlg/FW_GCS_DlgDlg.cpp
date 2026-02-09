@@ -112,6 +112,15 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_strUdpRemoteIP = CString(UDP_REMOTE_IP); // 远程IP默认值
 	m_nUdpRemotePort = UDP_REMOTE_PORT;        // 远程端口默认值
 	
+	// 控制指令状态初始化（默认：地面测试流程，手动遥控模式）
+	m_missionCommand_B0 = 0;  // 0=地面测试流程
+	m_missionCommand_B1 = 0;   // 自检指令（未激活）
+	m_missionCommand_B2 = 0;   // 参数装订指令（未激活）
+	m_missionCommand_B3 = 0;   // 舵面检查指令（未激活）
+	m_missionCommand_B4 = 0;   // 发动机检查指令（未激活）
+	m_missionCommand_B5 = 0;   // 发射指令（未激活）
+	m_controlMode_B0 = 0;      // 0=手动遥控
+	
 	// 串口初始化
 	m_hSerialPort = INVALID_HANDLE_VALUE;       // 串口句柄初始化为无效值
 	m_bSerialConnected = FALSE;                 // 串口连接状态标志：未连接
@@ -237,10 +246,35 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_BN_CLICKED(IDC_BTN_PAGE2, &CFWGCSDlgDlg::OnBnClickedPage2)
 	ON_COMMAND(ID_MENU_UDP_SETTINGS, &CFWGCSDlgDlg::OnMenuUdpSettings)
 	ON_COMMAND(ID_MENU_SERIAL_SETTINGS, &CFWGCSDlgDlg::OnMenuSerialSettings)
+	// 控制模式菜单项
+	ON_COMMAND(ID_MENU_CTRL_MODE_MANUAL, &CFWGCSDlgDlg::OnMenuCtrlModeManual)
+	ON_COMMAND(ID_MENU_CTRL_MODE_SEMI, &CFWGCSDlgDlg::OnMenuCtrlModeSemi)
+	ON_COMMAND(ID_MENU_CTRL_MODE_FULL, &CFWGCSDlgDlg::OnMenuCtrlModeFull)
+	// 任务指令菜单项
+	ON_COMMAND(ID_MENU_MISSION_TEST, &CFWGCSDlgDlg::OnMenuMissionTest)
+	ON_COMMAND(ID_MENU_MISSION_LAUNCH_PROC, &CFWGCSDlgDlg::OnMenuMissionLaunchProc)
+	ON_COMMAND(ID_MENU_MISSION_BIND_PARAM, &CFWGCSDlgDlg::OnMenuMissionBindParam)
+	ON_COMMAND(ID_MENU_MISSION_LAUNCH_CMD, &CFWGCSDlgDlg::OnMenuMissionLaunchCmd)
+	// 自检指令菜单项
+	ON_COMMAND(ID_MENU_CHECK_SELF, &CFWGCSDlgDlg::OnMenuCheckSelf)
+	ON_COMMAND(ID_MENU_CHECK_SURFACE, &CFWGCSDlgDlg::OnMenuCheckSurface)
+	ON_COMMAND(ID_MENU_CHECK_ENGINE, &CFWGCSDlgDlg::OnMenuCheckEngine)
+	// 菜单更新函数
+	ON_UPDATE_COMMAND_UI(ID_MENU_CTRL_MODE_MANUAL, &CFWGCSDlgDlg::OnUpdateMenuCtrlModeManual)
+	ON_UPDATE_COMMAND_UI(ID_MENU_CTRL_MODE_SEMI, &CFWGCSDlgDlg::OnUpdateMenuCtrlModeSemi)
+	ON_UPDATE_COMMAND_UI(ID_MENU_CTRL_MODE_FULL, &CFWGCSDlgDlg::OnUpdateMenuCtrlModeFull)
+	ON_UPDATE_COMMAND_UI(ID_MENU_MISSION_TEST, &CFWGCSDlgDlg::OnUpdateMenuMissionTest)
+	ON_UPDATE_COMMAND_UI(ID_MENU_MISSION_LAUNCH_PROC, &CFWGCSDlgDlg::OnUpdateMenuMissionLaunchProc)
+	ON_UPDATE_COMMAND_UI(ID_MENU_MISSION_BIND_PARAM, &CFWGCSDlgDlg::OnUpdateMenuMissionBindParam)
+	ON_UPDATE_COMMAND_UI(ID_MENU_MISSION_LAUNCH_CMD, &CFWGCSDlgDlg::OnUpdateMenuMissionLaunchCmd)
+	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_SELF, &CFWGCSDlgDlg::OnUpdateMenuCheckSelf)
+	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_SURFACE, &CFWGCSDlgDlg::OnUpdateMenuCheckSurface)
+	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_ENGINE, &CFWGCSDlgDlg::OnUpdateMenuCheckEngine)
 	ON_WM_SIZE()
 	ON_WM_MEASUREITEM()
 	ON_WM_DRAWITEM()
 	ON_WM_NCPAINT()
+	ON_WM_INITMENUPOPUP()
 END_MESSAGE_MAP()
 
 // 在消息到达控件之前拦截鼠标点击，阻止只读 Radio Button 的交互
@@ -340,19 +374,68 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			menu4.CreatePopupMenu();
 			menu5.CreatePopupMenu();
 			menu6.CreatePopupMenu();
-			// 占位扩展
-			menu1.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("手动遥控模式"));
-			menu1.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("半自动模式"));
-			menu1.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("全自动模式"));
+			// 控制模式菜单（默认选中手动遥控模式）
+			menu1.AppendMenu(MF_STRING, ID_MENU_CTRL_MODE_MANUAL, _T("手动遥控模式"));
+			menu1.AppendMenu(MF_STRING, ID_MENU_CTRL_MODE_SEMI, _T("半自动模式"));
+			menu1.AppendMenu(MF_STRING, ID_MENU_CTRL_MODE_FULL, _T("全自动模式"));
 
-			menu2.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("地面测试流程"));
-			menu2.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发射流程"));
-			menu2.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("参数装订指令"));
-			menu2.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发射指令"));
+			// 任务指令菜单（默认选中地面测试流程）
+			menu2.AppendMenu(MF_STRING, ID_MENU_MISSION_TEST, _T("地面测试流程"));
+			menu2.AppendMenu(MF_STRING, ID_MENU_MISSION_LAUNCH_PROC, _T("发射流程"));
+			menu2.AppendMenu(MF_STRING, ID_MENU_MISSION_BIND_PARAM, _T("参数装订"));
+			menu2.AppendMenu(MF_STRING, ID_MENU_MISSION_LAUNCH_CMD, _T("发射指令"));
 
-			menu3.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("自检指令"));
-			menu3.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("舵面检查"));
-			menu3.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发动机检查"));
+			// 自检指令菜单（默认都不选中）
+			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_SELF, _T("自检指令"));
+			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_SURFACE, _T("舵面检查"));
+			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_ENGINE, _T("发动机检查"));
+			
+			// 在创建菜单时就将子菜单项设置为 owner-drawn（确保 OnMeasureItem 能被调用）
+			// 控制模式子菜单
+			for (int i = 0; i < menu1.GetMenuItemCount(); i++)
+			{
+				UINT nMenuID = menu1.GetMenuItemID(i);
+				if (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CTRL_MODE_FULL)
+				{
+					MENUITEMINFO mi = {};
+					mi.cbSize = sizeof(mi);
+					mi.fMask = MIIM_FTYPE | MIIM_DATA | MIIM_ID;
+					mi.fType = MFT_OWNERDRAW;
+					mi.dwItemData = nMenuID;
+					mi.wID = nMenuID;
+					menu1.SetMenuItemInfo(i, &mi, TRUE);
+				}
+			}
+			// 任务指令子菜单
+			for (int i = 0; i < menu2.GetMenuItemCount(); i++)
+			{
+				UINT nMenuID = menu2.GetMenuItemID(i);
+				if (nMenuID >= ID_MENU_MISSION_TEST && nMenuID <= ID_MENU_MISSION_LAUNCH_CMD)
+				{
+					MENUITEMINFO mi = {};
+					mi.cbSize = sizeof(mi);
+					mi.fMask = MIIM_FTYPE | MIIM_DATA | MIIM_ID;
+					mi.fType = MFT_OWNERDRAW;
+					mi.dwItemData = nMenuID;
+					mi.wID = nMenuID;
+					menu2.SetMenuItemInfo(i, &mi, TRUE);
+				}
+			}
+			// 自检指令子菜单
+			for (int i = 0; i < menu3.GetMenuItemCount(); i++)
+			{
+				UINT nMenuID = menu3.GetMenuItemID(i);
+				if (nMenuID >= ID_MENU_CHECK_SELF && nMenuID <= ID_MENU_CHECK_ENGINE)
+				{
+					MENUITEMINFO mi = {};
+					mi.cbSize = sizeof(mi);
+					mi.fMask = MIIM_FTYPE | MIIM_DATA | MIIM_ID;
+					mi.fType = MFT_OWNERDRAW;
+					mi.dwItemData = nMenuID;
+					mi.wID = nMenuID;
+					menu3.SetMenuItemInfo(i, &mi, TRUE);
+				}
+			}
 		
 
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("航点设置"));
@@ -1204,8 +1287,8 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			// 使用 inet_ntop() 替代已弃用的 inet_ntoa()
 			char szIpAddr[INET_ADDRSTRLEN];
 			inet_ntop(AF_INET, &fromAddr.sin_addr, szIpAddr, INET_ADDRSTRLEN);
-			TRACE(_T("UDP接收线程: 收到 %d 字节数据，来源: %s:%d\n"), 
-				nReceived, CString(szIpAddr), ntohs(fromAddr.sin_port));
+			//TRACE(_T("UDP接收线程: 收到 %d 字节数据，来源: %s:%d\n"), 
+				//nReceived, CString(szIpAddr), ntohs(fromAddr.sin_port));
 			
 			// UDP是无连接协议，只要收到任何数据包就认为连接成功
 			// 如果还没有设置响应标志，则设置它（用于连接验证）
@@ -1220,8 +1303,8 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			}
 			else
 			{
-				TRACE(_T("UDP接收线程: 收到数据，但响应标志已设置（来源: %s:%d）\n"), 
-					CString(szIpAddr), ntohs(fromAddr.sin_port));
+				//TRACE(_T("UDP接收线程: 收到数据，但响应标志已设置（来源: %s:%d）\n"), 
+					//CString(szIpAddr), ntohs(fromAddr.sin_port));
 			}
 			lock.Unlock();
 			
@@ -1229,7 +1312,7 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			if (fromAddr.sin_addr.s_addr == pDlg->m_udpRemoteAddr.sin_addr.s_addr &&
 				fromAddr.sin_port == pDlg->m_udpRemoteAddr.sin_port)
 			{
-				TRACE(_T("UDP接收线程: 数据包来自配置的远程地址\n"));
+				//TRACE(_T("UDP接收线程: 数据包来自配置的远程地址\n"));
 			}
 			else
 			{
@@ -1240,8 +1323,8 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			}
 			
 			// 检查数据包大小是否匹配
-			TRACE(_T("UDP接收: 数据包大小检查 - 期望=%d字节, 实际收到=%d字节\n"), 
-				sizeof(UdpRecvDataPacket), nReceived);
+			//TRACE(_T("UDP接收: 数据包大小检查 - 期望=%d字节, 实际收到=%d字节\n"), 
+				//sizeof(UdpRecvDataPacket), nReceived);
 			
 			if (nReceived == sizeof(UdpRecvDataPacket))
 			{
@@ -1259,21 +1342,21 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 				// pPacket->sideslipAngle = ntohs(pPacket->sideslipAngle);
 				
 				// 调试测试输出：显示接收到的前部分数据（原始int16_t值）
-				TRACE(_T("UDP接收: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
-					pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
+				//TRACE(_T("UDP接收: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
+				//	pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
 				
 				// 调试输出：显示原始字节值（用于诊断字节序问题）
 				BYTE* pBytes = (BYTE*)pPacket;
-				TRACE(_T("UDP接收原始字节[前10字节]: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n"),
-					pBytes[0], pBytes[1], pBytes[2], pBytes[3], pBytes[4], 
-					pBytes[5], pBytes[6], pBytes[7], pBytes[8], pBytes[9]);
+				//TRACE(_T("UDP接收原始字节[前10字节]: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n"),
+				//	pBytes[0], pBytes[1], pBytes[2], pBytes[3], pBytes[4], 
+				//	pBytes[5], pBytes[6], pBytes[7], pBytes[8], pBytes[9]);
 				
 				// 调试输出：显示结构体大小和字段偏移（用于诊断）
 				size_t longitudeOffset = (BYTE*)&(pPacket->longitude) - (BYTE*)pPacket;
 				size_t latitudeOffset = (BYTE*)&(pPacket->latitude) - (BYTE*)pPacket;
 				size_t gpsCourseOffset = (BYTE*)&(pPacket->gpsCourse) - (BYTE*)pPacket;
-				TRACE(_T("UDP接收[字段偏移]: longitude偏移=%d, latitude偏移=%d, gpsCourse偏移=%d\n"),
-					longitudeOffset, latitudeOffset, gpsCourseOffset);
+				//TRACE(_T("UDP接收[字段偏移]: longitude偏移=%d, latitude偏移=%d, gpsCourse偏移=%d\n"),
+				//	longitudeOffset, latitudeOffset, gpsCourseOffset);
 				
 				// 调试输出：检查数据包中longitude和latitude位置前后的字节（用于诊断数据包结构是否匹配）
 				// TRACE(_T("UDP接收[数据包上下文]: longitude位置前后字节: [偏移%d-%d] %02X %02X %02X %02X | [偏移%d-%d] %02X %02X %02X %02X | [偏移%d-%d] %02X %02X %02X %02X\n"),
@@ -1291,12 +1374,12 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 				// 	pPacket->gpsCourse);
 				
 				// 调试输出：显示longitude和latitude的原始字节值（用于诊断字节序问题）
-				TRACE(_T("UDP接收[经纬度字节]: longitude偏移=%d, 字节值: %02X %02X %02X %02X (小端解析=%d)\n"),
-					longitudeOffset, pBytes[longitudeOffset], pBytes[longitudeOffset+1], 
-					pBytes[longitudeOffset+2], pBytes[longitudeOffset+3], pPacket->longitude);
-				TRACE(_T("UDP接收[经纬度字节]: latitude偏移=%d, 字节值: %02X %02X %02X %02X (小端解析=%d)\n"),
-					latitudeOffset, pBytes[latitudeOffset], pBytes[latitudeOffset+1], 
-					pBytes[latitudeOffset+2], pBytes[latitudeOffset+3], pPacket->latitude);
+				//TRACE(_T("UDP接收[经纬度字节]: longitude偏移=%d, 字节值: %02X %02X %02X %02X (小端解析=%d)\n"),
+					//longitudeOffset, pBytes[longitudeOffset], pBytes[longitudeOffset+1], 
+					//pBytes[longitudeOffset+2], pBytes[longitudeOffset+3], pPacket->longitude);
+				//TRACE(_T("UDP接收[经纬度字节]: latitude偏移=%d, 字节值: %02X %02X %02X %02X (小端解析=%d)\n"),
+				//	latitudeOffset, pBytes[latitudeOffset], pBytes[latitudeOffset+1], 
+				//	pBytes[latitudeOffset+2], pBytes[latitudeOffset+3], pPacket->latitude);
 				
 				// 调试输出：手动解析大端字节序（仅发送端是大端时适用）
 				// 注意：先按无符号解析，避免符号扩展问题
@@ -1315,16 +1398,16 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 				
 				// 调试输出：计算期望值范围（用于判断数据是否正确）
 				// 例如：116.123度 × 100000 = 11612300
-				TRACE(_T("UDP接收[数据验证]: 当前小端值(longitude=%d, latitude=%d)\n"),
-					pPacket->longitude, pPacket->latitude);
+				//TRACE(_T("UDP接收[数据验证]: 当前小端值(longitude=%d, latitude=%d)\n"),
+					//pPacket->longitude, pPacket->latitude);
 				
 				// 发送消息到主线程处理
 				pDlg->PostMessage(WM_UDP_DATA_RECEIVED, (WPARAM)pPacket, 0);
 			}
 			else
 			{
-				TRACE(_T("UDP接收: 数据包大小不匹配！期望 %d 字节，实际收到 %d 字节\n"), 
-					sizeof(UdpRecvDataPacket), nReceived);
+				//TRACE(_T("UDP接收: 数据包大小不匹配！期望 %d 字节，实际收到 %d 字节\n"), 
+					//sizeof(UdpRecvDataPacket), nReceived);
 			}
 		}
 		else if (nReceived == SOCKET_ERROR)
@@ -3143,18 +3226,73 @@ void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemSt
 	if (lpMeasureItemStruct && lpMeasureItemStruct->CtlType == ODT_MENU)
 	{
 		CString text;
-		m_mainMenu.GetMenuString(static_cast<UINT>(lpMeasureItemStruct->itemData), text, MF_BYPOSITION);
+		const UINT nMenuID = lpMeasureItemStruct->itemID;
+		const DWORD_PTR itemData = lpMeasureItemStruct->itemData;
+
+		// 判断是顶层菜单栏还是子菜单项
+		// 方法1：通过 itemData 判断（顶层菜单栏：itemData 是索引0,1,2,3,4；子菜单项：itemData 是菜单ID）
+		// 方法2：通过 nMenuID 判断（子菜单项：nMenuID 是菜单ID）
+		bool bIsSubMenuItem = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
+		                       (itemData >= ID_MENU_CTRL_MODE_MANUAL && itemData <= ID_MENU_CHECK_ENGINE);
+
+		if (bIsSubMenuItem)
+		{
+			// 子菜单项：通过菜单ID获取文本
+			CMenu* pSubMenu = NULL;
+			UINT nActualMenuID = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) 
+				? nMenuID : static_cast<UINT>(itemData);
+			
+			if (nActualMenuID >= ID_MENU_CTRL_MODE_MANUAL && nActualMenuID <= ID_MENU_CTRL_MODE_FULL)
+				pSubMenu = m_mainMenu.GetSubMenu(0);
+			else if (nActualMenuID >= ID_MENU_MISSION_TEST && nActualMenuID <= ID_MENU_MISSION_LAUNCH_CMD)
+				pSubMenu = m_mainMenu.GetSubMenu(1);
+			else if (nActualMenuID >= ID_MENU_CHECK_SELF && nActualMenuID <= ID_MENU_CHECK_ENGINE)
+				pSubMenu = m_mainMenu.GetSubMenu(2);
+
+			if (pSubMenu)
+			{
+				pSubMenu->GetMenuString(nActualMenuID, text, MF_BYCOMMAND);
+			}
+		}
+		else
+		{
+			// 顶层菜单栏项：itemData 是索引（0, 1, 2, 3, 4），包括第一个菜单项（itemData=0）
+			UINT nIndex = static_cast<UINT>(itemData);
+			m_mainMenu.GetMenuString(nIndex, text, MF_BYPOSITION);
+		}
+
+		// 如果文本为空，使用默认值
+		if (text.IsEmpty())
+		{
+			text = _T("菜单项");
+		}
 
 		CClientDC dc(this);
 		CFont* pFont = m_menuFont.GetSafeHandle()
 			? &m_menuFont
 			: CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
 		CFont* pOld = dc.SelectObject(pFont);
-		CSize sz = dc.GetTextExtent(text);
+		
+		// 使用 DrawText 计算文本尺寸（更准确，特别是对于中文）
+		CRect textRect(0, 0, 0, 0);
+		dc.DrawText(text, &textRect, DT_SINGLELINE | DT_CALCRECT | DT_LEFT);
+		CSize sz(textRect.Width(), textRect.Height());
+		
 		dc.SelectObject(pOld);
 
-		lpMeasureItemStruct->itemWidth = sz.cx + 24;
-		lpMeasureItemStruct->itemHeight = max(m_menuItemHeight, sz.cy + 6);
+		// 设置宽度和高度
+		if (bIsSubMenuItem)
+		{
+			// 子菜单项：增加宽度以容纳勾选标记和确保文字完整显示
+			// 勾选标记区域(24) + 左边距(16) + 右边距(40) = 80
+			lpMeasureItemStruct->itemWidth = sz.cx + 100;  // 进一步增加宽度确保中文文字完整显示
+		}
+		else
+		{
+			// 顶层菜单栏项：增加更多宽度以确保中文文字完整显示
+			lpMeasureItemStruct->itemWidth = sz.cx + 60;  // 大幅增加左右边距，确保"控制模式"等文字完整显示
+		}
+		lpMeasureItemStruct->itemHeight = max(m_menuItemHeight, sz.cy + 12);  // 增加高度边距
 		return;
 	}
 
@@ -3168,31 +3306,180 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		CDC dc;
 		dc.Attach(lpDrawItemStruct->hDC);
 		CRect rc(lpDrawItemStruct->rcItem);
+		// 确保绘制区域足够宽，防止文字被裁剪
+		// rc 的宽度应该已经在 OnMeasureItem 中设置好了
 		const bool selected = (lpDrawItemStruct->itemState & ODS_SELECTED) != 0;
+		const bool checked = (lpDrawItemStruct->itemState & ODS_CHECKED) != 0;
+		const UINT nMenuID = lpDrawItemStruct->itemID;
 
-		// 菜单栏背景（半透明灰色效果用实色近似）
-		const COLORREF bg = selected ? ::GetSysColor(COLOR_HIGHLIGHT) : RGB(100, 100, 100);
-		const COLORREF fg = RGB(255, 255, 255);
-		dc.FillSolidRect(&rc, bg);
+		// 判断是顶层菜单栏还是子菜单项
+		// 顶层菜单栏：itemData 是索引（0, 1, 2, 3, 4），且不在菜单ID范围内
+		// 子菜单项：itemData 是菜单ID（在 OnInitMenuPopup 中设置），nMenuID 也是菜单ID
+		bool bIsSubMenuItem = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
+		                       (lpDrawItemStruct->itemData >= ID_MENU_CTRL_MODE_MANUAL && lpDrawItemStruct->itemData <= ID_MENU_CHECK_ENGINE);
+		
+		if (!bIsSubMenuItem)
+		{
+			// 顶层菜单栏项（包括第一个菜单项，itemData=0）
+			const COLORREF bg = selected ? ::GetSysColor(COLOR_HIGHLIGHT) : RGB(100, 100, 100);
+			const COLORREF fg = RGB(255, 255, 255);
+			dc.FillSolidRect(&rc, bg);
 
-		CString text;
-		m_mainMenu.GetMenuString(static_cast<UINT>(lpDrawItemStruct->itemData), text, MF_BYPOSITION);
+			CString text;
+			// itemData 是菜单项的索引（0, 1, 2, 3, 4）
+			UINT nIndex = static_cast<UINT>(lpDrawItemStruct->itemData);
+			m_mainMenu.GetMenuString(nIndex, text, MF_BYPOSITION);
 
-		CFont* pFont = m_menuFont.GetSafeHandle()
-			? &m_menuFont
-			: CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
-		CFont* pOld = dc.SelectObject(pFont);
-		dc.SetTextColor(fg);
-		dc.SetBkMode(TRANSPARENT);
+			// 如果文本为空，尝试通过 MENUITEMINFO 获取
+			if (text.IsEmpty())
+			{
+				MENUITEMINFO mi = {};
+				mi.cbSize = sizeof(mi);
+				mi.fMask = MIIM_STRING;
+				TCHAR szBuffer[256] = {0};
+				mi.dwTypeData = szBuffer;
+				mi.cch = 255;
+				if (m_mainMenu.GetMenuItemInfo(nIndex, &mi, TRUE))
+				{
+					text = szBuffer;
+				}
+			}
 
-		rc.left += 12;
-		dc.DrawText(text, &rc, DT_SINGLELINE | DT_VCENTER | DT_LEFT);
-		dc.SelectObject(pOld);
+			// 如果仍然为空，使用默认文本（用于调试）
+			if (text.IsEmpty())
+			{
+				text.Format(_T("菜单%d"), nIndex);
+			}
+
+			CFont* pFont = m_menuFont.GetSafeHandle()
+				? &m_menuFont
+				: CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
+			CFont* pOld = dc.SelectObject(pFont);
+			dc.SetTextColor(fg);
+			dc.SetBkMode(TRANSPARENT);
+
+			// 确保绘制区域足够宽，不裁剪文字
+			// rc 的宽度应该已经在 OnMeasureItem 中设置好了
+			CRect textRect = rc;
+			// 确保左边距足够，避免靠近屏幕边缘时被裁剪
+			textRect.left = max(rc.left + 20, rc.left + 10);  // 至少留出10像素左边距
+			// 确保右边有足够空间，不裁剪文字
+			textRect.right = rc.right;  // 使用完整的 rc.right
+			
+			// 调试输出（可以后续删除）
+			TRACE(_T("OnDrawItem 顶层菜单: index=%u, text='%s', rc=(%d,%d,%d,%d), textRect=(%d,%d,%d,%d)\n"),
+				nIndex, text, rc.left, rc.top, rc.right, rc.bottom, textRect.left, textRect.top, textRect.right, textRect.bottom);
+			
+			dc.DrawText(text, &textRect, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOCLIP);  // DT_NOCLIP 防止文字被裁剪
+			dc.SelectObject(pOld);
+		}
+		else if (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE)
+		{
+			// 子菜单项：检查是否需要显示深蓝色（选中状态）
+			BOOL bShouldHighlight = FALSE;
+			if (nMenuID == ID_MENU_CTRL_MODE_MANUAL && m_controlMode_B0 == 0) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CTRL_MODE_SEMI && m_controlMode_B0 == 1) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CTRL_MODE_FULL && m_controlMode_B0 == 2) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_TEST && m_missionCommand_B0 == 0) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_LAUNCH_PROC && m_missionCommand_B0 == 1) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_BIND_PARAM && m_missionCommand_B2 == 1) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_LAUNCH_CMD && m_missionCommand_B5 == 1) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_SELF && m_missionCommand_B1 == 1) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_SURFACE && m_missionCommand_B3 == 1) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_ENGINE && m_missionCommand_B4 == 1) bShouldHighlight = TRUE;
+
+			// 设置背景色：选中状态用深蓝色，悬停用系统高亮色
+			COLORREF bg;
+			if (bShouldHighlight)
+				bg = RGB(0, 0, 139);  // 深蓝色
+			else if (selected)
+				bg = ::GetSysColor(COLOR_HIGHLIGHT);
+			else
+				bg = RGB(255, 255, 255);  // 白色背景
+
+			const COLORREF fg = (bShouldHighlight || selected) ? RGB(255, 255, 255) : RGB(0, 0, 0);
+			dc.FillSolidRect(&rc, bg);
+
+			// 获取菜单项文本（通过菜单ID从对应的子菜单获取）
+			CString text;
+			CMenu* pSubMenu = NULL;
+			if (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CTRL_MODE_FULL)
+				pSubMenu = m_mainMenu.GetSubMenu(0);
+			else if (nMenuID >= ID_MENU_MISSION_TEST && nMenuID <= ID_MENU_MISSION_LAUNCH_CMD)
+				pSubMenu = m_mainMenu.GetSubMenu(1);
+			else if (nMenuID >= ID_MENU_CHECK_SELF && nMenuID <= ID_MENU_CHECK_ENGINE)
+				pSubMenu = m_mainMenu.GetSubMenu(2);
+
+			if (pSubMenu)
+			{
+				pSubMenu->GetMenuString(nMenuID, text, MF_BYCOMMAND);
+			}
+			else
+			{
+				// 如果无法获取，使用菜单ID对应的默认文本
+				text = _T("菜单项");
+			}
+
+			CFont* pFont = m_menuFont.GetSafeHandle()
+				? &m_menuFont
+				: CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
+			CFont* pOld = dc.SelectObject(pFont);
+			dc.SetTextColor(fg);
+			dc.SetBkMode(TRANSPARENT);
+
+			// 绘制勾选标记（如果选中）
+			if (bShouldHighlight)
+			{
+				rc.left += 24;  // 为勾选标记留出更多空间
+				// 绘制勾选标记 "✓"
+				CRect checkRect(rc.left - 22, rc.top, rc.left - 6, rc.bottom);
+				dc.DrawText(_T("✓"), &checkRect, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
+			}
+			else
+			{
+				rc.left += 24;  // 保持对齐
+			}
+
+			dc.DrawText(text, &rc, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOCLIP);  // 添加 DT_NOCLIP 防止文字被裁剪
+			dc.SelectObject(pOld);
+		}
+
 		dc.Detach();
 		return;
 	}
 
 	CDialogEx::OnDrawItem(nIDCtl, lpDrawItemStruct);
+}
+
+// 初始化菜单弹出时，将子菜单项设置为 owner-drawn
+void CFWGCSDlgDlg::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu)
+{
+	CDialogEx::OnInitMenuPopup(pPopupMenu, nIndex, bSysMenu);
+
+	if (bSysMenu || pPopupMenu == NULL)
+		return;
+
+	// 只处理控制指令相关的子菜单（前3个子菜单）
+	if (nIndex >= 0 && nIndex <= 2)
+	{
+		const int nItemCount = pPopupMenu->GetMenuItemCount();
+		for (int i = 0; i < nItemCount; i++)
+		{
+			UINT nMenuID = pPopupMenu->GetMenuItemID(i);
+			// 只处理控制指令相关的菜单项（排除分隔符和弹出菜单）
+			if (nMenuID != (UINT)-1 && nMenuID != 0 && 
+				nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE)
+			{
+				MENUITEMINFO mi = {};
+				mi.cbSize = sizeof(mi);
+				mi.fMask = MIIM_FTYPE | MIIM_DATA | MIIM_ID;
+				mi.fType = MFT_OWNERDRAW;
+				mi.dwItemData = nMenuID;  // 保存菜单ID用于绘制和测量
+				mi.wID = nMenuID;  // 确保菜单ID正确设置
+				pPopupMenu->SetMenuItemInfo(i, &mi, TRUE);
+			}
+		}
+	}
 }
 
 void CFWGCSDlgDlg::OnNcPaint()
@@ -3644,6 +3931,222 @@ void CFWGCSDlgDlg::OnMenuSerialSettings()
 {
 	CSerialSettingsDlg dlg(this);
 	dlg.DoModal();  // 占位对话框会自动显示提示信息
+}
+
+// ============================================================
+// 控制模式菜单项处理函数
+// ============================================================
+void CFWGCSDlgDlg::OnMenuCtrlModeManual()
+{
+	m_controlMode_B0 = 0;  // 手动遥控模式
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuCtrlModeSemi()
+{
+	m_controlMode_B0 = 1;  // 半自主模式
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuCtrlModeFull()
+{
+	m_controlMode_B0 = 2;  // 全自主模式
+	SendControlCommand();
+}
+
+// ============================================================
+// 任务指令菜单项处理函数
+// ============================================================
+void CFWGCSDlgDlg::OnMenuMissionTest()
+{
+	m_missionCommand_B0 = 0;  // 地面测试流程
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuMissionLaunchProc()
+{
+	m_missionCommand_B0 = 1;  // 发射流程
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuMissionBindParam()
+{
+	// 参数装订指令（切换状态）
+	m_missionCommand_B2 = (m_missionCommand_B2 == 0) ? 1 : 0;
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuMissionLaunchCmd()
+{
+	// 发射指令（切换状态）
+	m_missionCommand_B5 = (m_missionCommand_B5 == 0) ? 1 : 0;
+	SendControlCommand();
+}
+
+// ============================================================
+// 自检指令菜单项处理函数（B1, B3, B4 切换逻辑：点击已激活项取消激活，点击未激活项激活并互斥其他项）
+// ============================================================
+void CFWGCSDlgDlg::OnMenuCheckSelf()
+{
+	// 自检指令：如果当前已激活（B1=1），则取消激活（B1=0）
+	// 如果当前未激活（B1=0），则激活（B1=1）并互斥其他项（B3=0, B4=0）
+	if (m_missionCommand_B1 == 1)
+	{
+		m_missionCommand_B1 = 0;  // 取消激活
+	}
+	else
+	{
+		m_missionCommand_B1 = 1;  // 激活
+		m_missionCommand_B3 = 0;  // 互斥：取消其他项
+		m_missionCommand_B4 = 0;  // 互斥：取消其他项
+	}
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuCheckSurface()
+{
+	// 舵面检查指令：如果当前已激活（B3=1），则取消激活（B3=0）
+	// 如果当前未激活（B3=0），则激活（B3=1）并互斥其他项（B1=0, B4=0）
+	if (m_missionCommand_B3 == 1)
+	{
+		m_missionCommand_B3 = 0;  // 取消激活
+	}
+	else
+	{
+		m_missionCommand_B3 = 1;  // 激活
+		m_missionCommand_B1 = 0;  // 互斥：取消其他项
+		m_missionCommand_B4 = 0;  // 互斥：取消其他项
+	}
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuCheckEngine()
+{
+	// 发动机检查指令：如果当前已激活（B4=1），则取消激活（B4=0）
+	// 如果当前未激活（B4=0），则激活（B4=1）并互斥其他项（B1=0, B3=0）
+	if (m_missionCommand_B4 == 1)
+	{
+		m_missionCommand_B4 = 0;  // 取消激活
+	}
+	else
+	{
+		m_missionCommand_B4 = 1;  // 激活
+		m_missionCommand_B1 = 0;  // 互斥：取消其他项
+		m_missionCommand_B3 = 0;  // 互斥：取消其他项
+	}
+	SendControlCommand();
+}
+
+// ============================================================
+// 菜单更新函数（用于显示选中状态）
+// ============================================================
+void CFWGCSDlgDlg::OnUpdateMenuCtrlModeManual(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_controlMode_B0 == 0);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuCtrlModeSemi(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_controlMode_B0 == 1);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuCtrlModeFull(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_controlMode_B0 == 2);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuMissionTest(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_B0 == 0);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuMissionLaunchProc(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_B0 == 1);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuMissionBindParam(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_B2 == 1);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuMissionLaunchCmd(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_B5 == 1);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuCheckSelf(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_B1 == 1);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuCheckSurface(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_B3 == 1);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuCheckEngine(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_B4 == 1);
+}
+
+// ============================================================
+// 发送控制指令函数
+// ============================================================
+BOOL CFWGCSDlgDlg::SendControlCommand()
+{
+	if (!m_bUdpConnected)
+	{
+		TRACE(_T("SendControlCommand: UDP未连接，无法发送控制指令\n"));
+		return FALSE;
+	}
+
+	// 初始化控制指令数据包
+	UdpSendDataPacket_Cmd packet{};
+	memset(&packet, 0, sizeof(packet));
+	packet.frameHeader = 0xBB11;  // 设置帧头（控制指令包）
+
+	// 填充控制指令数据
+	packet.missionCommand_B0 = m_missionCommand_B0;
+	packet.missionCommand_B1 = m_missionCommand_B1;
+	packet.missionCommand_B2 = m_missionCommand_B2;
+	packet.missionCommand_B3 = m_missionCommand_B3;
+	packet.missionCommand_B4 = m_missionCommand_B4;
+	packet.missionCommand_B5 = m_missionCommand_B5;
+	packet.controlMode_B0 = m_controlMode_B0;
+
+	// 计算校验和：先将checksum字段设为0，然后计算整个结构体的校验和
+	packet.checksum = 0;
+	size_t checksumSize = sizeof(packet) - sizeof(packet.checksum);
+	packet.checksum = calculateChecksum(&packet, checksumSize);
+
+	// 调试输出
+	TRACE(_T("发送控制指令: frameHeader=0x%04X, missionCommand_B0~B5=%u,%u,%u,%u,%u,%u, controlMode_B0=%u, checksum=0x%02X\n"),
+		packet.frameHeader,
+		packet.missionCommand_B0, packet.missionCommand_B1, packet.missionCommand_B2,
+		packet.missionCommand_B3, packet.missionCommand_B4, packet.missionCommand_B5,
+		packet.controlMode_B0, packet.checksum);
+
+	// 发送数据（连续发送2-3次以应对丢包）
+	const int nSendCount = 3;
+	const int nSendIntervalMs = 10;
+	int nSuccessCount = 0;
+
+	for (int i = 0; i < nSendCount; i++)
+	{
+		BOOL bResult = SendUdpData(&packet, sizeof(packet));
+		if (bResult)
+		{
+			nSuccessCount++;
+		}
+		if (i < nSendCount - 1)
+		{
+			Sleep(nSendIntervalMs);
+		}
+	}
+
+	TRACE(_T("控制指令发送完成：成功 %d/%d 次\n"), nSuccessCount, nSendCount);
+	return (nSuccessCount > 0);
 }
 
 // 从注册表加载UDP配置（如果没有则使用宏默认值）

@@ -1,4 +1,4 @@
-﻿// Page2Dlg.h: 第二页子对话框头文件
+// Page2Dlg.h: 第二页子对话框头文件
 //
 
 #pragma once
@@ -31,7 +31,6 @@ protected:
 public:
 	virtual BOOL OnInitDialog() override;
 	// 发送数据输入控件（对应UdpSendDataPacket协议字段）
-	// 注意：missionCommand 和 controlMode 已改为 Radio Button 控件（m_radioMissionCmd* 和 m_radioCtrlMode*）
 	CEdit m_editSendData2;  // IDC_Display_EditData2 - launchLongitude (int32_t)
 	CEdit m_editSendData3;  // IDC_Display_EditData3 - launchLatitude (int32_t)
 	CEdit m_editSendData4;  // IDC_Display_EditData4 - launchAltitude (int16_t)
@@ -60,28 +59,19 @@ public:
 	CEdit m_editSendData27; // IDC_Display_EditData27 - aileronCmd (int8_t)
 	CEdit m_editSendData28; // IDC_Display_EditData28 - airspeedSet (uint8_t)
 
-	// 扩展协议：指令/模式 Radio 控件（用于发送端选择）
-	CButton m_radioMissionCmd0; // IDC_RADIO_Flag22
-	CButton m_radioMissionCmd1; // IDC_RADIO_Flag23
-	CButton m_radioMissionCmd2; // IDC_RADIO_Flag24
-	CButton m_radioMissionCmd3; // IDC_RADIO_Flag25
-	CButton m_radioMissionCmd4; // IDC_RADIO_Flag26
-	CButton m_radioMissionCmd5; // IDC_RADIO_Flag27
-	CButton m_radioMissionCmd6; // IDC_RADIO_Flag28
-	CButton m_radioCtrlMode0;   // IDC_RADIO_Flag29
-	CButton m_radioCtrlMode1;   // IDC_RADIO_Flag30
-	CButton m_radioCtrlMode2;   // IDC_RADIO_Flag31
-	
 	// 航路点相关控件
 	CButton m_chkLoadWaypoints;  // 复选框：是否加载航路点数据
 	CListCtrl m_listWaypoints;  // 列表控件：显示航路点数据
-	
+
+	// 计算校验和函数
+	uint8_t calculateChecksum(const void* data, size_t len);
 	// 设置主对话框指针（避免每次使用dynamic_cast）
 	void SetMainDlg(CFWGCSDlgDlg* pMainDlg) { m_pMainDlg = pMainDlg; }
 	
 	// 更新数据显示（Page2当前不显示接收数据，保留接口以兼容主对话框调用）
 	void UpdateDisplay(const UdpRecvDataPacket* pPacket);
-	afx_msg void OnBnClickedButtonSendData();
+	// 发送装订参数数据（保留函数，但不再由按钮触发）
+	void OnBnClickedButtonSendData();
 	
 	// 加载航路点XML文件（从可执行文件目录下的waypoints.xml）
 	BOOL LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount);

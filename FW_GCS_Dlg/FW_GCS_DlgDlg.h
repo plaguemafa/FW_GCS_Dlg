@@ -64,6 +64,15 @@ protected:
 	CFont m_menuFont;					   // 菜单字体
 	int m_menuItemHeight = 0;			   // 菜单项高度
 	CBrush m_menuBrush;				   // 菜单背景刷
+	
+	// 控制指令状态跟踪（默认：地面测试流程，手动遥控模式）
+	uint8_t m_missionCommand_B0;            // 0=地面测试流程, 1=发射流程
+	uint8_t m_missionCommand_B1;            // 自检指令
+	uint8_t m_missionCommand_B2;            // 参数装订指令
+	uint8_t m_missionCommand_B3;            // 舵面检查指令
+	uint8_t m_missionCommand_B4;            // 发动机检查指令
+	uint8_t m_missionCommand_B5;            // 发射指令
+	uint8_t m_controlMode_B0;               // 0=手动遥控, 1=半自主, 2=全自主
 
 	// UDP通信相关成员变量
 	SOCKET m_udpSocket;                    // UDP Socket句柄
@@ -216,6 +225,7 @@ protected:
 	void DisconnectUdp();                  // 断开UDP连接
 	BOOL SendUdpData(const void* pData, int nSize);  // 发送UDP数据
 	BOOL SendHandshake();                  // 发送握手数据包
+	BOOL SendControlCommand();             // 发送控制指令（UdpSendDataPacket_Cmd）
 	void ProcessReceivedData(const UdpRecvDataPacket* pPacket);  // 处理接收到的数据包
 	static UINT UdpRecvThread(LPVOID pParam);  // UDP接收线程函数（静态）
 	void UpdateControlText(UINT nID, const CString& strText);  // 辅助函数：更新控件文本（优先在子对话框中查找）
@@ -246,7 +256,32 @@ protected:
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
 	afx_msg void OnMenuUdpSettings();      // UDP通信设置菜单项
 	afx_msg void OnMenuSerialSettings();   // 串口通信设置菜单项
+	// 控制模式菜单项
+	afx_msg void OnMenuCtrlModeManual();   // 手动遥控模式
+	afx_msg void OnMenuCtrlModeSemi();     // 半自主模式
+	afx_msg void OnMenuCtrlModeFull();     // 全自主模式
+	// 任务指令菜单项
+	afx_msg void OnMenuMissionTest();      // 地面测试流程
+	afx_msg void OnMenuMissionLaunchProc(); // 发射流程
+	afx_msg void OnMenuMissionBindParam(); // 参数装订
+	afx_msg void OnMenuMissionLaunchCmd(); // 发射指令
+	// 自检指令菜单项
+	afx_msg void OnMenuCheckSelf();        // 自检指令
+	afx_msg void OnMenuCheckSurface();     // 舵面检查
+	afx_msg void OnMenuCheckEngine();      // 发动机检查
+	// 菜单更新函数（用于显示选中状态）
+	afx_msg void OnUpdateMenuCtrlModeManual(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuCtrlModeSemi(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuCtrlModeFull(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuMissionTest(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuMissionLaunchProc(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuMissionBindParam(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuMissionLaunchCmd(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuCheckSelf(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuCheckSurface(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuCheckEngine(CCmdUI* pCmdUI);
 	afx_msg void OnNcPaint();
+	afx_msg void OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu);
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	afx_msg void OnBnClickedMenuBtn1();
 	afx_msg void OnBnClickedMenuBtn2();

@@ -170,13 +170,26 @@
 #define ID_MENU_OP_PLACEHOLDER          32771
 #define ID_MENU_UDP_SETTINGS            32772
 #define ID_MENU_SERIAL_SETTINGS         32773
+// 控制模式菜单项
+#define ID_MENU_CTRL_MODE_MANUAL        32774
+#define ID_MENU_CTRL_MODE_SEMI          32775
+#define ID_MENU_CTRL_MODE_FULL          32776
+// 任务指令菜单项
+#define ID_MENU_MISSION_TEST            32777
+#define ID_MENU_MISSION_LAUNCH_PROC     32778
+#define ID_MENU_MISSION_BIND_PARAM      32779
+#define ID_MENU_MISSION_LAUNCH_CMD      32780
+// 自检指令菜单项
+#define ID_MENU_CHECK_SELF              32781
+#define ID_MENU_CHECK_SURFACE           32782
+#define ID_MENU_CHECK_ENGINE            32783
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        142
-#define _APS_NEXT_COMMAND_VALUE         32774
+#define _APS_NEXT_COMMAND_VALUE         32784
 #define _APS_NEXT_CONTROL_VALUE         1164
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

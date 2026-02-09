@@ -6,13 +6,13 @@
 #pragma once
 
 // UDP通信协议数据结构
-#pragma pack(push, 1)  // 紧密打包，避免字节对齐填充
+#pragma pack(push, 1)             // 紧密打包，避免字节对齐填充
 typedef struct {
-    // 帧头 (序号1)
-    // uint16_t frameHeader;  // 固定值0xAA55 (小端存储: 内存中为55 AA)
-    // uint16_t dataLength;   // 整个数据帧长度(含帧头和校验和)
+    // 帧头 
+    //uint16_t frameHeader;  // 固定值0xAA11
+    // uint16_t dataLength;   // 整个数据帧长度(含帧头和校验和) 
     
-    // 飞机状态数据 (序号3-74)
+    // 飞机状态数据
     //uint8_t  aircraftID;           // 飞机编号 (3)           系统信息
     int16_t  pitchAngle;           // 俯仰角 (4)             HUD组1 协议(1)
     int16_t  rollAngle;            // 滚转角 (5)             HUD组1 协议(2)
@@ -112,22 +112,12 @@ typedef struct {
     // int32_t  reserved2;           // 预留2 (71)
     // int32_t  reserved3;           // 预留3 (72)
     // int32_t  reserved4;           // 预留4 (73)
-    
-    // 校验和 (序号74)
-    // uint8_t checksum; 
+
+    //uint8_t checksum;                //校验和，地面站接收数据仅驱动显示，不涉及安全性问题，暂不启用校验
+
 }UdpRecvDataPacket;
 #pragma pack(pop)  // 恢复默认字节对齐
-//FlightCtrlToDataLink;
 
-// 后续可在此文件中填充地面站协议
-// struct UdpRecvDataPacket
-// {
-// 	float data1;  // 数据1
-// 	float data2;  // 数据2
-// 	float data3;  // 数据3
-// 	float data4;  // 数据4
-// 	float data5;  // 数据5
-// };
 
 // 地面站发送数据包结构（需要1字节对齐，避免结构体填充）
 #pragma pack(push, 1)  // 紧密打包，避免字节对齐填充
@@ -140,10 +130,9 @@ struct Waypoint
     int16_t altitude;   // 高度
 };
 
-// 地面站发送数据包结构
-struct UdpSendDataPacket
-{
-            
+// 地面站发送数据包结构    地面站帧头作为隐形msg_id使用
+struct UdpSendDataPacket_Cmd{
+    uint16_t frameHeader;                       // 固定值0xBB11
     // 任务指令（使用 Radio Button 控件：IDC_RADIO_Flag22~28）
     uint8_t missionCommand_B0;                  // IDC_RADIO_Flag22激活时, 此参数置0，为地面测试流程指令，
                                                 // IDC_RADIO_Flag23激活时，此参数置1，为发射流程指令，
@@ -156,70 +145,63 @@ struct UdpSendDataPacket
     // 控制模式（使用 Radio Button 控件：IDC_RADIO_Flag29~31）
     uint8_t controlMode_B0;                         // IDC_RADIO_Flag29激活时，此参数置0，为手动遥控
                                                     // IDC_RADIO_Flag30激活时，此参数置1，为半自主
-                                                    // IDC_RADIO_Flag31激活时，此参数置2，为全自主
+                                                    // IDC_RADIO_Flag31激活时，此参数置2，为全自主                      
+    uint8_t checksum;                           // 校验和 
+};
 
-    // 发射点 
+struct UdpSendDataPacket_Data{
+    uint16_t frameHeader;                       // 固定值0xBB22
+    // 发射点
     int32_t launchLongitude;                     // IDC_Display_EditData2
     int32_t launchLatitude;                      // IDC_Display_EditData3
     int16_t launchAltitude;                      // IDC_Display_EditData4
-            
+    
     // 初始姿态
     int16_t initPitch;                           // IDC_Display_EditData5
     int16_t initYaw;                             // IDC_Display_EditData6
     int16_t initRoll;                            // IDC_Display_EditData7
-            
+    
     // 初始角速率
     int16_t initPitchRate;                       // IDC_Display_EditData8
     int16_t initYawRate;                         // IDC_Display_EditData9
     int16_t initRollRate;                        // IDC_Display_EditData10
-            
+    
     // 初始速度 
     int16_t initNorthVelocity;                   // IDC_Display_EditData11
     int16_t initEastVelocity;                    // IDC_Display_EditData12
     int16_t initVerticalVelocity;                // IDC_Display_EditData13
-            
+    
     // 初始加速度
     int16_t initNorthAccel;                      // IDC_Display_EditData14
     int16_t initEastAccel;                       // IDC_Display_EditData15
     int16_t initVerticalAccel;                   // IDC_Display_EditData16
-            
+    
     // 航路点数组
     Waypoint waypoints[100];  // 100个航路点
-            
+    
     // 目标点 
     int32_t targetLongitude;                     // IDC_Display_EditData17
     int32_t targetLatitude;                      // IDC_Display_EditData18
     int16_t targetAltitude;                      // IDC_Display_EditData19
-            
+    
     // 发射点(重复?) (序号30-32)
     int32_t launchLongitude2;                    // IDC_Display_EditData20
     int32_t launchLatitude2;                     // IDC_Display_EditData21
     int16_t launchAltitude2;                     // IDC_Display_EditData22
-            
+    
     // 开伞点 (序号33-35)
     int32_t parachuteLongitude;                  // IDC_Display_EditData23
     int32_t parachuteLatitude;                   // IDC_Display_EditData24
     int16_t parachuteAltitude;                   // IDC_Display_EditData25
-            
+    
     // 控制指令 (序号36-38)
     int8_t elevatorCmd;                          // IDC_Display_EditData26
     int8_t aileronCmd;                           // IDC_Display_EditData27
     uint8_t airspeedSet;                         // IDC_Display_EditData28
 
-	// float data1;  // 数据1
-	// float data2;  // 数据2
-	// float data3;  // 数据3
-    // float data4;  // 数据4
-    // float data5;  // 数据5
+    uint8_t checksum;                          // 校验和 
 };
 #pragma pack(pop)  // 恢复默认字节对齐
-
-// 握手数据包结构
-struct UdpHandshakePacket
-{
-	char magic[4];      // 握手标识 "GCS\0"
-	unsigned int version;     // 协议版本（使用unsigned int替代UINT32）
-};
 
 // // 计算帧长度宏
 // #define FLIGHTCTRL_FRAME_SIZE sizeof(FlightCtrlToDataLink)
@@ -231,12 +213,19 @@ struct UdpHandshakePacket
 //     frame->dataLength = FLIGHTCTRL_FRAME_SIZE;
 // }
 
-// // 计算校验和函数
-// uint8_t calculateChecksum(const void* data, size_t len) {
-//     const uint8_t *bytes = (const uint8_t*)data;
-//     uint8_t sum = 0;
-//     for(size_t i = 0; i < len; i++) {
-//         sum += bytes[i];
-//     }
-//     return sum;
-// }
+// 计算校验和函数 飞控原版函数
+//uint8_t calculateChecksum(const void* data, size_t len) {
+//    const uint8_t *bytes = (const uint8_t*)data;
+//    uint8_t sum = 0;
+//    for(size_t i = 0; i < len; i++) {
+//        sum += bytes[i];
+//    }
+//    return sum;
+//}
+
+// 握手数据包结构
+struct UdpHandshakePacket
+{
+	char magic[4];      // 握手标识 "GCS\0"
+	unsigned int version;     // 协议版本（使用unsigned int替代UINT32）
+};

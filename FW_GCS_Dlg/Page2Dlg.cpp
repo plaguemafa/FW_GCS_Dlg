@@ -1,4 +1,4 @@
-﻿// Page2Dlg.cpp: 第二页子对话框实现文件
+// Page2Dlg.cpp: 第二页子对话框实现文件
 //
 
 #include "pch.h"
@@ -44,7 +44,6 @@ void CPage2Dlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CPage2Dlg, CDialogEx)
-	ON_BN_CLICKED(IDC_BUTTON_SendData, &CPage2Dlg::OnBnClickedButtonSendData)
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_Waypoints, &CPage2Dlg::OnNMDblclkListWaypoints)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_Waypoints, &CPage2Dlg::OnNMClickListWaypoints)
 	ON_EN_KILLFOCUS(1001, &CPage2Dlg::OnEnKillfocusEditInline)
@@ -113,30 +112,7 @@ BOOL CPage2Dlg::OnInitDialog()
 	pWnd = GetDlgItem(IDC_Display_EditData28);
 	if (pWnd != NULL) m_editSendData28.SubclassWindow(pWnd->GetSafeHwnd());
 
-	// 绑定扩展协议指令/模式 Radio 控件（仅当资源存在）
-	pWnd = GetDlgItem(IDC_RADIO_Flag22);
-	if (pWnd != NULL) m_radioMissionCmd0.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag23);
-	if (pWnd != NULL) m_radioMissionCmd1.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag24);
-	if (pWnd != NULL) m_radioMissionCmd2.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag25);
-	if (pWnd != NULL) m_radioMissionCmd3.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag26);
-	if (pWnd != NULL) m_radioMissionCmd4.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag27);
-	if (pWnd != NULL) m_radioMissionCmd5.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag28);
-	if (pWnd != NULL) m_radioMissionCmd6.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag29);
-	if (pWnd != NULL) m_radioCtrlMode0.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag30);
-	if (pWnd != NULL) m_radioCtrlMode1.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_RADIO_Flag31);
-	if (pWnd != NULL) m_radioCtrlMode2.SubclassWindow(pWnd->GetSafeHwnd());
-	
 	// 初始化发送数据输入控件（根据数据类型设置默认值）
-	// 注意：m_editSendData0 和 m_editSendData1 已弃用（missionCommand 和 controlMode 改用 Radio Button）
 	if (m_editSendData2.GetSafeHwnd() != NULL) m_editSendData2.SetWindowText(_T("0"));      // int32_t
 	if (m_editSendData3.GetSafeHwnd() != NULL) m_editSendData3.SetWindowText(_T("0"));      // int32_t
 	if (m_editSendData4.GetSafeHwnd() != NULL) m_editSendData4.SetWindowText(_T("0"));      // int16_t
@@ -165,18 +141,6 @@ BOOL CPage2Dlg::OnInitDialog()
 	if (m_editSendData27.GetSafeHwnd() != NULL) m_editSendData27.SetWindowText(_T("0"));    // int8_t
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.SetWindowText(_T("0"));    // uint8_t
 
-	// 默认指令/模式 Radio 状态
-	if (m_radioMissionCmd0.GetSafeHwnd() != NULL) m_radioMissionCmd0.SetCheck(BST_CHECKED); // 默认地面测试流程
-	if (m_radioMissionCmd1.GetSafeHwnd() != NULL) m_radioMissionCmd1.SetCheck(BST_UNCHECKED);
-	if (m_radioMissionCmd2.GetSafeHwnd() != NULL) m_radioMissionCmd2.SetCheck(BST_UNCHECKED);
-	if (m_radioMissionCmd3.GetSafeHwnd() != NULL) m_radioMissionCmd3.SetCheck(BST_UNCHECKED);
-	if (m_radioMissionCmd4.GetSafeHwnd() != NULL) m_radioMissionCmd4.SetCheck(BST_UNCHECKED);
-	if (m_radioMissionCmd5.GetSafeHwnd() != NULL) m_radioMissionCmd5.SetCheck(BST_UNCHECKED);
-	if (m_radioMissionCmd6.GetSafeHwnd() != NULL) m_radioMissionCmd6.SetCheck(BST_UNCHECKED);
-	if (m_radioCtrlMode0.GetSafeHwnd() != NULL) m_radioCtrlMode0.SetCheck(BST_CHECKED);     // 默认手动
-	if (m_radioCtrlMode1.GetSafeHwnd() != NULL) m_radioCtrlMode1.SetCheck(BST_UNCHECKED);
-	if (m_radioCtrlMode2.GetSafeHwnd() != NULL) m_radioCtrlMode2.SetCheck(BST_UNCHECKED);
-	
 	// 绑定航路点相关控件
 	pWnd = GetDlgItem(IDC_CHECK_LoadWaypoints);
 	if (pWnd != NULL) m_chkLoadWaypoints.SubclassWindow(pWnd->GetSafeHwnd());
@@ -242,37 +206,12 @@ void CPage2Dlg::UpdateDisplay(const UdpRecvDataPacket* pPacket)
 	(void)pPacket;  // 避免未使用参数警告
 }
 
-//UDP发送
+//UDP发送装订参数数据
 void CPage2Dlg::OnBnClickedButtonSendData()
 {
-	TRACE(_T("OnBnClickedButtonSendData: 函数被调用\n"));
+	TRACE(_T("OnBnClickedButtonSendData: 发送装订参数数据\n"));
 	
-	// 防止重复点击：禁用按钮
-	TRACE(_T("OnBnClickedButtonSendData: 开始获取按钮控件\n"));
-	CButton* pBtn = (CButton*)GetDlgItem(IDC_BUTTON_SendData);
-	TRACE(_T("OnBnClickedButtonSendData: GetDlgItem返回 %p\n"), pBtn);
-	
-	if (pBtn != NULL)
-	{
-		TRACE(_T("OnBnClickedButtonSendData: 禁用按钮\n"));
-		pBtn->EnableWindow(FALSE);
-		TRACE(_T("OnBnClickedButtonSendData: 按钮已禁用\n"));
-	}
-	else
-	{
-		TRACE(_T("OnBnClickedButtonSendData: 警告：按钮控件未找到\n"));
-	}
-
-	// 使用RAII模式确保按钮状态总是被恢复
-	struct ButtonEnabler
-	{
-		CButton* m_pBtn;
-		ButtonEnabler(CButton* pBtn) : m_pBtn(pBtn) {}
-		~ButtonEnabler() { if (m_pBtn != NULL) m_pBtn->EnableWindow(TRUE); }
-	} btnEnabler(pBtn);
-
 	// 获取所有控件数据
-	// 注意：strData[0] 和 strData[1] 已弃用（missionCommand 和 controlMode 改用 Radio Button）
 	CString strData[29];
 	if (m_editSendData2.GetSafeHwnd() != NULL) m_editSendData2.GetWindowText(strData[2]);
 	if (m_editSendData3.GetSafeHwnd() != NULL) m_editSendData3.GetWindowText(strData[3]);
@@ -303,26 +242,11 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.GetWindowText(strData[28]);
 
 	// 初始化数据包结构体
-	UdpSendDataPacket packet{};
+	UdpSendDataPacket_Data packet{};
 	memset(&packet, 0, sizeof(packet));  // 清零，包括waypoints数组
+	packet.frameHeader = 0xBB22;  // 设置帧头（装订参数包）
 	
 	// 填充数据（根据数据类型转换）
-	// missionCommand: 由 Radio Flag22~28 决定
-	packet.missionCommand_B0 = (m_radioMissionCmd1.GetSafeHwnd() != NULL && m_radioMissionCmd1.GetCheck() == BST_CHECKED) ? 1 : 0;
-	packet.missionCommand_B1 = (m_radioMissionCmd2.GetSafeHwnd() != NULL && m_radioMissionCmd2.GetCheck() == BST_CHECKED) ? 1 : 0;
-	packet.missionCommand_B2 = (m_radioMissionCmd3.GetSafeHwnd() != NULL && m_radioMissionCmd3.GetCheck() == BST_CHECKED) ? 1 : 0;
-	packet.missionCommand_B3 = (m_radioMissionCmd4.GetSafeHwnd() != NULL && m_radioMissionCmd4.GetCheck() == BST_CHECKED) ? 1 : 0;
-	packet.missionCommand_B4 = (m_radioMissionCmd5.GetSafeHwnd() != NULL && m_radioMissionCmd5.GetCheck() == BST_CHECKED) ? 1 : 0;
-	packet.missionCommand_B5 = (m_radioMissionCmd6.GetSafeHwnd() != NULL && m_radioMissionCmd6.GetCheck() == BST_CHECKED) ? 1 : 0;
-
-	// controlMode: Flag29=0 手动，Flag30=1 半自主，Flag31=2 全自主
-	if (m_radioCtrlMode1.GetSafeHwnd() != NULL && m_radioCtrlMode1.GetCheck() == BST_CHECKED)
-		packet.controlMode_B0 = 1;
-	else if (m_radioCtrlMode2.GetSafeHwnd() != NULL && m_radioCtrlMode2.GetCheck() == BST_CHECKED)
-		packet.controlMode_B0 = 2;
-	else
-		packet.controlMode_B0 = 0; // 默认手动
-	// 注意：controlMode 只有 B0 字段，没有 B1 和 B2
 	packet.launchLongitude = static_cast<int32_t>(_ttoi(strData[2]));            // int32_t
 	packet.launchLatitude = static_cast<int32_t>(_ttoi(strData[3]));             // int32_t
 	packet.launchAltitude = static_cast<int16_t>(_ttoi(strData[4]));             // int16_t
@@ -377,18 +301,20 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.aileronCmd = static_cast<int8_t>(_ttoi(strData[27]));                // int8_t
 	packet.airspeedSet = static_cast<uint8_t>(_ttoi(strData[28]));              // uint8_t
 
+	// 计算校验和：先将checksum字段设为0，再计算整个结构体的校验和
+	packet.checksum = 0;
+	size_t checksumSize = sizeof(packet) - sizeof(packet.checksum);
+	packet.checksum = calculateChecksum(&packet, checksumSize);
+
 	// 调试输出：检查发送的数据和结构体大小
-	TRACE(_T("UDP发送: missionCommand_B0~B5=%u,%u,%u,%u,%u,%u; controlMode_B0=%u; launchLon=%d, launchLat=%d, launchAlt=%d\n"),
-		packet.missionCommand_B0, packet.missionCommand_B1, packet.missionCommand_B2,
-		packet.missionCommand_B3, packet.missionCommand_B4, packet.missionCommand_B5,
-		packet.controlMode_B0,
-		packet.launchLongitude, packet.launchLatitude, packet.launchAltitude);
-	TRACE(_T("UDP发送: 结构体大小=%d字节\n"), sizeof(UdpSendDataPacket));
+	TRACE(_T("UDP发送装订参数: frameHeader=0x%04X, launchLon=%d, launchLat=%d, launchAlt=%d\n"),
+		packet.frameHeader, packet.launchLongitude, packet.launchLatitude, packet.launchAltitude);
+	TRACE(_T("UDP发送: 结构体大小=%d字节, 校验和=0x%02X\n"), sizeof(UdpSendDataPacket_Data), packet.checksum);
 	
 	// 调试输出：显示原始字节（用于诊断，只显示前32字节）
 	BYTE* pBytes = (BYTE*)&packet;
 	TRACE(_T("UDP发送原始字节[前32字节]: "));
-	int nBytesToShow = (sizeof(UdpSendDataPacket) < 32) ? sizeof(UdpSendDataPacket) : 32;
+	int nBytesToShow = (sizeof(UdpSendDataPacket_Data) < 32) ? sizeof(UdpSendDataPacket_Data) : 32;
 	for (int i = 0; i < nBytesToShow; i++)
 	{
 		TRACE(_T("%02X "), pBytes[i]);
@@ -402,7 +328,7 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	{
 		TRACE(_T("错误：主对话框指针未设置，UDP发送失败。\n"));
 		MessageBox(_T("无法获取主对话框，UDP发送失败。"), _T("错误"), MB_OK | MB_ICONERROR | MB_TOPMOST);
-		return;  // btnEnabler析构函数会自动恢复按钮状态
+		return;
 	}
 
 	TRACE(_T("OnBnClickedButtonSendData: 开始调用SendUdpDataPublic（连续发送3次以应对丢包）\n"));
@@ -446,7 +372,7 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	{
 		TRACE(_T("错误：UDP未连接或所有发送都失败，请检查连接后重试。\n"));
 		MessageBox(_T("UDP未连接或所有发送都失败，请检查连接后重试。"), _T("发送失败"), MB_OK | MB_ICONERROR | MB_TOPMOST);
-		return;  // btnEnabler析构函数会自动恢复按钮状态
+		return;
 	}
 	
 	// 至少有一次发送成功
@@ -464,7 +390,6 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 		TRACE(_T("UDP数据发送成功（全部 %d 次都成功）。\n"), nSuccessCount);
 		MessageBox(_T("UDP数据发送成功（已发送3包次，间隔10ms）。"), _T("发送成功"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
 	}
-	// btnEnabler析构函数会自动恢复按钮状态
 }
 
 // 从XML文件加载航路点（文件路径：可执行文件目录下的waypoints.xml）
@@ -871,4 +796,14 @@ BOOL CPage2Dlg::OnCommand(WPARAM wParam, LPARAM lParam)
 	}
 	
 	return CDialogEx::OnCommand(wParam, lParam);
+}
+
+// 计算校验和函数 (非必须，仅用于数据完整性校验)
+uint8_t CPage2Dlg::calculateChecksum(const void* data, size_t len) {
+	const uint8_t* bytes = (const uint8_t*)data;
+	uint8_t sum = 0;
+	for (size_t i = 0; i < len; i++) {
+		sum += bytes[i];
+	}
+	return sum;
 }
