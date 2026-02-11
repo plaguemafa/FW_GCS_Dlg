@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ ?????????????
-// ?? FWGCSDlg.rc ???
+// Microsoft Visual C++ …˙≥…µƒ∞¸∫¨Œƒº˛°£
+// π© FWGCSDlg.rc  π”√
 //
 #define IDD_FW_GCS_DLG_DIALOG           102
 #define IDR_MAINFRAME                   128
@@ -167,19 +167,17 @@
 #define IDC_IPADDRESS2                  1161
 #define IDC_DisplayPort1                1162
 #define IDC_DisplayPort2                1163
+#define IDC_SYSLINK1                    1164
 #define ID_MENU_OP_PLACEHOLDER          32771
 #define ID_MENU_UDP_SETTINGS            32772
 #define ID_MENU_SERIAL_SETTINGS         32773
-// ÊéßÂà∂Ê®°ÂºèËèúÂçïÈ°π
 #define ID_MENU_CTRL_MODE_MANUAL        32774
 #define ID_MENU_CTRL_MODE_SEMI          32775
 #define ID_MENU_CTRL_MODE_FULL          32776
-// ‰ªªÂä°Êåá‰ª§ËèúÂçïÈ°π
 #define ID_MENU_MISSION_TEST            32777
 #define ID_MENU_MISSION_LAUNCH_PROC     32778
 #define ID_MENU_MISSION_BIND_PARAM      32779
 #define ID_MENU_MISSION_LAUNCH_CMD      32780
-// Ëá™Ê£ÄÊåá‰ª§ËèúÂçïÈ°π
 #define ID_MENU_CHECK_SELF              32781
 #define ID_MENU_CHECK_SURFACE           32782
 #define ID_MENU_CHECK_ENGINE            32783
@@ -190,7 +188,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        142
 #define _APS_NEXT_COMMAND_VALUE         32784
-#define _APS_NEXT_CONTROL_VALUE         1164
+#define _APS_NEXT_CONTROL_VALUE         1165
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

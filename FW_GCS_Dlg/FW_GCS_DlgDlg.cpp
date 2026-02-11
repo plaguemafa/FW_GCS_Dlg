@@ -18,8 +18,13 @@
 #include <string>
 #include <vector>
 #include <cstdarg>
+#include <cmath>
 // #include <algorithm>
 #include <minwindef.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -818,6 +823,29 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 				suggestedZoom, m_mbtilesMetadata.minZoom, m_mbtilesMetadata.maxZoom);
 		}
 	}
+	
+	// 加载局部精细地图
+	LoadLocalMaps();
+	
+	// 合并元数据：maxZoom取所有源的最大值
+	if (!m_localMaps.empty())
+	{
+		int maxZoomFromLocal = m_mbtilesMetadata.maxZoom;
+		for (size_t i = 0; i < m_localMaps.size(); ++i)
+		{
+			if (m_localMaps[i].metadata.maxZoom > maxZoomFromLocal)
+			{
+				maxZoomFromLocal = m_localMaps[i].metadata.maxZoom;
+			}
+		}
+		if (maxZoomFromLocal > m_mbtilesMetadata.maxZoom)
+		{
+			LogMap(L"[Map] Merged maxZoom: %d -> %d (from local maps)", 
+				m_mbtilesMetadata.maxZoom, maxZoomFromLocal);
+			m_mbtilesMetadata.maxZoom = maxZoomFromLocal;
+		}
+	}
+	
 #if FW_GCS_WITH_WEBVIEW2
 	if (!m_comInitialized)
 	{
@@ -960,6 +988,8 @@ void CFWGCSDlgDlg::OnDestroy()
 	m_webViewEnvironment = nullptr;
 #endif
 	m_mbtilesReader.Close();
+	// 关闭所有局部地图
+	m_localMaps.clear();
 	if (m_comInitialized)
 	{
 		::CoUninitialize();
@@ -3367,8 +3397,8 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			textRect.right = rc.right;  // 使用完整的 rc.right
 			
 			// 调试输出（可以后续删除）
-			TRACE(_T("OnDrawItem 顶层菜单: index=%u, text='%s', rc=(%d,%d,%d,%d), textRect=(%d,%d,%d,%d)\n"),
-				nIndex, text, rc.left, rc.top, rc.right, rc.bottom, textRect.left, textRect.top, textRect.right, textRect.bottom);
+			//TRACE(_T("OnDrawItem 顶层菜单: index=%u, text='%s', rc=(%d,%d,%d,%d), textRect=(%d,%d,%d,%d)\n"),
+				//nIndex, text, rc.left, rc.top, rc.right, rc.bottom, textRect.left, textRect.top, textRect.right, textRect.bottom);
 			
 			dc.DrawText(text, &textRect, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOCLIP);  // DT_NOCLIP 防止文字被裁剪
 			dc.SelectObject(pOld);
@@ -3621,13 +3651,53 @@ void CFWGCSDlgDlg::InitMapWebView()
 									std::vector<unsigned char> tileData;
 									CString mimeType;
 									bool isGzip = false;
-									if (!m_mbtilesReader.GetTile(z, x, y, tileData, mimeType, isGzip))
+									bool tileFound = false;
+									const wchar_t* source = nullptr;
+									
+									// 优先从局部精细地图获取瓦片
+									if (GetTileFromLocalMaps(z, x, y, tileData, mimeType, isGzip))
+									{
+										tileFound = true;
+										source = L"LOCAL";
+									}
+									// 如果局部地图没有，则从全国底图获取
+									else if (m_mbtilesReader.GetTile(z, x, y, tileData, mimeType, isGzip))
+									{
+										tileFound = true;
+										source = L"BASE";
+									}
+									
+									static int s_tileServedCount = 0;
+									static int s_localServedCount = 0;
+									static int s_baseServedCount = 0;
+									
+									if (tileFound)
+									{
+										s_tileServedCount++;
+										if (source == L"LOCAL")
+										{
+											s_localServedCount++;
+										}
+										else
+										{
+											s_baseServedCount++;
+										}
+										
+										if (s_tileServedCount <= 20 || (s_tileServedCount % 100 == 0))
+										{
+											LogMap(L"[Map] [TileRequest] z=%d x=%d y=%d -> %s (size=%d, mime=%s) [Stats: LOCAL=%d BASE=%d TOTAL=%d]",
+												z, x, y, source, tileData.size(), mimeType.GetString(),
+												s_localServedCount, s_baseServedCount, s_tileServedCount);
+										}
+									}
+									else
 									{
 										static int s_missingCount = 0;
-										if (s_missingCount < 10)
+										s_missingCount++;
+										if (s_missingCount <= 20 || (s_missingCount % 50 == 0))
 										{
-											LogMap(L"[Map] Missing tile z=%d x=%d y=%d", z, x, y);
-											++s_missingCount;
+											LogMap(L"[Map] [TileRequest] ✗ Missing tile z=%d x=%d y=%d (missing count: %d)", 
+												z, x, y, s_missingCount);
 										}
 										Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
 										m_webViewEnvironment->CreateWebResourceResponse(nullptr, 404, L"Not Found", L"", &response);
@@ -3852,6 +3922,267 @@ CString CFWGCSDlgDlg::GetDefaultMbtilesPath() const
 
 	// 如果都不存在，返回 OUTPUT_FILE.mbtiles 作为默认（用户需要创建）
 	return exeDir + _T("\\maps\\OUTPUT_FILE.mbtiles");
+}
+
+// 加载LocalMaps文件夹内的所有.mbtiles文件
+void CFWGCSDlgDlg::LoadLocalMaps()
+{
+	m_localMaps.clear();
+	
+	wchar_t exePath[MAX_PATH] = {};
+	::GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+	CString exeDir(exePath);
+	int pos = exeDir.ReverseFind(L'\\');
+	if (pos >= 0)
+	{
+		exeDir = exeDir.Left(pos);
+	}
+	
+	CString localMapsDir = exeDir + _T("\\maps\\LocalMaps");
+	LogMap(L"[Map] [LoadLocalMaps] Searching directory: %s", localMapsDir.GetString());
+	
+	DWORD attr = ::GetFileAttributesW(localMapsDir);
+	if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY))
+	{
+		LogMap(L"[Map] [LoadLocalMaps] Directory not found or not a directory: %s", localMapsDir.GetString());
+		return;
+	}
+	
+	CString searchPath = localMapsDir + _T("\\*.mbtiles");
+	LogMap(L"[Map] [LoadLocalMaps] Search pattern: %s", searchPath.GetString());
+	
+	WIN32_FIND_DATAW findData;
+	HANDLE hFind = ::FindFirstFileW(searchPath, &findData);
+	if (hFind == INVALID_HANDLE_VALUE)
+	{
+		LogMap(L"[Map] [LoadLocalMaps] No .mbtiles files found in LocalMaps (FindFirstFileW failed)");
+		return;
+	}
+	
+	int fileCount = 0;
+	do
+	{
+		if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+		{
+			fileCount++;
+			CString filePath = localMapsDir + _T("\\") + findData.cFileName;
+			LogMap(L"[Map] [LoadLocalMaps] Found file #%d: %s", fileCount, findData.cFileName);
+			
+			LocalMapInfo localMap;
+			localMap.path = filePath;
+			
+			// 使用临时reader读取metadata，然后关闭
+			CMbtilesReader tempReader;
+			CString errorMsg;
+			LogMap(L"[Map] [LoadLocalMaps] Attempting to open: %s", filePath.GetString());
+			if (tempReader.Open(filePath, errorMsg))
+			{
+				LogMap(L"[Map] [LoadLocalMaps] File opened successfully, reading metadata...");
+				if (tempReader.GetMetadata(localMap.metadata))
+				{
+					m_localMaps.push_back(localMap);
+					LogMap(L"[Map] [LoadLocalMaps] ✓ Loaded local map #%d: %s", m_localMaps.size(), findData.cFileName);
+					LogMap(L"[Map] [LoadLocalMaps]   - Zoom range: %d..%d", 
+						localMap.metadata.minZoom, localMap.metadata.maxZoom);
+					LogMap(L"[Map] [LoadLocalMaps]   - Bounds: [%.6f, %.6f] to [%.6f, %.6f] (hasBounds=%s)", 
+						localMap.metadata.minLng, localMap.metadata.minLat,
+						localMap.metadata.maxLng, localMap.metadata.maxLat,
+						localMap.metadata.hasBounds ? L"yes" : L"no");
+					LogMap(L"[Map] [LoadLocalMaps]   - Format: %s", localMap.metadata.format.GetString());
+				}
+				else
+				{
+					LogMap(L"[Map] [LoadLocalMaps] ✗ Failed to get metadata from: %s", findData.cFileName);
+				}
+				tempReader.Close();
+			}
+			else
+			{
+				LogMap(L"[Map] [LoadLocalMaps] ✗ Failed to open local map: %s - Error: %s", 
+					findData.cFileName, errorMsg.GetString());
+			}
+		}
+	} while (::FindNextFileW(hFind, &findData));
+	
+	::FindClose(hFind);
+	LogMap(L"[Map] [LoadLocalMaps] Scan complete: found %d file(s), successfully loaded %d local map(s)", 
+		fileCount, m_localMaps.size());
+}
+
+// 瓦片坐标转经纬度（返回瓦片中心点的经纬度）
+bool CFWGCSDlgDlg::TileToLngLat(int zoom, int x, int y, double& lng, double& lat)
+{
+	if (zoom < 0 || x < 0 || y < 0)
+	{
+		return false;
+	}
+	const int maxIndex = 1 << zoom;
+	if (x >= maxIndex || y >= maxIndex)
+	{
+		return false;
+	}
+	
+	// 计算瓦片中心点的经纬度
+	const double n = 1 << zoom;
+	lng = (x + 0.5) / n * 360.0 - 180.0;
+	const double lat_rad = atan(sinh(M_PI * (1.0 - 2.0 * (y + 0.5) / n)));
+	lat = lat_rad * 180.0 / M_PI;
+	return true;
+}
+
+// 计算瓦片的边界（四个角的经纬度）
+static void TileToBounds(int zoom, int x, int y, double& minLng, double& minLat, double& maxLng, double& maxLat)
+{
+	const double n = 1 << zoom;
+	// 左边界（x）
+	minLng = x / n * 360.0 - 180.0;
+	// 右边界（x+1）
+	maxLng = (x + 1) / n * 360.0 - 180.0;
+	// 上边界（y）- 注意：Web Mercator中y=0在顶部
+	const double lat1_rad = atan(sinh(M_PI * (1.0 - 2.0 * y / n)));
+	const double lat2_rad = atan(sinh(M_PI * (1.0 - 2.0 * (y + 1) / n)));
+	maxLat = lat1_rad * 180.0 / M_PI;  // 上边界（y值小）
+	minLat = lat2_rad * 180.0 / M_PI;  // 下边界（y值大）
+}
+
+// 检查两个矩形是否重叠
+static bool BoundsOverlap(double minLng1, double minLat1, double maxLng1, double maxLat1,
+						  double minLng2, double minLat2, double maxLng2, double maxLat2)
+{
+	// 检查是否不重叠：一个矩形完全在另一个的左边、右边、上边或下边
+	if (maxLng1 < minLng2 || minLng1 > maxLng2 || maxLat1 < minLat2 || minLat1 > maxLat2)
+	{
+		return false;
+	}
+	return true;
+}
+
+// 从局部地图获取瓦片（如果该瓦片在局部地图范围内）
+bool CFWGCSDlgDlg::GetTileFromLocalMaps(int zoom, int x, int y, std::vector<unsigned char>& outData, CString& outMimeType, bool& outIsGzip)
+{
+	static int s_tileRequestCount = 0;
+	static int s_localMapHitCount = 0;
+	s_tileRequestCount++;
+	
+	if (m_localMaps.empty())
+	{
+		if (s_tileRequestCount <= 5 || (s_tileRequestCount % 100 == 0))
+		{
+			LogMap(L"[Map] [GetTileFromLocalMaps] z=%d x=%d y=%d - No local maps available", zoom, x, y);
+		}
+		return false;
+	}
+	
+	// 计算瓦片的边界
+	double tileMinLng, tileMinLat, tileMaxLng, tileMaxLat;
+	TileToBounds(zoom, x, y, tileMinLng, tileMinLat, tileMaxLng, tileMaxLat);
+	
+	if (s_tileRequestCount <= 10 || (s_tileRequestCount % 50 == 0))
+	{
+		LogMap(L"[Map] [GetTileFromLocalMaps] Request #%d: z=%d x=%d y=%d, tile bounds: [%.6f,%.6f] to [%.6f,%.6f]",
+			s_tileRequestCount, zoom, x, y, tileMinLng, tileMinLat, tileMaxLng, tileMaxLat);
+	}
+	
+	// 遍历所有局部地图，查找包含该瓦片的
+	for (size_t i = 0; i < m_localMaps.size(); ++i)
+	{
+		LocalMapInfo& localMap = m_localMaps[i];
+		
+		if (s_tileRequestCount <= 10 || (s_tileRequestCount % 50 == 0))
+		{
+			LogMap(L"[Map] [GetTileFromLocalMaps] Checking local map #%d: zoom range %d..%d, bounds [%.6f,%.6f] to [%.6f,%.6f]",
+				i + 1, localMap.metadata.minZoom, localMap.metadata.maxZoom,
+				localMap.metadata.minLng, localMap.metadata.minLat,
+				localMap.metadata.maxLng, localMap.metadata.maxLat);
+		}
+		
+		// 检查zoom是否在范围内
+		if (zoom < localMap.metadata.minZoom || zoom > localMap.metadata.maxZoom)
+		{
+			if (s_tileRequestCount <= 10 || (s_tileRequestCount % 50 == 0))
+			{
+				LogMap(L"[Map] [GetTileFromLocalMaps]   Zoom %d out of range [%d..%d] for map #%d",
+					zoom, localMap.metadata.minZoom, localMap.metadata.maxZoom, i + 1);
+			}
+			continue;
+		}
+		
+		// 检查bounds（如果局部地图有bounds信息）
+		bool overlaps = true;  // 如果没有bounds信息，默认认为重叠
+		if (localMap.metadata.hasBounds)
+		{
+			overlaps = BoundsOverlap(tileMinLng, tileMinLat, tileMaxLng, tileMaxLat,
+									 localMap.metadata.minLng, localMap.metadata.minLat,
+									 localMap.metadata.maxLng, localMap.metadata.maxLat);
+			
+			if (s_tileRequestCount <= 10 || (s_tileRequestCount % 50 == 0) || overlaps)
+			{
+				LogMap(L"[Map] [GetTileFromLocalMaps]   Bounds check: tile[%.6f,%.6f to %.6f,%.6f] vs map[%.6f,%.6f to %.6f,%.6f] -> %s",
+					tileMinLng, tileMinLat, tileMaxLng, tileMaxLat,
+					localMap.metadata.minLng, localMap.metadata.minLat,
+					localMap.metadata.maxLng, localMap.metadata.maxLat,
+					overlaps ? L"OVERLAP" : L"NO OVERLAP");
+			}
+			
+			if (!overlaps)
+			{
+				continue;
+			}
+		}
+		else
+		{
+			if (s_tileRequestCount <= 10 || (s_tileRequestCount % 50 == 0))
+			{
+				LogMap(L"[Map] [GetTileFromLocalMaps]   Map #%d has no bounds info, checking tile existence...", i + 1);
+			}
+		}
+		
+		// 每次请求使用独立的临时 reader，避免多线程共享同一连接导致 rc=21
+		CMbtilesReader tempReader;
+		CString openErr;
+		if (!tempReader.Open(localMap.path, openErr))
+		{
+			if (s_tileRequestCount <= 10 || (s_tileRequestCount % 50 == 0))
+			{
+				LogMap(L"[Map] [GetTileFromLocalMaps]   Open local map failed #%d: %s", i + 1, openErr.GetString());
+			}
+			continue;
+		}
+
+		// 尝试从该局部地图获取瓦片
+		// 注意：MbtilesReader内部会将Y转换为TMS坐标系
+		const int maxIndex = 1 << zoom;
+		const int tmsY = (maxIndex - 1) - y;
+		if (s_tileRequestCount <= 10 || (s_tileRequestCount % 50 == 0) || overlaps)
+		{
+			LogMap(L"[Map] [GetTileFromLocalMaps]   Querying tile: z=%d x=%d y=%d (Web Mercator) -> TMS y=%d (maxIndex=%d)", 
+				zoom, x, y, tmsY, maxIndex);
+		}
+		
+		if (tempReader.GetTile(zoom, x, y, outData, outMimeType, outIsGzip))
+		{
+			s_localMapHitCount++;
+			LogMap(L"[Map] [GetTileFromLocalMaps] ✓✓✓ FOUND in local map #%d (z=%d x=%d y=%d, TMS y=%d) size=%d bytes [Hit rate: %d/%d=%.1f%%]",
+				i + 1, zoom, x, y, tmsY, outData.size(), s_localMapHitCount, s_tileRequestCount,
+				s_tileRequestCount > 0 ? (100.0 * s_localMapHitCount / s_tileRequestCount) : 0.0);
+			return true;
+		}
+		else
+		{
+			// 如果bounds重叠但没找到，总是输出日志
+			if (overlaps || s_tileRequestCount <= 10 || (s_tileRequestCount % 50 == 0))
+			{
+				LogMap(L"[Map] [GetTileFromLocalMaps]   ✗✗✗ Tile NOT FOUND in local map #%d (z=%d x=%d y=%d, TMS y=%d) - bounds overlapped but tile missing!",
+					i + 1, zoom, x, y, tmsY);
+			}
+		}
+	}
+	
+	if (s_tileRequestCount <= 10 || (s_tileRequestCount % 100 == 0))
+	{
+		LogMap(L"[Map] [GetTileFromLocalMaps] ✗ Not found in any local map (z=%d x=%d y=%d)", zoom, x, y);
+	}
+	return false;
 }
 
 // UDP通信设置菜单项处理函数

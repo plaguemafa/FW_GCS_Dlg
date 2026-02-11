@@ -9,7 +9,7 @@ namespace
 	const int SQLITE_ROW = 100;
 	const int SQLITE_DONE = 101;
 	const int SQLITE_OPEN_READONLY = 0x00000001;
-	const int SQLITE_OPEN_NOMUTEX = 0x00008000;
+	const int SQLITE_OPEN_FULLMUTEX = 0x00010000;   // 线程安全
 	const int SQLITE_OPEN_PRIVATECACHE = 0x00040000;
 
 	bool ParseDoubleList(const std::string& text, double* values, int count)
@@ -64,7 +64,8 @@ bool CMbtilesReader::Open(const CString& path, CString& errorMessage)
 	}
 
 	std::string utf8Path = WideToUtf8(path);
-	int rc = m_api.open_v2(utf8Path.c_str(), &m_db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_PRIVATECACHE, nullptr);
+	// 使用 FULLMUTEX 以避免多线程访问同一连接时出现 rc=21 (MISUSE)
+	int rc = m_api.open_v2(utf8Path.c_str(), &m_db, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_PRIVATECACHE, nullptr);
 	if (rc != SQLITE_OK || m_db == nullptr)
 	{
 		CString err = _T("sqlite3_open_v2 失败");
@@ -297,6 +298,11 @@ bool CMbtilesReader::LoadMetadata(CString& errorMessage)
 		double bounds[4] = { 0.0, 0.0, 0.0, 0.0 };
 		if (ParseDoubleList(value, bounds, 4))
 		{
+			m_metadata.minLng = bounds[0];
+			m_metadata.minLat = bounds[1];
+			m_metadata.maxLng = bounds[2];
+			m_metadata.maxLat = bounds[3];
+			m_metadata.hasBounds = true;
 			m_metadata.centerLng = (bounds[0] + bounds[2]) * 0.5;
 			m_metadata.centerLat = (bounds[1] + bounds[3]) * 0.5;
 			m_metadata.hasCenter = true;

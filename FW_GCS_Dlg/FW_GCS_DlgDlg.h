@@ -17,6 +17,7 @@
 #include "UdpSettingsDlg.h"
 #include "SerialSettingsDlg.h"
 #include <wrl.h>
+#include <vector>
 
 #if defined(__has_include)
 #if __has_include(<WebView2.h>)
@@ -306,14 +307,26 @@ private:
 	Microsoft::WRL::ComPtr<ICoreWebView2Controller> m_webViewController;
 	Microsoft::WRL::ComPtr<ICoreWebView2> m_webView;
 #endif
-	CMbtilesReader m_mbtilesReader;
+	CMbtilesReader m_mbtilesReader;  // 全国底图（粗分辨率）
 	MbtilesMetadata m_mbtilesMetadata;
 	CString m_mbtilesPath;
+	
+	// 局部精细地图（支持多个）
+	struct LocalMapInfo
+	{
+		MbtilesMetadata metadata;
+		CString path;
+	};
+	std::vector<LocalMapInfo> m_localMaps;
+	
 	bool m_comInitialized = false;
 
 	void InitMapWebView();
 	void ResizeMapWebView(int cx, int cy);
 	CString BuildMapHtml() const;
 	CString GetDefaultMbtilesPath() const;
+	void LoadLocalMaps();  // 加载LocalMaps文件夹内的所有.mbtiles文件
+	bool GetTileFromLocalMaps(int zoom, int x, int y, std::vector<unsigned char>& outData, CString& outMimeType, bool& outIsGzip);  // 从局部地图获取瓦片
+	static bool TileToLngLat(int zoom, int x, int y, double& lng, double& lat);  // 瓦片坐标转经纬度（瓦片中心点）
 	void SendHudMessage(const UdpRecvDataPacket* pPacket);  // 向 WebView2 推送 HUD 数据
 };

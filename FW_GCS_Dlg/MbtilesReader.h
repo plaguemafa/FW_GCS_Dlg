@@ -14,6 +14,12 @@ struct MbtilesMetadata
 	double centerLng = 0.0;
 	CString format = _T("png");
 	bool hasCenter = false;
+	// Bounds: [minLng, minLat, maxLng, maxLat]
+	double minLng = -180.0;
+	double minLat = -90.0;
+	double maxLng = 180.0;
+	double maxLat = 90.0;
+	bool hasBounds = false;
 };
 
 class CMbtilesReader
