@@ -417,41 +417,48 @@ function drawRollScale(cx, topY, radius, roll, colors) {
     const minDisplayRoll10 = Math.floor(minDisplayRoll / 10) * 10;  // 向下取整到10的倍数
     const maxDisplayRoll10 = Math.ceil(maxDisplayRoll / 10) * 10;   // 向上取整到10的倍数
     
-    // 先绘制所有刻度线（每1度一个小刻度，每5度一个中等刻度，每10度一个长刻度）
+    // 先绘制所有刻度线
+    // 基线内圈的小刻度：固定的，每1度一个短刻度
+    // 基线外圈的长刻度：根据displayRoll动态显示（10的倍数显示长刻度，5的倍数显示中等刻度）
     for (let deg = -scaleRange; deg <= scaleRange; deg += 1) {
         // 角度转换：0度在顶部，顺时针为正（-90度偏移使0度在顶部）
         const rad = (deg - 90) * Math.PI / 180;
         const r1 = radius - 10;                   // 刻度起点（弧内侧）
+        const rBase = radius;                     // 基线位置（半圆弧）
         
-        // 计算这个刻度位置对应的显示值
+        // 计算这个刻度位置对应的显示值（相对于当前roll角度）
         let displayRoll = deg + roll;
         // 归一化到-180到180范围
         while (displayRoll > 180) displayRoll -= 360;
         while (displayRoll < -180) displayRoll += 360;
         
-        // 判断这个显示值是否接近10的倍数（用于决定刻度长度）
-        const nearest10 = Math.round(displayRoll / 10) * 10;
-        const distTo10 = Math.abs(displayRoll - nearest10);
-        
-        // 根据刻度类型决定长度
-        let r2;
-        if (distTo10 < 0.5) {
-            // 非常接近10的倍数：最长刻度（用于显示数字的位置）
-            r2 = radius + 10;
-        } else if (Math.abs(deg) % 5 === 0) {
-            // 5度倍数：中等刻度
-            r2 = radius + 6;
-        } else {
-            // 其他：短刻度（每1度）
-            r2 = radius + 2;
-        }
-        
-        // 绘制刻度线
+        // 基线内圈：所有位置都画短刻度（固定的，不随roll变化）
         hudCtx.strokeStyle = colors.line;
         hudCtx.beginPath();
         hudCtx.moveTo(r1 * Math.cos(rad), r1 * Math.sin(rad));
-        hudCtx.lineTo(r2 * Math.cos(rad), r2 * Math.sin(rad));
+        hudCtx.lineTo(rBase * Math.cos(rad), rBase * Math.sin(rad));
         hudCtx.stroke();
+        
+        // 基线外圈：根据displayRoll的值决定是否画长刻度或中等刻度（动态的，随roll变化）
+        // 使用取模运算判断，避免浮点数精度问题
+        // 先四舍五入到最近的整数，然后判断是否是5或10的倍数
+        const roundedRoll = Math.round(displayRoll);
+        const mod10 = Math.abs(roundedRoll) % 10;
+        const mod5 = Math.abs(roundedRoll) % 5;
+        
+        if (mod10 === 0) {
+            // displayRoll是10的倍数：画长刻度（用于显示数字的位置）
+            hudCtx.beginPath();
+            hudCtx.moveTo(rBase * Math.cos(rad), rBase * Math.sin(rad));
+            hudCtx.lineTo((rBase + 10) * Math.cos(rad), (rBase + 10) * Math.sin(rad));
+            hudCtx.stroke();
+        } else if (mod5 === 0) {
+            // displayRoll是5的倍数但不是10的倍数：画中等刻度
+            hudCtx.beginPath();
+            hudCtx.moveTo(rBase * Math.cos(rad), rBase * Math.sin(rad));
+            hudCtx.lineTo((rBase + 6) * Math.cos(rad), (rBase + 6) * Math.sin(rad));
+            hudCtx.stroke();
+        }
     }
     
     // 然后绘制数字标签：遍历所有10的倍数显示值
