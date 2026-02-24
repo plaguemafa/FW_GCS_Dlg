@@ -3243,6 +3243,7 @@ void CFWGCSDlgDlg::OnBnClickedPage2()
 }
 
 // 窗口大小改变时调整子对话框位置（独立弹窗不需要调整位置）
+// 底部按钮按资源设计尺寸(686x588)的相对比例随当前客户区缩放，保证不同分辨率下位置一致
 void CFWGCSDlgDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
@@ -3250,6 +3251,29 @@ void CFWGCSDlgDlg::OnSize(UINT nType, int cx, int cy)
 	// 独立弹窗不需要跟随主窗口调整位置
 	// 如果需要让弹窗始终居中，可以在这里实现
 	ResizeMapWebView(cx, cy);
+
+	// 按设计尺寸与当前客户区的比例重排底部控件，使在不同分辨率/DPI 下保持相对位置
+	const int designW = 686;  // 主对话框资源 IDD_FW_GCS_DLG_DIALOG 设计宽度 (DLU)
+	const int designH = 588;  // 主对话框资源设计高度 (DLU)
+	if (cx <= 0 || cy <= 0) return;
+
+	auto placeBottomControl = [this, cx, cy, designW, designH](UINT nID, int dx, int dy, int dw, int dh)
+	{
+		CWnd* p = GetDlgItem(nID);
+		if (!p || !p->GetSafeHwnd()) return;
+		int x = (int)((long)dx * cx / designW);
+		int y = (int)((long)dy * cy / designH);
+		int w = (int)((long)dw * cx / designW);
+		int h = (int)((long)dh * cy / designH);
+		if (w < 1) w = 1;
+		if (h < 1) h = 1;
+		p->SetWindowPos(NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+	};
+	// rc资源中底部按钮设计位置与大小：x, y, width, height位置依据窗口展开大小（1920x1080比例分配）
+	placeBottomControl(IDC_UDPlink,    9, 568, 40, 16);
+	placeBottomControl(IDC_SerialLink, 59, 568, 40, 16);
+	placeBottomControl(IDC_BTN_PAGE2, 236, 568, 40, 16);
+	placeBottomControl(IDC_BTN_PAGE1, 306, 568, 40, 16);
 }
 
 void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct)

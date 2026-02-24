@@ -12,7 +12,7 @@ namespace
 	const int SQLITE_OPEN_FULLMUTEX = 0x00010000;   // 线程安全
 	const int SQLITE_OPEN_PRIVATECACHE = 0x00040000;
 
-	bool ParseDoubleList(const std::string& text, double* values, int count)
+	bool ParseDoubleList(const std::string& text, double* values, int count) //解析列表
 	{
 		if (values == nullptr || count <= 0)
 		{

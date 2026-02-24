@@ -3,10 +3,10 @@
 // ?? FWGCSDlg.rc ???
 //
 #define IDD_FW_GCS_DLG_DIALOG           102
-#define IDI_APPICON                     1   // 资源 ID 最小，供资源管理器显示 exe 文件图标
+#define IDI_APPICON                     1     // 资源 ID 最小，供资源管理器显示 exe 文件图标
 #define IDR_MAINFRAME                   128
-#define IDR_MAP_HTML                    140 //map.html资源定义
-#define IDR_SCRIPT_JS                      141 //map.js资源定义
+#define IDR_MAP_HTML                    140   //map.html资源定义
+#define IDR_SCRIPT_JS                   141   //map.js资源定义
 #define IDD_PAGE1_DIALOG                130
 #define IDD_DIALOG2                     133
 #define IDD_PAGE2_DIALOG                136
