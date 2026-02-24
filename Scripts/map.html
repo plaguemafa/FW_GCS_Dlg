@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <style>
+    <style>/*Canves元素底层定义*/
         html, body, #map {
             margin: 0;
             padding: 0;
@@ -23,7 +23,7 @@
         }
         #hud {
             position: absolute;
-            right: 6px;/*right: 12px;*/
+            right: 6px;             /*right: 12px;*/
             top: 0.5%;              /*  在1920x1080分辨率下HUD顶端与窗口顶端留出0.0%像素 */
             width: 360px;
             height: 360px;
@@ -46,7 +46,7 @@
             z-index: 10;
             pointer-events: none;
         }
-        /* 添加HUD组2和HUD组3的Canvas样式 - 修正：位于HUD下方，右对齐 */
+        /* 添加HUD组2和HUD组3的Canvas样式，右对齐 */
         #hudGroup2 {
             position: absolute;
             right: 6px;

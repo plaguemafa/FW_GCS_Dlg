@@ -10,6 +10,7 @@
 #include "HudOverlay.h"
 #include "FW_GCS_Dlg.h"
 #include "FW_GCS_DlgDlg.h"
+#include "resource.h"
 #include "afxdialogex.h"
 #include "Page1Dlg.h"
 #include "Page2Dlg.h"
@@ -3783,62 +3784,38 @@ void CFWGCSDlgDlg::ResizeMapWebView(int cx, int cy)
 #endif
 }
 
-// 辅助函数：从文件读取内容
-static CStringA ReadFileContentA(const CString& filePath)
+// 辅助函数：从 exe 嵌入资源（RCDATA）读取内容为 UTF-8/ANSI 字符串
+static CStringA ReadResourceContentA(HMODULE hModule, UINT resourceId)
 {
 	CStringA content;
-	CFile file;
-	if (file.Open(filePath, CFile::modeRead | CFile::shareDenyWrite))
-	{
-		ULONGLONG fileSize = file.GetLength();
-		if (fileSize > 0 && fileSize < 10 * 1024 * 1024) // 限制最大10MB
-		{
-			char* buffer = new char[(size_t)fileSize + 1];
-			UINT bytesRead = file.Read(buffer, (UINT)fileSize);
-			buffer[bytesRead] = '\0';
-			content = buffer;
-			delete[] buffer;
-		}
-		file.Close();
-	}
+	HRSRC hRes = ::FindResource(hModule, MAKEINTRESOURCE(resourceId), RT_RCDATA);
+	if (!hRes)
+		return content;
+	HGLOBAL hLoaded = ::LoadResource(hModule, hRes);
+	if (!hLoaded)
+		return content;
+	const char* pData = (const char*)::LockResource(hLoaded);
+	DWORD size = ::SizeofResource(hModule, hRes);
+	if (!pData || size == 0 || size > 10 * 1024 * 1024)
+		return content;
+	content.SetString(pData, (int)size);
 	return content;
-}
-
-// 辅助函数：获取可执行文件所在目录
-static CString GetExeDirectory()
-{
-	CString exePath;
-	GetModuleFileName(NULL, exePath.GetBuffer(MAX_PATH), MAX_PATH);
-	exePath.ReleaseBuffer();
-	int pos = exePath.ReverseFind(_T('\\'));
-	if (pos > 0)
-		return exePath.Left(pos + 1);
-	return _T("");
 }
 
 CString CFWGCSDlgDlg::BuildMapHtml() const
 {
-	// 获取 map.html 和 map.js 文件路径（exe同目录为基路径）
-	CString exeDir = GetExeDirectory();
-	CString htmlPath = exeDir + _T("/Scripts/map.html");
-	CString jsPath = exeDir + _T("/Scripts/map.js");
+	// 从 exe 嵌入资源加载 map.html 和 script.js（无需 exe 同目录下的 Scripts 文件夹）
+	HMODULE hInst = AfxGetResourceHandle();
+	CStringA htmlTemplate = ReadResourceContentA(hInst, IDR_MAP_HTML);
+	CStringA jsContent = ReadResourceContentA(hInst, IDR_SCRIPT_JS);
 
-	// 读取模板文件
-	CStringA htmlTemplate = ReadFileContentA(htmlPath);
-	CStringA jsContent = ReadFileContentA(jsPath);
-
-	// 如果文件读取失败，返回错误提示页面
 	if (htmlTemplate.IsEmpty())
 	{
-		CStringA errorHtml;
-		CStringA htmlPathA(htmlPath);
-		errorHtml.Format(
+		CStringA errorHtml(
 			"<!doctype html><html><body style='background:#1a1a1a;color:#ff6b6b;font-family:Segoe UI;padding:20px;'>"
-			"<h2>Error: Failed to load map.html</h2>"
-			"<p>Expected path: %s</p>"
-			"<p>Please ensure map.html and map.js are in the same directory as the executable.</p>"
-			"</body></html>",
-			htmlPathA.GetString());
+			"<h2>Error: Embedded map resources not found</h2>"
+			"<p>map.html/script.js should be compiled into the executable. Rebuild the project.</p>"
+			"</body></html>");
 		return CString(errorHtml);
 	}
 
