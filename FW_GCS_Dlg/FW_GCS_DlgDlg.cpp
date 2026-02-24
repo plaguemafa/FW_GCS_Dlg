@@ -4480,7 +4480,7 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	return (nSuccessCount > 0);
 }
 
-// 从注册表加载UDP配置（如果没有则使用宏默认值）
+// 从注册表加载UDP配置（未实现，当前使用宏默认值）
 void CFWGCSDlgDlg::LoadUdpConfig()
 {
 	// 忽略注册表，每次启动都使用宏默认值
