@@ -64,6 +64,7 @@ protected:
 	CMenu m_mainMenu;					   // 菜单栏
 	CFont m_menuFont;					   // 菜单字体
 	int m_menuItemHeight = 0;			   // 菜单项高度
+	int m_menuBarExtraHeight = 0;		   // 客户区顶部灰色条带高度（当系统菜单栏未随 cyMax 加高时使用）
 	CBrush m_menuBrush;				   // 菜单背景刷
 	
 	// 控制指令状态跟踪（默认：地面测试流程，手动遥控模式）

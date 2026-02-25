@@ -132,10 +132,10 @@ struct Waypoint
 
 // 地面站发送数据包结构    地面站帧头作为隐形msg_id使用
 struct UdpSendDataPacket_Cmd{
-    uint16_t frameHeader;                       // 固定值0xBB11
+    uint16_t frameHeader;                            // 固定值0xBB11
     // 任务指令（使用 Radio Button 控件：IDC_RADIO_Flag22~28）
     uint8_t missionCommand_B0;                  // IDC_RADIO_Flag22激活时, 此参数置0，为地面测试流程指令，
-                                                // IDC_RADIO_Flag23激活时，此参数置1，为发射流程指令，
+                                                                  // IDC_RADIO_Flag23激活时，此参数置1，为发射流程指令，
     uint8_t missionCommand_B1;                  // IDC_RADIO_Flag24激活时，此参数置1，未激活置0  自检指令
     uint8_t missionCommand_B2;                  // IDC_RADIO_Flag25激活时，此参数置1，未激活置0  参数装订指令
     uint8_t missionCommand_B3;                  // IDC_RADIO_Flag26激活时，此参数置1，未激活置0  舵面检查指令
@@ -144,22 +144,22 @@ struct UdpSendDataPacket_Cmd{
 
     // 控制模式（使用 Radio Button 控件：IDC_RADIO_Flag29~31）
     uint8_t controlMode_B0;                         // IDC_RADIO_Flag29激活时，此参数置0，为手动遥控
-                                                    // IDC_RADIO_Flag30激活时，此参数置1，为半自主
-                                                    // IDC_RADIO_Flag31激活时，此参数置2，为全自主                      
-    uint8_t checksum;                           // 校验和 
+                                                                 // IDC_RADIO_Flag30激活时，此参数置1，为半自主
+                                                                 // IDC_RADIO_Flag31激活时，此参数置2，为全自主                      
+    uint8_t checksum;                                   // 校验和 
 };
 
 struct UdpSendDataPacket_Data{
-    uint16_t frameHeader;                       // 固定值0xBB22
+    uint16_t frameHeader;                           // 固定值0xBB22
     // 发射点
-    int32_t launchLongitude;                     // IDC_Display_EditData2
-    int32_t launchLatitude;                      // IDC_Display_EditData3
-    int16_t launchAltitude;                      // IDC_Display_EditData4
+    int32_t launchLongitude;                       // IDC_Display_EditData2
+    int32_t launchLatitude;                          // IDC_Display_EditData3
+    int16_t launchAltitude;                          // IDC_Display_EditData4
     
     // 初始姿态
-    int16_t initPitch;                           // IDC_Display_EditData5
-    int16_t initYaw;                             // IDC_Display_EditData6
-    int16_t initRoll;                            // IDC_Display_EditData7
+    int16_t initPitch;                                    // IDC_Display_EditData5
+    int16_t initYaw;                                     // IDC_Display_EditData6
+    int16_t initRoll;                                      // IDC_Display_EditData7
     
     // 初始角速率
     int16_t initPitchRate;                       // IDC_Display_EditData8

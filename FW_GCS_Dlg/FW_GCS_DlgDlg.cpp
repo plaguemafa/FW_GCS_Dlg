@@ -442,7 +442,6 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 					menu3.SetMenuItemInfo(i, &mi, TRUE);
 				}
 			}
-		
 
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("航点设置"));
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位符"));
@@ -457,11 +456,11 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu4.Detach()), _T("位置装订"));
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu5.Detach()), _T("通信设置"));
 
-			// 计算菜单高度
+			// 计算菜单高度（在系统默认基础上加高，使中灰色菜单栏更易辨认）
 			const int desiredHeight = GetSystemMetrics(SM_CYMENU);
-			m_menuItemHeight = desiredHeight;
+			m_menuItemHeight = max(desiredHeight + 12, 36);  // 加高约 12 像素，且不低于 36 像素
 
-			// 设置菜单字体（基于系统默认）
+			// 菜单字体按系统菜单栏实际高度计算，避免文字被裁切；加高效果由客户区顶部灰色条带体现
 			LOGFONT lf = {};
 			CFont* baseFont = CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
 			if (baseFont)
@@ -492,12 +491,15 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			menuInfo.fMask = MIM_BACKGROUND | MIM_MAXHEIGHT;
 			menuInfo.hbrBack = (HBRUSH)m_menuBrush.GetSafeHandle();
 			menuInfo.cyMax = m_menuItemHeight;
-			::SetMenuInfo(m_mainMenu.GetSafeHmenu(), &menuInfo);
 
-			// 重新挂载菜单，强制刷新高度
+			// 先挂载菜单再 SetMenuInfo，便于系统按 cyMax 计算菜单栏高度
 			SetMenu(nullptr);
 			SetMenu(&m_mainMenu);
+			::SetMenuInfo(m_mainMenu.GetSafeHmenu(), &menuInfo);
 			DrawMenuBar();
+			// 强制窗口重算非客户区（含菜单栏），使灰色条高度生效
+			::SetWindowPos(m_hWnd, nullptr, 0, 0, 0, 0,
+				SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
 
 			// 非最大化时，补偿菜单高度，保持客户区空间
 			if (!IsZoomed())
@@ -907,13 +909,21 @@ void CFWGCSDlgDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
-		// 菜单栏与客户区分界线
+		// 客户区顶部：灰色条带（与菜单栏同色，用于“加高”菜单栏视觉效果）+ 底部分界线
 		{
 			CClientDC dc(this);
 			CRect rc;
 			GetClientRect(&rc);
 			const COLORREF lineColor = ::GetSysColor(COLOR_3DSHADOW);
-			dc.FillSolidRect(0, 0, rc.Width(), 1, lineColor);
+			if (m_menuBarExtraHeight > 0)
+			{
+				dc.FillSolidRect(0, 0, rc.Width(), m_menuBarExtraHeight, RGB(100, 100, 100));
+				dc.FillSolidRect(0, m_menuBarExtraHeight, rc.Width(), 1, lineColor);  // 条带与地图之间的分界线
+			}
+			else
+			{
+				dc.FillSolidRect(0, 0, rc.Width(), 1, lineColor);
+			}
 		}
 	}
 }
@@ -3269,11 +3279,11 @@ void CFWGCSDlgDlg::OnSize(UINT nType, int cx, int cy)
 		if (h < 1) h = 1;
 		p->SetWindowPos(NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
 	};
-	// rc资源中底部按钮设计位置与大小：x, y, width, height位置依据窗口展开大小（1920x1080比例分配）
+	// rc资源中底部按钮设计位置与大小：x, y, width, height位置依据窗口展开大小（基于1920x1080比例分配）
 	placeBottomControl(IDC_UDPlink,    9, 568, 40, 16);
-	placeBottomControl(IDC_SerialLink, 59, 568, 40, 16);
-	placeBottomControl(IDC_BTN_PAGE2, 236, 568, 40, 16);
-	placeBottomControl(IDC_BTN_PAGE1, 306, 568, 40, 16);
+	placeBottomControl(IDC_SerialLink, 52, 568, 40, 16);
+	placeBottomControl(IDC_BTN_PAGE2, 176, 568, 40, 16);
+	placeBottomControl(IDC_BTN_PAGE1, 226, 568, 40, 16);
 }
 
 void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct)
@@ -3347,7 +3357,9 @@ void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemSt
 			// 顶层菜单栏项：增加更多宽度以确保中文文字完整显示
 			lpMeasureItemStruct->itemWidth = sz.cx + 60;  // 大幅增加左右边距，确保"控制模式"等文字完整显示
 		}
-		lpMeasureItemStruct->itemHeight = max(m_menuItemHeight, sz.cy + 12);  // 增加高度边距
+		// 顶层项高度用系统菜单高度，避免系统栏内文字被裁切；加高由客户区灰色条带体现
+		const int menuBarHeight = GetSystemMetrics(SM_CYMENU);
+		lpMeasureItemStruct->itemHeight = max(menuBarHeight, sz.cy + 12);
 		return;
 	}
 
@@ -3553,7 +3565,7 @@ void CFWGCSDlgDlg::OnNcPaint()
 	const int yClientTop = rcClient.top - rcWindow.top;
 	const COLORREF lineColor = ::GetSysColor(COLOR_3DSHADOW);
 
-	// 尝试获取菜单栏真实矩形，确保顶部线可见
+	// 尝试获取菜单栏真实矩形，确保顶部线可见（灰色条高度由系统菜单栏 rcBar 决定）
 	MENUBARINFO mbi = {};
 	mbi.cbSize = sizeof(mbi);
 	if (GetMenuBarInfo(m_hWnd, OBJID_MENU, 0, &mbi))
@@ -3790,11 +3802,20 @@ void CFWGCSDlgDlg::InitMapWebView()
 
 void CFWGCSDlgDlg::ResizeMapWebView(int cx, int cy)
 {
-	if (m_hMapHostWnd == nullptr)
-	{
+	// 在客户区顶部始终加一段灰色条带，使“总灰色高度”= m_menuItemHeight（不依赖系统是否真的加高菜单栏）
+	const int systemMenuHeight = GetSystemMetrics(SM_CYMENU);
+	int extraHeight = max(0, m_menuItemHeight - systemMenuHeight);
+	m_menuBarExtraHeight = extraHeight;
+
+	const int mapY = extraHeight;
+	const int mapCy = cy - extraHeight;
+	if (mapCy <= 0)
 		return;
+
+	if (m_hMapHostWnd != nullptr)
+	{
+		::SetWindowPos(m_hMapHostWnd, HWND_BOTTOM, 0, mapY, cx, mapCy, SWP_NOACTIVATE);
 	}
-	::SetWindowPos(m_hMapHostWnd, HWND_BOTTOM, 0, 0, cx, cy, SWP_NOACTIVATE);
 #if FW_GCS_WITH_WEBVIEW2
 	if (m_webViewController)
 	{
@@ -3802,7 +3823,7 @@ void CFWGCSDlgDlg::ResizeMapWebView(int cx, int cy)
 		bounds.left = 0;
 		bounds.top = 0;
 		bounds.right = cx;
-		bounds.bottom = cy;
+		bounds.bottom = mapCy;  // 相对于地图宿主窗口，高度为客户区减去顶部灰色条带
 		m_webViewController->put_Bounds(bounds);
 	}
 #endif
@@ -3867,7 +3888,7 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 	}
 	else
 	{
-		status = "const statusText='Offline map loaded';";
+		status = "const statusText='Offline Map Loaded';";
 	}
 
 	// 替换占位符
@@ -4447,20 +4468,20 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	packet.missionCommand_B5 = m_missionCommand_B5;
 	packet.controlMode_B0 = m_controlMode_B0;
 
-	// 计算校验和：先将checksum字段设为0，然后计算整个结构体的校验和
+	// 计算整个结构体的校验和
 	packet.checksum = 0;
 	size_t checksumSize = sizeof(packet) - sizeof(packet.checksum);
 	packet.checksum = calculateChecksum(&packet, checksumSize);
 
 	// 调试输出
-	TRACE(_T("发送控制指令: frameHeader=0x%04X, missionCommand_B0~B5=%u,%u,%u,%u,%u,%u, controlMode_B0=%u, checksum=0x%02X\n"),
+	TRACE(_T("开始发送控制指令: frameHeader=0x%04X, missionCommand_B0~B5=%u,%u,%u,%u,%u,%u, controlMode_B0=%u, checksum=0x%02X\n"),
 		packet.frameHeader,
 		packet.missionCommand_B0, packet.missionCommand_B1, packet.missionCommand_B2,
 		packet.missionCommand_B3, packet.missionCommand_B4, packet.missionCommand_B5,
 		packet.controlMode_B0, packet.checksum);
 
 	// 发送数据（连续发送2-3次以应对丢包）
-	const int nSendCount = 3;
+	const int nSendCount = 1;  //当前不启用多次发送
 	const int nSendIntervalMs = 10;
 	int nSuccessCount = 0;
 

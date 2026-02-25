@@ -44,6 +44,7 @@ void CPage2Dlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CPage2Dlg, CDialogEx)
+	ON_BN_CLICKED(IDC_BUTTON_SendData, &CPage2Dlg::OnBnClickedButtonSendData)
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_Waypoints, &CPage2Dlg::OnNMDblclkListWaypoints)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_Waypoints, &CPage2Dlg::OnNMClickListWaypoints)
 	ON_EN_KILLFOCUS(1001, &CPage2Dlg::OnEnKillfocusEditInline)
