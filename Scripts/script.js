@@ -127,9 +127,23 @@ if (!mapEl) {
 // 瓦片相关（地图背景）
 const tileSize = 256;                                // 单张瓦片像素尺寸
 const minZoom = mapConfig.minZoom ?? 0;              // 最小缩放
-const maxZoom = mapConfig.maxZoom ?? 18;             // 最大缩放
+const maxZoom = mapConfig.maxZoom ?? 18;             // 全局最大缩放（含局部精细图）
+const baseMaxZoom = mapConfig.baseMaxZoom ?? maxZoom; // 底图最大层级，无局部精细区域时放大上限
+const localBounds = (typeof localMapBounds !== 'undefined' && Array.isArray(localMapBounds)) ? localMapBounds : []; // 局部图范围列表，由 C++ 注入
 let zoom = Math.max(minZoom, Math.min(maxZoom, mapConfig.zoom ?? 10)); // 当前缩放
 let center = { lat: mapConfig.centerLat ?? 0, lng: mapConfig.centerLng ?? 0 }; // 当前中心经纬度
+
+// 根据当前视口中心计算有效最大 zoom：无局部精细图覆盖时仅允许放大到底图最大层级
+function getEffectiveMaxZoom(lat, lng) {
+    let effective = baseMaxZoom;
+    for (let i = 0; i < localBounds.length; i++) {
+        const b = localBounds[i];
+        if (lat >= b.minLat && lat <= b.maxLat && lng >= b.minLng && lng <= b.maxLng) {
+            effective = Math.max(effective, b.maxZoom);
+        }
+    }
+    return Math.min(effective, maxZoom);
+}
 
 // 鼠标拖拽相关状态
 let dragging = false;                                // 是否正在拖动
@@ -1071,7 +1085,7 @@ if (mapEl) {
         }
     });
 
-    // 滚轮缩放：以鼠标位置为锚点，缩放并重新计算中心
+    // 滚轮缩放：以鼠标位置为锚点，缩放并重新计算中心；无局部精细图区域放大到底图最大层级后不再继续放大
     mapEl.addEventListener('wheel', (e) => {
         e.preventDefault();
         const rect = mapEl.getBoundingClientRect();
@@ -1082,7 +1096,8 @@ if (mapEl) {
         }
 
         const delta = e.deltaY < 0 ? 1 : -1;
-        const nextZoom = Math.max(minZoom, Math.min(maxZoom, zoom + delta));
+        const effectiveMax = getEffectiveMaxZoom(center.lat, center.lng);
+        const nextZoom = Math.max(minZoom, Math.min(effectiveMax, zoom + delta));
         if (nextZoom === zoom) return;
 
         const centerPoint = latLngToPoint(center.lat, center.lng, zoom);

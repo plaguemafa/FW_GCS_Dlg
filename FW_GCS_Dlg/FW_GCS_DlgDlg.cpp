@@ -774,6 +774,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			{
 				LogMap(L"[Map] Successfully opened maps\\OUTPUT_FILE.mbtiles");
 				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+				m_baseMaxZoom = m_mbtilesMetadata.maxZoom;
 			}
 		}
 		else if (attr2 != INVALID_FILE_ATTRIBUTES)
@@ -783,6 +784,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			{
 				LogMap(L"[Map] Successfully opened OUTPUT_FILE.mbtiles");
 				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+				m_baseMaxZoom = m_mbtilesMetadata.maxZoom;
 			}
 		}
 		else if (attr3 != INVALID_FILE_ATTRIBUTES)
@@ -792,12 +794,14 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			{
 				LogMap(L"[Map] Successfully opened old filename");
 				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+				m_baseMaxZoom = m_mbtilesMetadata.maxZoom;
 			}
 		}
 	}
 	else
 	{
 		m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+		m_baseMaxZoom = m_mbtilesMetadata.maxZoom;  // 保存底图最大层级，供无局部精细区域时限制滚轮放大
 		LogMap(L"[Map] metadata zoom=%d..%d default=%d center=(%.6f, %.6f) format=%s",
 			m_mbtilesMetadata.minZoom,
 			m_mbtilesMetadata.maxZoom,
@@ -3847,16 +3851,38 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 		return CString(errorHtml);
 	}
 
-	// 构建配置字符串
+	// 构建配置字符串（含 baseMaxZoom 与 localMapBounds，供前端在无局部精细区域时限制滚轮放大）
+	CStringA boundsJson = "[]";
+	if (!m_localMaps.empty())
+	{
+		CStringA arr;
+		for (size_t i = 0; i < m_localMaps.size(); ++i)
+		{
+			const LocalMapInfo& lm = m_localMaps[i];
+			if (!lm.metadata.hasBounds)
+				continue;
+			CStringA item;
+			item.Format("{minLng:%.8f,minLat:%.8f,maxLng:%.8f,maxLat:%.8f,maxZoom:%d}",
+				lm.metadata.minLng, lm.metadata.minLat, lm.metadata.maxLng, lm.metadata.maxLat,
+				lm.metadata.maxZoom);
+			if (!arr.IsEmpty())
+				arr += ",";
+			arr += item;
+		}
+		if (!arr.IsEmpty())
+			boundsJson = CStringA("[") + arr + "]";
+	}
 	CStringA config;
 	config.Format(
-		"const mapConfig={tileUrl:\"https://tiles.local/tiles/{z}/{x}/{y}\",minZoom:%d,maxZoom:%d,zoom:%d,centerLat:%0.8f,centerLng:%0.8f,hasCenter:%s};",
+		"const mapConfig={tileUrl:\"https://tiles.local/tiles/{z}/{x}/{y}\",minZoom:%d,maxZoom:%d,baseMaxZoom:%d,zoom:%d,centerLat:%0.8f,centerLng:%0.8f,hasCenter:%s}; const localMapBounds=%s;",
 		m_mbtilesMetadata.minZoom,
 		m_mbtilesMetadata.maxZoom,
+		m_baseMaxZoom,
 		m_mbtilesMetadata.defaultZoom,
 		m_mbtilesMetadata.centerLat,
 		m_mbtilesMetadata.centerLng,
-		m_mbtilesMetadata.hasCenter ? "true" : "false");
+		m_mbtilesMetadata.hasCenter ? "true" : "false",
+		boundsJson.GetString());
 
 	// 构建状态文本
 	CStringA status;
