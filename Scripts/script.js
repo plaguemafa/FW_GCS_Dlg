@@ -82,7 +82,7 @@ let hudGroup2Data = {
     selfTestResult: 0         //  自检结果
 };
 
-// HUD组3数据（根据 UdpData.h 中的协议定义，排序见UdpData.h协议注释，此不重复）
+// HUD组3数据（根据 UdpData.h 中的协议定义）
 let hudGroup3Data = {
     switchStatus_B1: 0,       //  发动机启动状态
     switchStatus_B4: 0,       //  关车状态
@@ -134,7 +134,7 @@ let center = { lat: mapConfig.centerLat ?? 0, lng: mapConfig.centerLng ?? 0 }; /
 // 鼠标拖拽相关状态
 let dragging = false;                                // 是否正在拖动
 let dragStart = { x: 0, y: 0 };                      // 鼠标按下时坐标
-let dragStartCenter = { lat: 0, lng: 0 };            // 按下时的地图中心
+let dragStartCenter = { lat: 0, lng: 0 };       // 按下时的地图中心
 
 // 适配屏幕尺寸：按 DPR 放大
 function resizeHud() {

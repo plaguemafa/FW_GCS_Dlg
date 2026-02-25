@@ -909,21 +909,13 @@ void CFWGCSDlgDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
-		// 客户区顶部：灰色条带（与菜单栏同色，用于“加高”菜单栏视觉效果）+ 底部分界线
+		// 菜单栏与客户区分界线
 		{
 			CClientDC dc(this);
 			CRect rc;
 			GetClientRect(&rc);
 			const COLORREF lineColor = ::GetSysColor(COLOR_3DSHADOW);
-			if (m_menuBarExtraHeight > 0)
-			{
-				dc.FillSolidRect(0, 0, rc.Width(), m_menuBarExtraHeight, RGB(100, 100, 100));
-				dc.FillSolidRect(0, m_menuBarExtraHeight, rc.Width(), 1, lineColor);  // 条带与地图之间的分界线
-			}
-			else
-			{
-				dc.FillSolidRect(0, 0, rc.Width(), 1, lineColor);
-			}
+			dc.FillSolidRect(0, 0, rc.Width(), 1, lineColor);
 		}
 	}
 }
@@ -1530,10 +1522,10 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 	const float ias   = pPacket->indicatedAirspeed / 10.0f;
 	const float tas   = pPacket->baroAirspeed / 10.0f;
 	const float alt   = pPacket->baroAltitude / 10.0f;
-	const float mach  = pPacket->machNumber / 10.0f;        // 马赫数
-	const float aoa   = pPacket->attackAngle / 10.0f;       // 攻角
-	const float g     = pPacket->normalOverload / 10.0f;    // 法向过载
-	const float rpm   = pPacket->engineRPM / 10.0f;         // 发动机转速
+	const float mach  = pPacket->machNumber / 10.0f;
+	const float aoa   = pPacket->attackAngle / 10.0f;
+	const float g     = pPacket->normalOverload / 10.0f;
+	const float rpm   = pPacket->engineRPM / 10.0f;
     //地图飞机标识部分
 	const float longitude = pPacket->longitude / 1000000.0f; 
     const float latitude = pPacket->latitude / 1000000.0f;
@@ -2188,7 +2180,7 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 		return;
 	}
 
-	// 将关键数据推送给 WebView2，用于 HUD 渲染（UI 控件已移除）
+	// 将关键数据推送给 WebView2，用于 HUD 渲染
 	SendHudMessage(pPacket);
 	return;
 
@@ -3802,20 +3794,11 @@ void CFWGCSDlgDlg::InitMapWebView()
 
 void CFWGCSDlgDlg::ResizeMapWebView(int cx, int cy)
 {
-	// 在客户区顶部始终加一段灰色条带，使“总灰色高度”= m_menuItemHeight（不依赖系统是否真的加高菜单栏）
-	const int systemMenuHeight = GetSystemMetrics(SM_CYMENU);
-	int extraHeight = max(0, m_menuItemHeight - systemMenuHeight);
-	m_menuBarExtraHeight = extraHeight;
-
-	const int mapY = extraHeight;
-	const int mapCy = cy - extraHeight;
-	if (mapCy <= 0)
-		return;
-
-	if (m_hMapHostWnd != nullptr)
+	if (m_hMapHostWnd == nullptr)
 	{
-		::SetWindowPos(m_hMapHostWnd, HWND_BOTTOM, 0, mapY, cx, mapCy, SWP_NOACTIVATE);
+		return;
 	}
+	::SetWindowPos(m_hMapHostWnd, HWND_BOTTOM, 0, 0, cx, cy, SWP_NOACTIVATE);
 #if FW_GCS_WITH_WEBVIEW2
 	if (m_webViewController)
 	{
@@ -3823,7 +3806,7 @@ void CFWGCSDlgDlg::ResizeMapWebView(int cx, int cy)
 		bounds.left = 0;
 		bounds.top = 0;
 		bounds.right = cx;
-		bounds.bottom = mapCy;  // 相对于地图宿主窗口，高度为客户区减去顶部灰色条带
+		bounds.bottom = cy;
 		m_webViewController->put_Bounds(bounds);
 	}
 #endif
