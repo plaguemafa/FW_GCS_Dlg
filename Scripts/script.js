@@ -126,11 +126,13 @@ if (!mapEl) {
 
 // 瓦片相关（地图背景）
 const tileSize = 256;                                // 单张瓦片像素尺寸
-const minZoom = mapConfig.minZoom ?? 0;              // 最小缩放
 const maxZoom = mapConfig.maxZoom ?? 18;             // 全局最大缩放（含局部精细图）
+// 缩小下限：硬编码至少为 1，不依赖注入，确保缩小限制一定生效
+const FLOOR_ZOOM = 1;
+const baseMinZoom = Math.max(FLOOR_ZOOM, mapConfig.baseMinZoom ?? mapConfig.minZoom ?? 0);
 const baseMaxZoom = mapConfig.baseMaxZoom ?? maxZoom; // 底图最大层级，无局部精细区域时放大上限
 const localBounds = (typeof localMapBounds !== 'undefined' && Array.isArray(localMapBounds)) ? localMapBounds : []; // 局部图范围列表，由 C++ 注入
-let zoom = Math.max(minZoom, Math.min(maxZoom, mapConfig.zoom ?? 10)); // 当前缩放
+let zoom = Math.max(baseMinZoom, Math.min(maxZoom, mapConfig.zoom ?? 10)); // 当前缩放（限制在底图最小～全局最大之间）
 let center = { lat: mapConfig.centerLat ?? 0, lng: mapConfig.centerLng ?? 0 }; // 当前中心经纬度
 
 // 根据当前视口中心计算有效最大 zoom：无局部精细图覆盖时仅允许放大到底图最大层级
@@ -994,6 +996,11 @@ function pointToLatLng(x, y, zoomLevel) {
 function render() {
     if (!mapEl) return;
     try {
+        // 每次渲染前强制限制 zoom，下限用 FLOOR_ZOOM 与 baseMinZoom 的较大值，确保缩小限制一定生效
+        const effectiveMax = getEffectiveMaxZoom(center.lat, center.lng);
+        const minZoom = Math.max(FLOOR_ZOOM, baseMinZoom);
+        zoom = Math.max(minZoom, Math.min(effectiveMax, zoom));
+
         const width = mapEl.clientWidth;
         const height = mapEl.clientHeight;
         if (width === 0 || height === 0) return;
@@ -1085,18 +1092,20 @@ if (mapEl) {
         }
     });
 
-    // 滚轮缩放：以鼠标位置为锚点，缩放并重新计算中心；无局部精细图区域放大到底图最大层级后不再继续放大
-    mapEl.addEventListener('wheel', (e) => {
-        e.preventDefault();
+    // 滚轮缩放：在 document 上捕获阶段监听，避免被宿主或其它元素拦截，确保地图区域滚轮一定由我们处理
+    function onMapWheel(e) {
+        if (!mapEl || !mapEl.contains(e.target)) return;
         const rect = mapEl.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        if (mouseX < 0 || mouseX > rect.width || mouseY < 0 || mouseY > rect.height) {
-            return;
-        }
+        if (mouseX < 0 || mouseX > rect.width || mouseY < 0 || mouseY > rect.height) return;
+
+        e.preventDefault();
+        e.stopPropagation();
 
         const delta = e.deltaY < 0 ? 1 : -1;
         const effectiveMax = getEffectiveMaxZoom(center.lat, center.lng);
+        const minZoom = Math.max(FLOOR_ZOOM, baseMinZoom);
         const nextZoom = Math.max(minZoom, Math.min(effectiveMax, zoom + delta));
         if (nextZoom === zoom) return;
 
@@ -1113,7 +1122,8 @@ if (mapEl) {
         center = pointToLatLng(newCenterX, newCenterY, zoom);
 
         render();
-    }, { passive: false });
+    }
+    document.addEventListener('wheel', onMapWheel, { passive: false, capture: true });
 
     mapEl.style.cursor = 'grab';
 }

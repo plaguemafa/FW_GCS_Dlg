@@ -310,6 +310,7 @@ private:
 	CMbtilesReader m_mbtilesReader;  // 全国底图（粗分辨率）
 	MbtilesMetadata m_mbtilesMetadata;
 	CString m_mbtilesPath;
+	int m_baseMinZoom = 0;   // 底图最小层级，用于限制滚轮缩小不低于粗略全局地图最小分辨率
 	int m_baseMaxZoom = 10;  // 底图最大层级（合并局部图前的 maxZoom），用于无局部精细区域时限制放大
 	
 	// 局部精细地图（支持多个）

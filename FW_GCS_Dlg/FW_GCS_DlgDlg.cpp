@@ -774,6 +774,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			{
 				LogMap(L"[Map] Successfully opened maps\\OUTPUT_FILE.mbtiles");
 				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+				m_baseMinZoom = m_mbtilesMetadata.minZoom;
 				m_baseMaxZoom = m_mbtilesMetadata.maxZoom;
 			}
 		}
@@ -784,6 +785,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			{
 				LogMap(L"[Map] Successfully opened OUTPUT_FILE.mbtiles");
 				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+				m_baseMinZoom = m_mbtilesMetadata.minZoom;
 				m_baseMaxZoom = m_mbtilesMetadata.maxZoom;
 			}
 		}
@@ -794,6 +796,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			{
 				LogMap(L"[Map] Successfully opened old filename");
 				m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+				m_baseMinZoom = m_mbtilesMetadata.minZoom;
 				m_baseMaxZoom = m_mbtilesMetadata.maxZoom;
 			}
 		}
@@ -801,6 +804,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 	else
 	{
 		m_mbtilesReader.GetMetadata(m_mbtilesMetadata);
+		m_baseMinZoom = m_mbtilesMetadata.minZoom;  // 保存底图最小层级，供限制滚轮缩小不低于粗略全局地图最小分辨率
 		m_baseMaxZoom = m_mbtilesMetadata.maxZoom;  // 保存底图最大层级，供无局部精细区域时限制滚轮放大
 		LogMap(L"[Map] metadata zoom=%d..%d default=%d center=(%.6f, %.6f) format=%s",
 			m_mbtilesMetadata.minZoom,
@@ -3874,9 +3878,10 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 	}
 	CStringA config;
 	config.Format(
-		"const mapConfig={tileUrl:\"https://tiles.local/tiles/{z}/{x}/{y}\",minZoom:%d,maxZoom:%d,baseMaxZoom:%d,zoom:%d,centerLat:%0.8f,centerLng:%0.8f,hasCenter:%s}; const localMapBounds=%s;",
+		"const mapConfig={tileUrl:\"https://tiles.local/tiles/{z}/{x}/{y}\",minZoom:%d,maxZoom:%d,baseMinZoom:%d,baseMaxZoom:%d,zoom:%d,centerLat:%0.8f,centerLng:%0.8f,hasCenter:%s}; const localMapBounds=%s;",
 		m_mbtilesMetadata.minZoom,
 		m_mbtilesMetadata.maxZoom,
+		m_baseMinZoom,
 		m_baseMaxZoom,
 		m_mbtilesMetadata.defaultZoom,
 		m_mbtilesMetadata.centerLat,
