@@ -47,6 +47,22 @@
             z-index: 10;
             pointer-events: none;
         }
+        /* 鼠标位置经纬度提示：两行并列 lon / lat，纯白字 */
+        #mouseCoordTip {
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 0;
+            font-family: Consolas, monospace;
+            font-size: 10px;
+            color: #050505;
+            background: none;
+            border: none;
+            white-space: pre;
+            pointer-events: none;
+            z-index: 30;
+            visibility: hidden;
+        }
         /* 添加HUD组2和HUD组3的Canvas样式，右对齐 */
         #hudGroup2 {
             position: absolute;
@@ -74,6 +90,7 @@
     <canvas id="hudGroup2"></canvas>
     <canvas id="hudGroup3"></canvas>
     <div id="status"></div>
+    <div id="mouseCoordTip">lon: —, lat: —</div>
     <script>
         // 配置由C++注入
         /*{{MAP_CONFIG}}*/

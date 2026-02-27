@@ -7,6 +7,7 @@
 // DOM 获取
 const mapEl = document.getElementById('map');      // 地图容器（瓦片背景）
 const statusEl = document.getElementById('status'); // 状态提示
+const mouseCoordTipEl = document.getElementById('mouseCoordTip'); // 鼠标位置经纬度提示
 const hudCanvas = document.getElementById('hud');   // HUD 画布
 const hudCtx = hudCanvas ? hudCanvas.getContext('2d') : null;
 let hudDpr = window.devicePixelRatio || 1;          // 设备像素比，用于抗锯齿
@@ -1124,6 +1125,28 @@ if (mapEl) {
         render();
     }
     document.addEventListener('wheel', onMapWheel, { passive: false, capture: true });
+
+    // 鼠标移动：计算并显示当前光标对应的经纬度（lon, lat）
+    mapEl.addEventListener('mousemove', (e) => {
+        if (!mouseCoordTipEl) return;
+        const rect = mapEl.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        if (mouseX < 0 || mouseX > rect.width || mouseY < 0 || mouseY > rect.height) return;
+        const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+        const mouseMapX = centerPoint.x - mapEl.clientWidth / 2 + mouseX;
+        const mouseMapY = centerPoint.y - mapEl.clientHeight / 2 + mouseY;
+        const mouseLatLng = pointToLatLng(mouseMapX, mouseMapY, zoom);
+        const lonStr = mouseLatLng.lng.toFixed(6);
+        const latStr = mouseLatLng.lat.toFixed(6);
+        mouseCoordTipEl.textContent = 'lon: ' + lonStr + '\nlat: ' + latStr;
+        mouseCoordTipEl.style.left = (e.clientX + 14) + 'px';
+        mouseCoordTipEl.style.top = (e.clientY + 14) + 'px';
+        mouseCoordTipEl.style.visibility = 'visible';
+    });
+    mapEl.addEventListener('mouseleave', () => {
+        if (mouseCoordTipEl) mouseCoordTipEl.style.visibility = 'hidden';
+    });
 
     mapEl.style.cursor = 'grab';
 }
