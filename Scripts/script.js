@@ -1059,7 +1059,7 @@ if (mapEl) {
         dragging = true;
         dragStart = { x: e.clientX, y: e.clientY };
         dragStartCenter = { lat: center.lat, lng: center.lng };
-        mapEl.style.cursor = 'grabbing';
+        mapEl.style.cursor = 'default';
     });
 
     // 鼠标移动：根据位移调整中心经纬度
@@ -1089,7 +1089,7 @@ if (mapEl) {
         if (!dragging) return;
         dragging = false;
         if (mapEl) {
-            mapEl.style.cursor = 'grab';
+            mapEl.style.cursor = 'default';
         }
     });
 
@@ -1148,7 +1148,7 @@ if (mapEl) {
         if (mouseCoordTipEl) mouseCoordTipEl.style.visibility = 'hidden';
     });
 
-    mapEl.style.cursor = 'grab';
+    mapEl.style.cursor = 'default';
 }
 
 // 初始化飞机标识Canvas

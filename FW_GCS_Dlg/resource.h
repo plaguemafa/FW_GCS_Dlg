@@ -1,17 +1,17 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ ?????????????
-// ?? FWGCSDlg.rc ???
+// Microsoft Visual C++ 生成的包含文件。
+// 供 FWGCSDlg.rc 使用
 //
+#define IDI_APPICON                     1
 #define IDD_FW_GCS_DLG_DIALOG           102
-#define IDI_APPICON                     1     // 璧勬簮 ID 鏈�灏忥紝渚涜祫婧愮鐞嗗櫒鏄剧ず exe 鏂囦欢鍥炬爣
 #define IDR_MAINFRAME                   128
-#define IDR_MAP_HTML                    140   //map.html璧勬簮瀹氫箟
-#define IDR_SCRIPT_JS                   141   //map.js璧勬簮瀹氫箟
 #define IDD_PAGE1_DIALOG                130
 #define IDD_DIALOG2                     133
 #define IDD_PAGE2_DIALOG                136
 #define IDD_UDP_SETTINGS_DIALOG         138
 #define IDD_SERIAL_SETTINGS_DIALOG      139
+#define IDR_MAP_HTML                    140
+#define IDR_SCRIPT_JS                   141
 #define IDC_UDPlink                     1000
 #define IDC_SerialLink                  1001
 #define IDC_Display                     1017
@@ -171,6 +171,9 @@
 #define IDC_DisplayPort1                1162
 #define IDC_DisplayPort2                1163
 #define IDC_SYSLINK1                    1164
+#define IDC_Display_myCOM               1165
+#define IDC_Display_localCOM            1165
+#define IDC_Display_romoteCOM           1166
 #define ID_MENU_OP_PLACEHOLDER          32771
 #define ID_MENU_UDP_SETTINGS            32772
 #define ID_MENU_SERIAL_SETTINGS         32773
@@ -189,9 +192,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        143
+#define _APS_NEXT_RESOURCE_VALUE        145
 #define _APS_NEXT_COMMAND_VALUE         32784
-#define _APS_NEXT_CONTROL_VALUE         1165
+#define _APS_NEXT_CONTROL_VALUE         1167
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

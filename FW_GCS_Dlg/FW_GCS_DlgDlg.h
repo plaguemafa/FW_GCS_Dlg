@@ -31,7 +31,7 @@
 #endif
 
 // 串口配置参数宏
-#define SERIAL_PORT_NAME   "COM20"        // 目标串口名称（RS422串口，格式：COM1-COM256）
+#define SERIAL_PORT_NAME   "COM21"        // 目标串口名称（RS422串口，格式：COM1-COM256）
 #define SERIAL_BAUD_RATE   115200         // 波特率（常用值：9600, 19200, 38400, 57600, 115200）
 
 #define   UI_UPDATE_INTERVAL_MS 25		  // 显示控件刷新频率

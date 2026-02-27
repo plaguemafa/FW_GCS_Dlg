@@ -1473,15 +1473,14 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 		// ============================================================
 		// 除消息队列中的旧消息（避免UI频繁刷新和消息积压）
 		// ============================================================
-		// 原因：如果接收速度很快，消息队列可能积压多个数据包
-		// 只处理最新的数据包，避免UI频繁刷新和内存泄漏
+		// 消息队列可能积压多个数据包，只处理最新的数据包，避免UI频繁刷新和内存泄漏
 		MSG msg;
 		while (PeekMessage(&msg, m_hWnd, WM_UDP_DATA_RECEIVED, WM_UDP_DATA_RECEIVED, PM_REMOVE))
 		{
 			// ============================================================
 			// 释放旧消息中的数据包内存
 			// ============================================================
-			// 注意：当前消息（wParam）的数据包不要在这里删除，后面还要使用
+			// 当前消息（wParam）的数据包不要在这里删除，后面还要使用
 			if (msg.wParam != NULL && msg.wParam != wParam)
 			{
 				UdpRecvDataPacket* pOldPacket = (UdpRecvDataPacket*)msg.wParam;
@@ -1513,7 +1512,7 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-// 将UDP接收的数据推送至webview前端引擎，用于JS图层绘制
+// 将UDP接收的数据推送至webview前端引擎，用于JS绘制图层
 void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 {
 #if FW_GCS_WITH_WEBVIEW2
@@ -1932,7 +1931,8 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 	CFWGCSDlgDlg* pDlg = (CFWGCSDlgDlg*)pParam;  // 获取对话框指针
 	BYTE buffer[1024];                            // 临时接收缓冲区（每次ReadFile的最大读取量）
 	DWORD dwBytesRead;                            // 实际读取的字节数
-	int nPacketSize = sizeof(UdpRecvDataPacket);  // 数据包大小：20字节（5个float × 4字节）
+	const int nPacketSize = sizeof(UdpRecvDataPacket);  // 完整数据帧长度（按结构体大小计算）
+	const uint16_t FRAME_HEADER = 0xAA11;               // 帧头固定值
 	
 	TRACE(_T("串口接收线程启动，数据包大小: %d 字节\n"), nPacketSize);
 
@@ -1983,44 +1983,70 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 				}
 
 				// ============================================================
-				// 步骤3：从缓冲区中提取完整的数据包
+				// 步骤3：在缓冲区中按帧头查找完整数据帧
 				// ============================================================
-				int nPacketCount = pDlg->m_nSerialBufferSize / nPacketSize;        // 完整数据包数量
-				int nProcessedBytes = nPacketCount * nPacketSize;                   // 已处理字节数
-				int nRemainingBytes = pDlg->m_nSerialBufferSize - nProcessedBytes; // 剩余不完整数据字节数
+				int nBufferSize = pDlg->m_nSerialBufferSize;
+				int nParsePos = 0;          // 当前解析位置
+				int nLastFrameOffset = -1;  // 最后一个完整帧的起始偏移
+				int nRemainStart = 0;       // 需要保留到下次解析的数据起始位置
 
-				TRACE(_T("串口接收: 完整数据包 %d 个，剩余 %d 字节\n"), nPacketCount, nRemainingBytes);
-
-				// ============================================================
-				// 步骤4：只处理最后一个完整数据包
-				// ============================================================
-				// 原因：避免UI频繁刷新，只显示最新的数据
-				if (nPacketCount > 0)
+				while (nParsePos + (int)sizeof(uint16_t) <= nBufferSize)
 				{
-				// 分配内存保存最后一个数据包（通过消息传递到主线程）
-				UdpRecvDataPacket* pPacket = new UdpRecvDataPacket;
-				// 复制最后一个完整数据包
-				memcpy(pPacket, pDlg->m_serialBuffer + (nPacketCount - 1) * nPacketSize, nPacketSize);
+					uint16_t header = 0;
+					memcpy(&header, pDlg->m_serialBuffer + nParsePos, sizeof(uint16_t));
 
-				// 字节序转换（如果串口数据是大端字节序，需要转换）
-				// Windows是小端系统，如果发送端也是小端，则不需要转换
-				// 如果发送端是大端，需要取消下面注释来启用字节序转换
-				// pPacket->pitchAngle = _byteswap_ushort(pPacket->pitchAngle);
-				// pPacket->rollAngle = _byteswap_ushort(pPacket->rollAngle);
-				// pPacket->yawAngle = _byteswap_ushort(pPacket->yawAngle);
-				// pPacket->attackAngle = _byteswap_ushort(pPacket->attackAngle);
-				// pPacket->sideslipAngle = _byteswap_ushort(pPacket->sideslipAngle);
+					if (header == FRAME_HEADER)
+					{
+						// 找到帧头，检查是否有完整一帧数据
+						if (nParsePos + nPacketSize <= nBufferSize)
+						{
+							// 记录最后一个完整帧的位置，只保留最新的一帧用于显示
+							nLastFrameOffset = nParsePos;
+							// 跳过整个帧，继续向后搜索，处理可能存在的多帧粘包
+							nParsePos += nPacketSize;
+							nRemainStart = nParsePos;
+						}
+						else
+						{
+							// 帧头已到达，但数据长度不足一帧，保留从帧头开始的剩余数据
+							nRemainStart = nParsePos;
+							break;
+						}
+					}
+					else
+					{
+						// 非帧头字节，丢弃当前字节，向后移动一位继续搜索
+						nParsePos++;
+						nRemainStart = nParsePos;
+					}
+				}
 
-				// 调试输出：显示接收到的最后一个数据包内容（原始int16_t值）
-				TRACE(_T("串口接收[最后/%d]: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
-					nPacketCount,
-					pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
-				
-				// 调试输出：显示原始字节值（用于诊断字节序问题）
-				BYTE* pBytes = (BYTE*)pPacket;
-				TRACE(_T("串口接收原始字节[前10字节]: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n"),
-					pBytes[0], pBytes[1], pBytes[2], pBytes[3], pBytes[4], 
-					pBytes[5], pBytes[6], pBytes[7], pBytes[8], pBytes[9]);
+				// ============================================================
+				// 步骤4：只处理最后一个完整数据帧
+				// ============================================================
+				if (nLastFrameOffset >= 0)
+				{
+					UdpRecvDataPacket* pPacket = new UdpRecvDataPacket;
+					memcpy(pPacket, pDlg->m_serialBuffer + nLastFrameOffset, nPacketSize);
+
+					// 字节序转换（如果串口数据是大端字节序，需要转换）
+					// Windows是小端系统，如果发送端也是小端，则不需要转换
+					// 如果发送端是大端，需要取消下面注释来启用字节序转换
+					// pPacket->pitchAngle = _byteswap_ushort(pPacket->pitchAngle);
+					// pPacket->rollAngle = _byteswap_ushort(pPacket->rollAngle);
+					// pPacket->yawAngle = _byteswap_ushort(pPacket->yawAngle);
+					// pPacket->attackAngle = _byteswap_ushort(pPacket->attackAngle);
+					// pPacket->sideslipAngle = _byteswap_ushort(pPacket->sideslipAngle);
+
+					// 调试输出：显示接收到的最后一个数据包内容（原始int16_t值）
+					TRACE(_T("串口接收[最后帧]: pitchAngle=%d, rollAngle=%d, yawAngle=%d, attackAngle=%d, sideslipAngle=%d\n"),
+						pPacket->pitchAngle, pPacket->rollAngle, pPacket->yawAngle, pPacket->attackAngle, pPacket->sideslipAngle);
+
+					// 调试输出：显示原始字节值（用于诊断字节序/帧头问题）
+					BYTE* pBytes = (BYTE*)pPacket;
+					TRACE(_T("串口接收原始字节[前10字节]: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n"),
+						pBytes[0], pBytes[1], pBytes[2], pBytes[3], pBytes[4],
+						pBytes[5], pBytes[6], pBytes[7], pBytes[8], pBytes[9]);
 
 					// 发送消息到主线程处理（只发送最后一个数据包）
 					// 主线程会在OnSerialDataReceivedMsg中清除队列中的旧消息
@@ -2030,24 +2056,19 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 				// ============================================================
 				// 步骤5：处理剩余的不完整数据
 				// ============================================================
-				// 如果剩余数据小于一个完整数据包，保留到缓冲区，等待下次接收时拼接
-				// 如果剩余数据大于等于一个完整数据包，说明计算错误，清空缓冲区
-				if (nRemainingBytes > 0 && nRemainingBytes < nPacketSize)
+				// 保留从 nRemainStart 开始到缓冲区末尾的所有数据：
+				//   - 可能是不完整的一帧（从帧头开始）
+				//   - 或不足2字节的“半个帧头”，用于下次继续拼接
+				int nRemainingBytes = nBufferSize - nRemainStart;
+				if (nRemainingBytes > 0)
 				{
-					// 保留剩余数据：移动到缓冲区开头，等待下次接收时拼接
-					memmove(pDlg->m_serialBuffer, pDlg->m_serialBuffer + nProcessedBytes, nRemainingBytes);
+					memmove(pDlg->m_serialBuffer, pDlg->m_serialBuffer + nRemainStart, nRemainingBytes);
 					pDlg->m_nSerialBufferSize = nRemainingBytes;
 					TRACE(_T("串口接收: 保留 %d 字节不完整数据到缓冲区\n"), nRemainingBytes);
 				}
 				else
 				{
-					// 没有剩余数据，或剩余数据异常（不应该发生）
 					pDlg->m_nSerialBufferSize = 0;
-					if (nRemainingBytes >= nPacketSize)
-					{
-						// 剩余数据异常：理论上不应该发生，清空缓冲区
-						TRACE(_T("串口接收: 警告！剩余数据异常 (%d 字节)，已清空\n"), nRemainingBytes);
-					}
 				}
 			}
 		}

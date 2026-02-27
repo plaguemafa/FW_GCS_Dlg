@@ -9,7 +9,7 @@
 #pragma pack(push, 1)             // 紧密打包，避免字节对齐填充
 typedef struct {
     // 帧头 
-    //uint16_t frameHeader;  // 固定值0xAA11
+    uint16_t frameHeader;  // 固定值0xAA11
     // uint16_t dataLength;   // 整个数据帧长度(含帧头和校验和) 
     
     // 飞机状态数据
