@@ -271,6 +271,8 @@ protected:
 	afx_msg void OnMenuCheckSelf();        // 自检指令
 	afx_msg void OnMenuCheckSurface();     // 舵面检查
 	afx_msg void OnMenuCheckEngine();      // 发动机检查
+	// 位置装订菜单项
+	afx_msg void OnMenuMapMouseCoord();    // 启用/关闭鼠标经纬度显示
 	// 菜单更新函数（用于显示选中状态）
 	afx_msg void OnUpdateMenuCtrlModeManual(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCtrlModeSemi(CCmdUI* pCmdUI);
@@ -282,6 +284,7 @@ protected:
 	afx_msg void OnUpdateMenuCheckSelf(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCheckSurface(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCheckEngine(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuMapMouseCoord(CCmdUI* pCmdUI); // 更新鼠标经纬度菜单勾选状态
 	afx_msg void OnNcPaint();
 	afx_msg void OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu);
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
@@ -323,6 +326,9 @@ private:
 	std::vector<LocalMapInfo> m_localMaps;
 	
 	bool m_comInitialized = false;
+
+	// 鼠标经纬度提示开关（由“位置装订”菜单控制）
+	bool m_mouseCoordEnabled = false;
 
 	void InitMapWebView();
 	void ResizeMapWebView(int cx, int cy);

@@ -269,6 +269,8 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_COMMAND(ID_MENU_CHECK_SELF, &CFWGCSDlgDlg::OnMenuCheckSelf)
 	ON_COMMAND(ID_MENU_CHECK_SURFACE, &CFWGCSDlgDlg::OnMenuCheckSurface)
 	ON_COMMAND(ID_MENU_CHECK_ENGINE, &CFWGCSDlgDlg::OnMenuCheckEngine)
+	// 位置装订菜单项
+	ON_COMMAND(ID_MENU_MAP_MOUSE_COORD, &CFWGCSDlgDlg::OnMenuMapMouseCoord)
 	// 菜单更新函数
 	ON_UPDATE_COMMAND_UI(ID_MENU_CTRL_MODE_MANUAL, &CFWGCSDlgDlg::OnUpdateMenuCtrlModeManual)
 	ON_UPDATE_COMMAND_UI(ID_MENU_CTRL_MODE_SEMI, &CFWGCSDlgDlg::OnUpdateMenuCtrlModeSemi)
@@ -280,6 +282,7 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_SELF, &CFWGCSDlgDlg::OnUpdateMenuCheckSelf)
 	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_SURFACE, &CFWGCSDlgDlg::OnUpdateMenuCheckSurface)
 	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_ENGINE, &CFWGCSDlgDlg::OnUpdateMenuCheckEngine)
+	ON_UPDATE_COMMAND_UI(ID_MENU_MAP_MOUSE_COORD, &CFWGCSDlgDlg::OnUpdateMenuMapMouseCoord)
 	ON_WM_SIZE()
 	ON_WM_MEASUREITEM()
 	ON_WM_DRAWITEM()
@@ -447,12 +450,16 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 				}
 			}
 
-			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("航点设置"));
-			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位符"));
-			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("占位符"));
+			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_MOUSE_COORD, _T("启用鼠标经纬度显示"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("航路点：地图选点"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("目标点：地图选点"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("开伞点：地图选点"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发射点：地图选点"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("加载数据文件至主GUI"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("装订"));
 			
 			menu5.AppendMenu(MF_STRING, ID_MENU_UDP_SETTINGS, _T("UDP通信设置"));
-			menu5.AppendMenu(MF_STRING, ID_MENU_SERIAL_SETTINGS, _T("串口通信设置"));
+			menu5.AppendMenu(MF_STRING, ID_MENU_SERIAL_SETTINGS, _T("422串口通信设置"));
 			
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu1.Detach()), _T("控制模式"));
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu2.Detach()), _T("任务指令"));
@@ -3322,22 +3329,28 @@ void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemSt
 		// 判断是顶层菜单栏还是子菜单项
 		// 方法1：通过 itemData 判断（顶层菜单栏：itemData 是索引0,1,2,3,4；子菜单项：itemData 是菜单ID）
 		// 方法2：通过 nMenuID 判断（子菜单项：nMenuID 是菜单ID）
-		bool bIsSubMenuItem = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
-		                       (itemData >= ID_MENU_CTRL_MODE_MANUAL && itemData <= ID_MENU_CHECK_ENGINE);
+		bool bIsSubMenuItem =
+			(nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
+			(itemData >= ID_MENU_CTRL_MODE_MANUAL && itemData <= ID_MENU_CHECK_ENGINE) ||
+			(nMenuID == ID_MENU_MAP_MOUSE_COORD) ||
+			(itemData == ID_MENU_MAP_MOUSE_COORD);
 
 		if (bIsSubMenuItem)
 		{
 			// 子菜单项：通过菜单ID获取文本
 			CMenu* pSubMenu = NULL;
-			UINT nActualMenuID = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) 
-				? nMenuID : static_cast<UINT>(itemData);
-			
+			UINT nActualMenuID = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) || (nMenuID == ID_MENU_MAP_MOUSE_COORD)
+				? nMenuID
+				: static_cast<UINT>(itemData);
+
 			if (nActualMenuID >= ID_MENU_CTRL_MODE_MANUAL && nActualMenuID <= ID_MENU_CTRL_MODE_FULL)
 				pSubMenu = m_mainMenu.GetSubMenu(0);
 			else if (nActualMenuID >= ID_MENU_MISSION_TEST && nActualMenuID <= ID_MENU_MISSION_LAUNCH_CMD)
 				pSubMenu = m_mainMenu.GetSubMenu(1);
 			else if (nActualMenuID >= ID_MENU_CHECK_SELF && nActualMenuID <= ID_MENU_CHECK_ENGINE)
 				pSubMenu = m_mainMenu.GetSubMenu(2);
+			else if (nActualMenuID == ID_MENU_MAP_MOUSE_COORD)
+				pSubMenu = m_mainMenu.GetSubMenu(3);
 
 			if (pSubMenu)
 			{
@@ -3407,8 +3420,11 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		// 判断是顶层菜单栏还是子菜单项
 		// 顶层菜单栏：itemData 是索引（0, 1, 2, 3, 4），且不在菜单ID范围内
 		// 子菜单项：itemData 是菜单ID（在 OnInitMenuPopup 中设置），nMenuID 也是菜单ID
-		bool bIsSubMenuItem = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
-		                       (lpDrawItemStruct->itemData >= ID_MENU_CTRL_MODE_MANUAL && lpDrawItemStruct->itemData <= ID_MENU_CHECK_ENGINE);
+		bool bIsSubMenuItem =
+			(nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
+			(lpDrawItemStruct->itemData >= ID_MENU_CTRL_MODE_MANUAL && lpDrawItemStruct->itemData <= ID_MENU_CHECK_ENGINE) ||
+			(nMenuID == ID_MENU_MAP_MOUSE_COORD) ||
+			(lpDrawItemStruct->itemData == ID_MENU_MAP_MOUSE_COORD);
 		
 		if (!bIsSubMenuItem)
 		{
@@ -3465,7 +3481,8 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			dc.DrawText(text, &textRect, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOCLIP);  // DT_NOCLIP 防止文字被裁剪
 			dc.SelectObject(pOld);
 		}
-		else if (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE)
+		else if ((nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
+			     (nMenuID == ID_MENU_MAP_MOUSE_COORD))
 		{
 			// 子菜单项：检查是否需要显示深蓝色（选中状态）
 			BOOL bShouldHighlight = FALSE;
@@ -3479,6 +3496,7 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			else if (nMenuID == ID_MENU_CHECK_SELF && m_missionCommand_B1 == 1) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_SURFACE && m_missionCommand_B3 == 1) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_ENGINE && m_missionCommand_B4 == 1) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD && m_mouseCoordEnabled) bShouldHighlight = TRUE;
 
 			// 设置背景色：选中状态用深蓝色，悬停用系统高亮色
 			COLORREF bg;
@@ -3501,6 +3519,8 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 				pSubMenu = m_mainMenu.GetSubMenu(1);
 			else if (nMenuID >= ID_MENU_CHECK_SELF && nMenuID <= ID_MENU_CHECK_ENGINE)
 				pSubMenu = m_mainMenu.GetSubMenu(2);
+			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD)
+				pSubMenu = m_mainMenu.GetSubMenu(3);
 
 			if (pSubMenu)
 			{
@@ -3551,27 +3571,47 @@ void CFWGCSDlgDlg::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu
 	if (bSysMenu || pPopupMenu == NULL)
 		return;
 
-	// 只处理控制指令相关的子菜单（前3个子菜单）
-	if (nIndex >= 0 && nIndex <= 2)
-	{
-		const int nItemCount = pPopupMenu->GetMenuItemCount();
-		for (int i = 0; i < nItemCount; i++)
+		// 只处理控制指令相关的子菜单（前3个子菜单）
+		if (nIndex >= 0 && nIndex <= 2)
 		{
-			UINT nMenuID = pPopupMenu->GetMenuItemID(i);
-			// 只处理控制指令相关的菜单项（排除分隔符和弹出菜单）
-			if (nMenuID != (UINT)-1 && nMenuID != 0 && 
-				nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE)
+			const int nItemCount = pPopupMenu->GetMenuItemCount();
+			for (int i = 0; i < nItemCount; i++)
 			{
-				MENUITEMINFO mi = {};
-				mi.cbSize = sizeof(mi);
-				mi.fMask = MIIM_FTYPE | MIIM_DATA | MIIM_ID;
-				mi.fType = MFT_OWNERDRAW;
-				mi.dwItemData = nMenuID;  // 保存菜单ID用于绘制和测量
-				mi.wID = nMenuID;  // 确保菜单ID正确设置
-				pPopupMenu->SetMenuItemInfo(i, &mi, TRUE);
+				UINT nMenuID = pPopupMenu->GetMenuItemID(i);
+				// 只处理控制指令相关的菜单项（排除分隔符和弹出菜单）
+				if (nMenuID != (UINT)-1 && nMenuID != 0 &&
+					nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE)
+				{
+					MENUITEMINFO mi = {};
+					mi.cbSize = sizeof(mi);
+					mi.fMask = MIIM_FTYPE | MIIM_DATA | MIIM_ID;
+					mi.fType = MFT_OWNERDRAW;
+					mi.dwItemData = nMenuID;  // 保存菜单ID用于绘制和测量
+					mi.wID = nMenuID;  // 确保菜单ID正确设置
+					pPopupMenu->SetMenuItemInfo(i, &mi, TRUE);
+				}
 			}
 		}
-	}
+		// 位置装订子菜单：仅为“启用鼠标经纬度显示”设置自绘
+		else if (nIndex == 3)
+		{
+			const int nItemCount = pPopupMenu->GetMenuItemCount();
+			for (int i = 0; i < nItemCount; ++i)
+			{
+				UINT nMenuID = pPopupMenu->GetMenuItemID(i);
+				if (nMenuID == ID_MENU_MAP_MOUSE_COORD)
+				{
+					MENUITEMINFO mi = {};
+					mi.cbSize = sizeof(mi);
+					mi.fMask = MIIM_FTYPE | MIIM_DATA | MIIM_ID;
+					mi.fType = MFT_OWNERDRAW;
+					mi.dwItemData = nMenuID;
+					mi.wID = nMenuID;
+					pPopupMenu->SetMenuItemInfo(i, &mi, TRUE);
+					break;
+				}
+			}
+		}
 }
 
 void CFWGCSDlgDlg::OnNcPaint()
@@ -4486,6 +4526,28 @@ void CFWGCSDlgDlg::OnMenuCheckEngine()
 }
 
 // ============================================================
+// 位置装订菜单项处理函数
+// ============================================================
+void CFWGCSDlgDlg::OnMenuMapMouseCoord()
+{
+#if FW_GCS_WITH_WEBVIEW2
+	// 切换本地开关状态
+	m_mouseCoordEnabled = !m_mouseCoordEnabled;
+
+	// 将开关状态发送给前端 JS，控制鼠标经纬度提示显隐
+	if (m_webView)
+	{
+		CStringA jsonA;
+		jsonA.Format(R"({"command":"setMouseCoord","enabled":%s})",
+			m_mouseCoordEnabled ? "true" : "false");
+
+		std::wstring jsonW(CA2W(jsonA.GetString()));
+		m_webView->PostWebMessageAsJson(jsonW.c_str());
+	}
+#endif
+}
+
+// ============================================================
 // 菜单更新函数（用于显示选中状态）
 // ============================================================
 void CFWGCSDlgDlg::OnUpdateMenuCtrlModeManual(CCmdUI* pCmdUI)
@@ -4536,6 +4598,16 @@ void CFWGCSDlgDlg::OnUpdateMenuCheckSurface(CCmdUI* pCmdUI)
 void CFWGCSDlgDlg::OnUpdateMenuCheckEngine(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetCheck(m_missionCommand_B4 == 1);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuMapMouseCoord(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_mouseCoordEnabled);
+#if FW_GCS_WITH_WEBVIEW2
+	pCmdUI->Enable(m_webView != nullptr);
+#else
+	pCmdUI->Enable(FALSE);
+#endif
 }
 
 // ============================================================

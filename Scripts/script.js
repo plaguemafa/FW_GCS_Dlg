@@ -119,6 +119,15 @@ const MAX_TRAIL_POINTS = 1000000;  // 最大轨迹点数
 let lastTrailSaveTime = 0;  // 上次保存轨迹点的时间戳（毫秒）
 const TRAIL_SAVE_INTERVAL_MS = 500;  // 轨迹点保存间隔（毫秒）
 
+// 鼠标经纬度显示开关（由原生菜单控制）
+let mouseCoordEnabled = false;
+
+function setMouseCoordEnabled(enabled) {
+    mouseCoordEnabled = !!enabled;
+    if (!mouseCoordTipEl) return;
+    mouseCoordTipEl.style.visibility = mouseCoordEnabled ? 'visible' : 'hidden';
+}
+
 if (!mapEl) {
     console.error('Map element not found!');
 } else {
@@ -847,15 +856,21 @@ function drawHudGroup3() {
 resizeHud();
 drawHud();
 
-// 接收 native HUD 数据（C++ PostWebMessageAsJson 推送）
+// 接收 native HUD / 控制 数据（C++ PostWebMessageAsJson 推送）
 if (window.chrome && window.chrome.webview) {
     window.chrome.webview.addEventListener('message', (e) => {
         const receivedData = e.data || null;
         if (!receivedData) {
             return;
         }
-        
-        // 更新 HUD 状态
+
+        // 处理控制类消息（例如：鼠标经纬度开关）
+        if (receivedData.command === 'setMouseCoord') {
+            setMouseCoordEnabled(!!receivedData.enabled);
+            return;
+        }
+
+        // 其余视为 HUD / 地图数据
         hudState = receivedData;
         
         // 更新底部信息栏数据
@@ -1128,7 +1143,7 @@ if (mapEl) {
 
     // 鼠标移动：计算并显示当前光标对应的经纬度（lon, lat）
     mapEl.addEventListener('mousemove', (e) => {
-        if (!mouseCoordTipEl) return;
+        if (!mouseCoordTipEl || !mouseCoordEnabled) return;
         const rect = mapEl.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;

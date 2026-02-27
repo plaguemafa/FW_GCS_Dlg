@@ -189,13 +189,14 @@
 #define ID_MENU_CHECK_SELF              32781
 #define ID_MENU_CHECK_SURFACE           32782
 #define ID_MENU_CHECK_ENGINE            32783
+#define ID_MENU_MAP_MOUSE_COORD         32784
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        145
-#define _APS_NEXT_COMMAND_VALUE         32784
+#define _APS_NEXT_COMMAND_VALUE         32785
 #define _APS_NEXT_CONTROL_VALUE         1167
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
