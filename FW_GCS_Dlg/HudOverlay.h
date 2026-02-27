@@ -1,6 +1,8 @@
 #pragma once
 #include <atlstr.h>
 
+//本文件内容以完全弃用
+
 // 返回地图+HUD 的内嵌脚本，从主 CPP 中分离长串 JS
 inline CStringA BuildHudOverlayJs()
 {

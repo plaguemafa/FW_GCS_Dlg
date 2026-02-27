@@ -7,7 +7,6 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>  // 用于 inet_pton()
 #include "UdpData.h"   // 必须在其他头文件之前包含，确保类型定义完整
-#include "HudOverlay.h"
 #include "FW_GCS_Dlg.h"
 #include "FW_GCS_DlgDlg.h"
 #include "resource.h"
@@ -20,8 +19,9 @@
 #include <vector>
 #include <cstdarg>
 #include <cmath>
-// #include <algorithm>
 #include <minwindef.h>
+// #include <algorithm>
+//#include "HudOverlay.h" // 弃用
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -1936,7 +1936,7 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 	BYTE buffer[1024];                            // 临时接收缓冲区（每次ReadFile的最大读取量）
 	DWORD dwBytesRead;                            // 实际读取的字节数
 	const int nPacketSize = sizeof(UdpRecvDataPacket);  // 完整数据帧长度（按结构体大小计算）
-	const uint16_t FRAME_HEADER = 0xAA11;               // 帧头固定值
+	const uint16_t FRAME_HEADER = 0xAA55;               // 帧头固定值
 	
 	TRACE(_T("串口接收线程启动，数据包大小: %d 字节\n"), nPacketSize);
 
@@ -4552,7 +4552,7 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	// 初始化控制指令数据包
 	UdpSendDataPacket_Cmd packet{};
 	memset(&packet, 0, sizeof(packet));
-	packet.frameHeader = 0xBB11;  // 设置帧头（控制指令包）
+	packet.frameHeader = 0xFF00;  // 设置帧头（控制指令包）
 
 	// 填充控制指令数据
 	packet.missionCommand_B0 = m_missionCommand_B0;

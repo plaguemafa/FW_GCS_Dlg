@@ -45,9 +45,6 @@
     <ClInclude Include="MbtilesReader.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="HudOverlay.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="UdpSettingsDlg.h">
       <Filter>头文件</Filter>
     </ClInclude>

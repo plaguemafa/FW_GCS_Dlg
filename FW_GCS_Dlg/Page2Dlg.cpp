@@ -245,7 +245,7 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	// 初始化数据包结构体
 	UdpSendDataPacket_Data packet{};
 	memset(&packet, 0, sizeof(packet));  // 清零，包括waypoints数组
-	packet.frameHeader = 0xBB22;  // 设置帧头（装订参数包）
+	packet.frameHeader = 0xF00F;  // 设置帧头（装订参数包）
 	
 	// 填充数据（根据数据类型转换）
 	packet.launchLongitude = static_cast<int32_t>(_ttoi(strData[2]));            // int32_t

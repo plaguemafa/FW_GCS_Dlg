@@ -9,7 +9,7 @@
 #pragma pack(push, 1)             // 紧密打包，避免字节对齐填充
 typedef struct {
     // 帧头 
-    uint16_t frameHeader;  // 固定值0xAA11
+    uint16_t frameHeader;  // 固定值0xAA55
     // uint16_t dataLength;   // 整个数据帧长度(含帧头和校验和) 
     
     // 飞机状态数据
@@ -132,7 +132,7 @@ struct Waypoint
 
 // 地面站发送数据包结构    地面站帧头作为隐形msg_id使用
 struct UdpSendDataPacket_Cmd{
-    uint16_t frameHeader;                            // 固定值0xBB11
+    uint16_t frameHeader;                            // 固定值0xFF00
     // 任务指令（使用 Radio Button 控件：IDC_RADIO_Flag22~28）
     uint8_t missionCommand_B0;                  // IDC_RADIO_Flag22激活时, 此参数置0，为地面测试流程指令，
                                                                   // IDC_RADIO_Flag23激活时，此参数置1，为发射流程指令，
@@ -150,7 +150,7 @@ struct UdpSendDataPacket_Cmd{
 };
 
 struct UdpSendDataPacket_Data{
-    uint16_t frameHeader;                           // 固定值0xBB22
+    uint16_t frameHeader;                           // 固定值0xF00F
     // 发射点
     int32_t launchLongitude;                       // IDC_Display_EditData2
     int32_t launchLatitude;                          // IDC_Display_EditData3
