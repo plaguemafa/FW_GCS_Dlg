@@ -174,6 +174,8 @@
 #define IDC_Display_myCOM               1165
 #define IDC_Display_localCOM            1165
 #define IDC_Display_romoteCOM           1166
+#define IDC_Display_                    1166
+#define IDC_Display_BAUD_RATE           1166
 #define ID_MENU_OP_PLACEHOLDER          32771
 #define ID_MENU_UDP_SETTINGS            32772
 #define ID_MENU_SERIAL_SETTINGS         32773

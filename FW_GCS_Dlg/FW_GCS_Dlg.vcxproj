@@ -196,8 +196,10 @@
     <ClInclude Include="Page2Dlg.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SerialConfig.h" />
     <ClInclude Include="SerialSettingsDlg.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="UdpConfig.h" />
     <ClInclude Include="UdpData.h" />
     <ClInclude Include="UdpSettingsDlg.h" />
   </ItemGroup>

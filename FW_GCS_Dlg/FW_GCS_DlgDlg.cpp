@@ -118,6 +118,10 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_strUdpRemoteIP = CString(UDP_REMOTE_IP); // 远程IP默认值
 	m_nUdpRemotePort = UDP_REMOTE_PORT;        // 远程端口默认值
 	
+	// 串口配置初始化（使用宏定义的默认值）
+	m_strSerialPortName = CString(SERIAL_PORT_NAME);  // 默认串口名称
+	m_nSerialBaudRate   = SERIAL_BAUD_RATE;           // 默认波特率
+	
 	// 控制指令状态初始化（默认：地面测试流程，手动遥控模式）
 	m_missionCommand_B0 = 0;  // 0=地面测试流程
 	m_missionCommand_B1 = 0;   // 自检指令（未激活）
@@ -1639,7 +1643,7 @@ void CFWGCSDlgDlg::OnBnClickedSeriallink()
 			// 连接成功，显示成功消息
 			CString strMsg;
 			strMsg.Format(_T("串口连接成功！\n\n串口: %s\n波特率: %d"), 
-				_T(SERIAL_PORT_NAME), SERIAL_BAUD_RATE);
+				m_strSerialPortName, m_nSerialBaudRate);
 			MessageBox(strMsg, _T("串口回报窗口"), MB_OK | MB_ICONINFORMATION);
 		}
 		else
@@ -1648,7 +1652,7 @@ void CFWGCSDlgDlg::OnBnClickedSeriallink()
 			int nError = GetLastError();
 			CString strError;
 			strError.Format(_T("串口连接失败！\n\n错误代码: %d\n\n请检查：\n1. 串口%s是否存在\n2. 串口是否被其他程序占用\n3. 查看调试输出获取详细信息"), 
-				nError, _T(SERIAL_PORT_NAME));
+				nError, m_strSerialPortName.GetString());
 			MessageBox(strError, _T("错误"), MB_OK | MB_ICONERROR);
 		}
 	}
@@ -1692,7 +1696,7 @@ BOOL CFWGCSDlgDlg::OpenSerialPort()
 	// Windows串口名称格式：COM1-COM9 使用 "COMx"，COM10及以上使用 "\\\\.\\COMx"
 	// 为兼容性，统一使用 "\\\\.\\COMx" 格式
 	CString strPortPath;
-	strPortPath.Format(_T("\\\\.\\%s"), _T(SERIAL_PORT_NAME));
+	strPortPath.Format(_T("\\\\.\\%s"), m_strSerialPortName.GetString());
 
 	// 打开串口（读写模式，独占访问）
 	m_hSerialPort = CreateFile(
@@ -1709,7 +1713,7 @@ BOOL CFWGCSDlgDlg::OpenSerialPort()
 	{
 		// 打开失败，记录错误并返回
 		int nError = GetLastError();
-		TRACE(_T("串口打开失败 (%s)，错误代码: %d\n"), _T(SERIAL_PORT_NAME), nError);
+		TRACE(_T("串口打开失败 (%s)，错误代码: %d\n"), m_strSerialPortName.GetString(), nError);
 		return FALSE;
 	}
 
@@ -1729,7 +1733,7 @@ BOOL CFWGCSDlgDlg::OpenSerialPort()
 	}
 
 	// 配置基本参数
-	dcb.BaudRate = SERIAL_BAUD_RATE;          // 波特率：115200
+	dcb.BaudRate = m_nSerialBaudRate;          // 波特率（运行时配置）
 	dcb.ByteSize = 8;                          // 数据位：8位
 	dcb.Parity = NOPARITY;                     // 校验位：无校验
 	dcb.StopBits = ONESTOPBIT;                 // 停止位：1位
@@ -1807,7 +1811,7 @@ BOOL CFWGCSDlgDlg::OpenSerialPort()
 	// 连接成功，更新状态标志
 	// ============================================================
 	m_bSerialConnected = TRUE;
-	TRACE(_T("串口打开成功 (%s, %d baud)\n"), _T(SERIAL_PORT_NAME), SERIAL_BAUD_RATE);
+	TRACE(_T("串口打开成功 (%s, %d baud)\n"), m_strSerialPortName.GetString(), m_nSerialBaudRate);
 	return TRUE;
 }
 
@@ -4318,7 +4322,63 @@ void CFWGCSDlgDlg::OnMenuUdpSettings()
 void CFWGCSDlgDlg::OnMenuSerialSettings()
 {
 	CSerialSettingsDlg dlg(this);
-	dlg.DoModal();  // 占位对话框会自动显示提示信息
+
+	// 使用当前串口配置初始化对话框（而不是直接使用宏）
+	dlg.SetPortName(m_strSerialPortName);
+	dlg.SetBaudRate(m_nSerialBaudRate);
+
+	if (dlg.DoModal() == IDOK)
+	{
+		// 获取用户新设置
+		CString strPort = dlg.GetPortName();
+		int     nBaud   = dlg.GetBaudRate();
+
+		// 判断是否有变化
+		BOOL bChanged = (strPort != m_strSerialPortName) ||
+			            (nBaud   != m_nSerialBaudRate);
+
+		if (bChanged)
+		{
+			// 更新运行时配置
+			m_strSerialPortName = strPort;
+			m_nSerialBaudRate   = nBaud;
+
+			if (m_bSerialConnected)
+			{
+				// 当前已连接，提示是否立即按新配置重连
+				CString strMsg;
+				strMsg.Format(_T("串口设置已更新：\n\n本机端口: %s\n波特率: %d\n\n当前串口已连接，新设置将在下次连接时生效。\n是否立即断开并按新设置重新连接？"),
+					strPort, nBaud);
+
+				if (MessageBox(strMsg, _T("串口设置"), MB_YESNO | MB_ICONQUESTION) == IDYES)
+				{
+					// 先断开
+					CloseSerialPort();
+					// 再按新配置重连
+					if (OpenSerialPort())
+					{
+						MessageBox(_T("串口已按新设置重新连接！"), _T("串口设置"), MB_OK | MB_ICONINFORMATION);
+					}
+					else
+					{
+						MessageBox(_T("串口重新连接失败，请检查设置或设备状态。"), _T("串口设置"), MB_OK | MB_ICONWARNING);
+					}
+				}
+			}
+			else
+			{
+				// 尚未连接，仅提示下次连接生效
+				CString strMsg;
+				strMsg.Format(_T("串口设置已更新：\n\n本机端口: %s\n波特率: %d\n\n设置将在下次连接时生效。"),
+					strPort, nBaud);
+				MessageBox(strMsg, _T("串口设置"), MB_OK | MB_ICONINFORMATION);
+			}
+		}
+		else
+		{
+			MessageBox(_T("串口设置未更改。"), _T("串口设置"), MB_OK | MB_ICONINFORMATION);
+		}
+	}
 }
 
 // ============================================================

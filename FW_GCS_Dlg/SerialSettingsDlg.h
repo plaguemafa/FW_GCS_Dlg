@@ -26,4 +26,17 @@ protected:
 
 public:
 	virtual BOOL OnInitDialog();
+	afx_msg void OnBnClickedOk();
+
+	// 获取设置值
+	CString GetPortName() const { return m_strPortName; }
+	int     GetBaudRate() const { return m_nBaudRate; }
+
+	// 设置初始值
+	void SetPortName(const CString& port) { m_strPortName = port; }
+	void SetBaudRate(int baud) { m_nBaudRate = baud; }
+
+private:
+	CString m_strPortName;   // 本机串口名称（例如 "COM21"）
+	int     m_nBaudRate;     // 串口波特率（例如 115200）
 };

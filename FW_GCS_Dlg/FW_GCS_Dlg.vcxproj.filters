@@ -54,6 +54,12 @@
     <ClInclude Include="SerialSettingsDlg.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="SerialConfig.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="UdpConfig.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FW_GCS_Dlg.cpp">

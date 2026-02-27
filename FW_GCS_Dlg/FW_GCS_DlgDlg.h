@@ -9,6 +9,7 @@
 #include <afxdialogex.h> // CDialogEx
 #include "UdpData.h"
 #include "UdpConfig.h"
+#include "SerialConfig.h"
 #include <winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
 #include "Page1Dlg.h"
@@ -29,10 +30,6 @@
 #else
 #define FW_GCS_WITH_WEBVIEW2 0
 #endif
-
-// 串口配置参数宏
-#define SERIAL_PORT_NAME   "COM21"        // 目标串口名称（RS422串口，格式：COM1-COM256）
-#define SERIAL_BAUD_RATE   115200         // 波特率（常用值：9600, 19200, 38400, 57600, 115200）
 
 #define   UI_UPDATE_INTERVAL_MS 25		  // 显示控件刷新频率
 
@@ -90,6 +87,10 @@ protected:
 	int m_nUdpLocalPort;                  // 本机端口
 	CString m_strUdpRemoteIP;             // 远程IP
 	int m_nUdpRemotePort;                 // 远程端口
+	
+	// 串口配置参数（运行时配置，优先于宏定义）
+	CString m_strSerialPortName;          // 串口名称（例如 "COM21"）
+	int     m_nSerialBaudRate;            // 串口波特率（例如 115200）
 	
 	// 串口通信相关成员变量
 	HANDLE m_hSerialPort;                  // 串口句柄
