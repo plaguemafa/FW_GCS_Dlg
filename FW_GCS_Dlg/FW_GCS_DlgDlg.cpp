@@ -456,7 +456,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("开伞点：地图选点"));
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发射点：地图选点"));
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("加载数据文件至主GUI"));
-			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("装订"));
+			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("装订数据"));
 			
 			menu5.AppendMenu(MF_STRING, ID_MENU_UDP_SETTINGS, _T("UDP通信设置"));
 			menu5.AppendMenu(MF_STRING, ID_MENU_SERIAL_SETTINGS, _T("422串口通信设置"));

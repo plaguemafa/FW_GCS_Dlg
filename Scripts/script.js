@@ -1068,13 +1068,17 @@ function render() {
 }
 
 if (mapEl) {
-    // 鼠标按下：记录起点与中心，开始拖拽
+    // 禁止地图上右键弹出上下文菜单，以便用右键拖动地图
+    mapEl.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // 鼠标右键按下：记录起点与中心，开始拖拽
     mapEl.addEventListener('mousedown', (e) => {
+        if (e.button !== 2) return;  // 仅响应右键
         e.preventDefault();
         dragging = true;
         dragStart = { x: e.clientX, y: e.clientY };
         dragStartCenter = { lat: center.lat, lng: center.lng };
-        mapEl.style.cursor = 'default';
+        mapEl.style.cursor = 'grabbing';
     });
 
     // 鼠标移动：根据位移调整中心经纬度
@@ -1099,9 +1103,9 @@ if (mapEl) {
         render();
     });
 
-    // 鼠标抬起：结束拖拽
-    document.addEventListener('mouseup', () => {
-        if (!dragging) return;
+    // 鼠标右键抬起：结束拖拽
+    document.addEventListener('mouseup', (e) => {
+        if (e.button !== 2 || !dragging) return;
         dragging = false;
         if (mapEl) {
             mapEl.style.cursor = 'default';
