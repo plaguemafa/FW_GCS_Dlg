@@ -1,6 +1,6 @@
 // map.js - 离线地图 + HUD 渲染
 // 说明：
-// 1) mapConfig / statusText 由 C++ 在 map.html 占位符处注入
+// 1) mapConfig / statusText 由 C++ 在 canvas.html 占位符处注入
 // 2) C++ 调用 PostWebMessageAsJson 推送 HUD 数据，JS 在 webview message 事件里接收并更新 hudState
 // 3) HUD 绘制集中在 drawHud，拆分多个小函数，方便你单独调整配色、位置、尺寸
 

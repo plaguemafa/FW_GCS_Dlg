@@ -10,7 +10,7 @@
 #define IDD_PAGE2_DIALOG                136
 #define IDD_UDP_SETTINGS_DIALOG         138
 #define IDD_SERIAL_SETTINGS_DIALOG      139
-#define IDR_MAP_HTML                    140
+#define IDR_CANVAS_HTML                 140
 #define IDR_SCRIPT_JS                   141
 #define IDC_UDPlink                     1000
 #define IDC_SerialLink                  1001

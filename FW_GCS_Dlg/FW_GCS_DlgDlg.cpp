@@ -3905,9 +3905,9 @@ static CStringA ReadResourceContentA(HMODULE hModule, UINT resourceId)
 
 CString CFWGCSDlgDlg::BuildMapHtml() const
 {
-	// 从 exe 嵌入资源加载 map.html 和 script.js（无需 exe 同目录下的 Scripts 文件夹）
+	// 从 exe 嵌入资源加载 canvas.html 和 script.js（无需 exe 同目录下的 Scripts 文件夹）
 	HMODULE hInst = AfxGetResourceHandle();
-	CStringA htmlTemplate = ReadResourceContentA(hInst, IDR_MAP_HTML);
+	CStringA htmlTemplate = ReadResourceContentA(hInst, IDR_CANVAS_HTML);
 	CStringA jsContent = ReadResourceContentA(hInst, IDR_SCRIPT_JS);
 
 	if (htmlTemplate.IsEmpty())
@@ -3915,7 +3915,7 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 		CStringA errorHtml(
 			"<!doctype html><html><body style='background:#1a1a1a;color:#ff6b6b;font-family:Segoe UI;padding:20px;'>"
 			"<h2>Error: Embedded map resources not found</h2>"
-			"<p>map.html/script.js should be compiled into the executable. Rebuild the project.</p>"
+			"<p>canvas.html/script.js should be compiled into the executable. Rebuild the project.</p>"
 			"</body></html>");
 		return CString(errorHtml);
 	}

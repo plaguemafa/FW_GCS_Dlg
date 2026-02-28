@@ -94,7 +94,7 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="packages.config" />
-    <None Include="..\Scripts\map.html">
+    <None Include="..\Scripts\canvas.html">
       <Filter>资源文件</Filter>
     </None>
     <None Include="..\Scripts\script.js">
