@@ -15,7 +15,7 @@
 //   Simulink 远程端口 = UDP_LOCAL_PORT (5001) - Simulink发送数据的目标端口
 //
 #define UDP_LOCAL_IP       "127.0.0.1"   // 本机IP（局域网网口IP，或"0.0.0.0"表示监听所有接口）
-#define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
-//#define UDP_REMOTE_IP      "127.0.0.1"     // Simulink的本地IP（用于本地测试）
+//#define UDP_REMOTE_IP      "192.168.1.11"   // 远程设备IP（飞控固件IP，用于实际连接）
+#define UDP_REMOTE_IP      "127.0.0.1"     // Simulink的本地IP（用于本地测试）
 #define UDP_REMOTE_PORT     50000           // Simulink的本地端口（用于本地测试）地面站远程端口
 #define UDP_LOCAL_PORT      50001           // 本程序监听端口（接收Simulink发送的数据）

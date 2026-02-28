@@ -32,6 +32,8 @@
 #define IDC_BUTTON_SendData             1030
 #define IDC_Display8                    1031
 #define IDC_Display_EditData0           1031
+#define IDC_BUTTON_SendData2            1031
+#define IDC_BUTTON_SaveData2xml         1031
 #define IDC_Display9                    1032
 #define IDC_BUTTON_WP_Read              1032
 #define IDC_Display10                   1033

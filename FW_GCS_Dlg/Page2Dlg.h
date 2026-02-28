@@ -73,9 +73,11 @@ public:
 	// 发送装订参数数据（保留函数，但不再由按钮触发）
 	void OnBnClickedButtonSendData();
 	
-	// 加载航路点XML文件（从可执行文件目录下的waypoints.xml）
+	// 加载航路点XML文件（从可执行文件目录下的waypoints.xml），仅填充航路点数组，供列表显示
 	BOOL LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount);
-	
+	// 从 waypoints.xml 的 sendData 节点加载装订参数到 EditData2~28 控件（不涉及航路点列表）
+	BOOL LoadSendDataFromXml();
+
 	// 显示航路点数据到列表控件
 	void DisplayWaypoints(const Waypoint waypoints[100], int nCount);
 	

@@ -190,6 +190,8 @@ BOOL CPage2Dlg::OnInitDialog()
 			m_listWaypoints.DeleteAllItems();
 			m_nCurrentWaypointCount = 0;
 		}
+		// 从 waypoints.xml 的 sendData 节点加载装订参数到 EditData2~28（不显示在航路点列表中）
+		LoadSendDataFromXml();
 	}
 	else
 	{
@@ -578,6 +580,129 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 	
 	TRACE(_T("成功加载 %d 个航路点\n"), nLoadedCount);
 	return (nLoadedCount > 0);
+}
+
+// 从 waypoints.xml 的 sendData 节点加载装订参数到 EditData2~28，不涉及航路点列表
+BOOL CPage2Dlg::LoadSendDataFromXml()
+{
+	TCHAR szModulePath[MAX_PATH];
+	GetModuleFileName(NULL, szModulePath, MAX_PATH);
+	CString strExePath = szModulePath;
+	int nLastSlash = strExePath.ReverseFind(_T('\\'));
+	if (nLastSlash >= 0)
+		strExePath = strExePath.Left(nLastSlash + 1);
+	CString strFilePath = strExePath + _T("waypoints.xml");
+
+	CFileStatus status;
+	if (!CFile::GetStatus(strFilePath, status))
+		return TRUE;  // 文件不存在时视为成功，仅不加载 sendData
+
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	BOOL bNeedUninit = SUCCEEDED(hr);
+	if (FAILED(hr) && hr != RPC_E_CHANGED_MODE)
+		return FALSE;
+
+	BOOL bOk = FALSE;
+	{
+		CComPtr<IXMLDOMDocument> spXMLDoc;
+		hr = spXMLDoc.CoCreateInstance(__uuidof(DOMDocument60));
+		if (FAILED(hr))
+		{
+			if (bNeedUninit) CoUninitialize();
+			return FALSE;
+		}
+		spXMLDoc->put_async(VARIANT_FALSE);
+		CComVariant varFileName(strFilePath);
+		VARIANT_BOOL vbSuccess;
+		hr = spXMLDoc->load(varFileName, &vbSuccess);
+		if (FAILED(hr) || vbSuccess != VARIANT_TRUE)
+		{
+			if (bNeedUninit) CoUninitialize();
+			return TRUE;  // 文件加载失败时不影响程序，仅不加载 sendData
+		}
+
+		CComPtr<IXMLDOMElement> spRoot;
+		hr = spXMLDoc->get_documentElement(&spRoot);
+		if (FAILED(hr) || spRoot == NULL)
+		{
+			if (bNeedUninit) CoUninitialize();
+			return TRUE;
+		}
+
+		CComPtr<IXMLDOMNode> spSendDataNode;
+		hr = spRoot->selectSingleNode(CComBSTR(_T("sendData")), &spSendDataNode);
+		if (FAILED(hr) || spSendDataNode == NULL)
+		{
+			TRACE(_T("waypoints.xml 中无 sendData 节点，跳过装订参数加载\n"));
+			bOk = TRUE;
+			if (bNeedUninit) CoUninitialize();
+			return bOk;
+		}
+
+		CComPtr<IXMLDOMNodeList> spChildList;
+		hr = spSendDataNode->get_childNodes(&spChildList);
+		if (FAILED(hr) || spChildList == NULL)
+		{
+			bOk = TRUE;
+			if (bNeedUninit) CoUninitialize();
+			return bOk;
+		}
+
+		long nLen = 0;
+		spChildList->get_length(&nLen);
+		for (long i = 0; i < nLen; i++)
+		{
+			CComPtr<IXMLDOMNode> spNode;
+			hr = spChildList->get_item(i, &spNode);
+			if (FAILED(hr) || spNode == NULL) continue;
+			DOMNodeType nodeType;
+			spNode->get_nodeType(&nodeType);
+			if (nodeType != NODE_ELEMENT) continue;
+
+			CComBSTR bstrName;
+			spNode->get_nodeName(&bstrName);
+			CComBSTR bstrText;
+			spNode->get_text(&bstrText);
+			CString strName(bstrName);
+			CString strValue(bstrText);
+			strName.Trim(); strValue.Trim();
+
+			CEdit* pEdit = NULL;
+			if (strName == _T("launchLongitude"))       pEdit = &m_editSendData2;
+			else if (strName == _T("launchLatitude"))   pEdit = &m_editSendData3;
+			else if (strName == _T("launchAltitude"))   pEdit = &m_editSendData4;
+			else if (strName == _T("initPitch"))        pEdit = &m_editSendData5;
+			else if (strName == _T("initYaw"))          pEdit = &m_editSendData6;
+			else if (strName == _T("initRoll"))        pEdit = &m_editSendData7;
+			else if (strName == _T("initPitchRate"))    pEdit = &m_editSendData8;
+			else if (strName == _T("initYawRate"))      pEdit = &m_editSendData9;
+			else if (strName == _T("initRollRate"))     pEdit = &m_editSendData10;
+			else if (strName == _T("initNorthVelocity")) pEdit = &m_editSendData11;
+			else if (strName == _T("initEastVelocity"))  pEdit = &m_editSendData12;
+			else if (strName == _T("initVerticalVelocity")) pEdit = &m_editSendData13;
+			else if (strName == _T("initNorthAccel"))   pEdit = &m_editSendData14;
+			else if (strName == _T("initEastAccel"))    pEdit = &m_editSendData15;
+			else if (strName == _T("initVerticalAccel")) pEdit = &m_editSendData16;
+			else if (strName == _T("targetLongitude"))   pEdit = &m_editSendData17;
+			else if (strName == _T("targetLatitude"))   pEdit = &m_editSendData18;
+			else if (strName == _T("targetAltitude"))   pEdit = &m_editSendData19;
+			else if (strName == _T("launchLongitude2"))  pEdit = &m_editSendData20;
+			else if (strName == _T("launchLatitude2"))   pEdit = &m_editSendData21;
+			else if (strName == _T("launchAltitude2"))   pEdit = &m_editSendData22;
+			else if (strName == _T("parachuteLongitude")) pEdit = &m_editSendData23;
+			else if (strName == _T("parachuteLatitude"))  pEdit = &m_editSendData24;
+			else if (strName == _T("parachuteAltitude"))  pEdit = &m_editSendData25;
+			else if (strName == _T("elevatorCmd"))       pEdit = &m_editSendData26;
+			else if (strName == _T("aileronCmd"))        pEdit = &m_editSendData27;
+			else if (strName == _T("airspeedSet"))       pEdit = &m_editSendData28;
+			if (pEdit != NULL && pEdit->GetSafeHwnd() != NULL)
+				pEdit->SetWindowText(strValue);
+		}
+		bOk = TRUE;
+	}
+	if (bNeedUninit) CoUninitialize();
+	TRACE(_T("LoadSendDataFromXml: 装订参数已从 waypoints.xml 的 sendData 加载到界面\n"));
+	return bOk;
 }
 
 // 显示航路点数据到列表控件
