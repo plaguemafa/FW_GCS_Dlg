@@ -230,7 +230,7 @@
     <Image Include="res\FW_GCS_Dlg.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Xml Include="waypoints.xml" />
+    <Xml Include="..\x64\Debug\waypoints.xml" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -271,6 +271,7 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_COMMAND(ID_MENU_CHECK_ENGINE, &CFWGCSDlgDlg::OnMenuCheckEngine)
 	// 位置装订菜单项
 	ON_COMMAND(ID_MENU_MAP_MOUSE_COORD, &CFWGCSDlgDlg::OnMenuMapMouseCoord)
+	ON_COMMAND(ID_MENU_MAP_TARGET_PICK, &CFWGCSDlgDlg::OnMenuMapTargetPick)
 	// 菜单更新函数
 	ON_UPDATE_COMMAND_UI(ID_MENU_CTRL_MODE_MANUAL, &CFWGCSDlgDlg::OnUpdateMenuCtrlModeManual)
 	ON_UPDATE_COMMAND_UI(ID_MENU_CTRL_MODE_SEMI, &CFWGCSDlgDlg::OnUpdateMenuCtrlModeSemi)
@@ -283,11 +284,13 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_SURFACE, &CFWGCSDlgDlg::OnUpdateMenuCheckSurface)
 	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_ENGINE, &CFWGCSDlgDlg::OnUpdateMenuCheckEngine)
 	ON_UPDATE_COMMAND_UI(ID_MENU_MAP_MOUSE_COORD, &CFWGCSDlgDlg::OnUpdateMenuMapMouseCoord)
+	ON_UPDATE_COMMAND_UI(ID_MENU_MAP_TARGET_PICK, &CFWGCSDlgDlg::OnUpdateMenuMapTargetPick)
 	ON_WM_SIZE()
 	ON_WM_MEASUREITEM()
 	ON_WM_DRAWITEM()
 	ON_WM_NCPAINT()
 	ON_WM_INITMENUPOPUP()
+	ON_MESSAGE(WM_MAP_PICK_TARGET_RESULT, &CFWGCSDlgDlg::OnMapPickTargetResult)
 END_MESSAGE_MAP()
 
 // 在消息到达控件之前拦截鼠标点击，阻止只读 Radio Button 的交互
@@ -452,7 +455,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 
 			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_MOUSE_COORD, _T("启用鼠标经纬度显示"));
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("航路点：地图选点"));
-			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("目标点：地图选点"));
+			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_TARGET_PICK, _T("目标点：地图选点"));
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("开伞点：地图选点"));
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("发射点：地图选点"));
 			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("加载数据文件至主GUI"));
@@ -3332,14 +3335,14 @@ void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemSt
 		bool bIsSubMenuItem =
 			(nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
 			(itemData >= ID_MENU_CTRL_MODE_MANUAL && itemData <= ID_MENU_CHECK_ENGINE) ||
-			(nMenuID == ID_MENU_MAP_MOUSE_COORD) ||
-			(itemData == ID_MENU_MAP_MOUSE_COORD);
+			(nMenuID == ID_MENU_MAP_MOUSE_COORD) || (itemData == ID_MENU_MAP_MOUSE_COORD) ||
+			(nMenuID == ID_MENU_MAP_TARGET_PICK) || (itemData == ID_MENU_MAP_TARGET_PICK);
 
 		if (bIsSubMenuItem)
 		{
 			// 子菜单项：通过菜单ID获取文本
 			CMenu* pSubMenu = NULL;
-			UINT nActualMenuID = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) || (nMenuID == ID_MENU_MAP_MOUSE_COORD)
+			UINT nActualMenuID = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) || (nMenuID == ID_MENU_MAP_MOUSE_COORD) || (nMenuID == ID_MENU_MAP_TARGET_PICK)
 				? nMenuID
 				: static_cast<UINT>(itemData);
 
@@ -3349,7 +3352,7 @@ void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemSt
 				pSubMenu = m_mainMenu.GetSubMenu(1);
 			else if (nActualMenuID >= ID_MENU_CHECK_SELF && nActualMenuID <= ID_MENU_CHECK_ENGINE)
 				pSubMenu = m_mainMenu.GetSubMenu(2);
-			else if (nActualMenuID == ID_MENU_MAP_MOUSE_COORD)
+			else if (nActualMenuID == ID_MENU_MAP_MOUSE_COORD || nActualMenuID == ID_MENU_MAP_TARGET_PICK)
 				pSubMenu = m_mainMenu.GetSubMenu(3);
 
 			if (pSubMenu)
@@ -3423,8 +3426,8 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		bool bIsSubMenuItem =
 			(nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
 			(lpDrawItemStruct->itemData >= ID_MENU_CTRL_MODE_MANUAL && lpDrawItemStruct->itemData <= ID_MENU_CHECK_ENGINE) ||
-			(nMenuID == ID_MENU_MAP_MOUSE_COORD) ||
-			(lpDrawItemStruct->itemData == ID_MENU_MAP_MOUSE_COORD);
+			(nMenuID == ID_MENU_MAP_MOUSE_COORD) || (lpDrawItemStruct->itemData == ID_MENU_MAP_MOUSE_COORD) ||
+			(nMenuID == ID_MENU_MAP_TARGET_PICK) || (lpDrawItemStruct->itemData == ID_MENU_MAP_TARGET_PICK);
 		
 		if (!bIsSubMenuItem)
 		{
@@ -3482,7 +3485,7 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			dc.SelectObject(pOld);
 		}
 		else if ((nMenuID >= ID_MENU_CTRL_MODE_MANUAL && nMenuID <= ID_MENU_CHECK_ENGINE) ||
-			     (nMenuID == ID_MENU_MAP_MOUSE_COORD))
+			     (nMenuID == ID_MENU_MAP_MOUSE_COORD) || (nMenuID == ID_MENU_MAP_TARGET_PICK))
 		{
 			// 子菜单项：检查是否需要显示深蓝色（选中状态）
 			BOOL bShouldHighlight = FALSE;
@@ -3497,6 +3500,7 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			else if (nMenuID == ID_MENU_CHECK_SURFACE && m_missionCommand_B3 == 1) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_ENGINE && m_missionCommand_B4 == 1) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD && m_mouseCoordEnabled) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MAP_TARGET_PICK && m_mapPickTargetMode) bShouldHighlight = TRUE;
 
 			// 设置背景色：选中状态用深蓝色，悬停用系统高亮色
 			COLORREF bg;
@@ -3519,7 +3523,7 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 				pSubMenu = m_mainMenu.GetSubMenu(1);
 			else if (nMenuID >= ID_MENU_CHECK_SELF && nMenuID <= ID_MENU_CHECK_ENGINE)
 				pSubMenu = m_mainMenu.GetSubMenu(2);
-			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD)
+			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD || nMenuID == ID_MENU_MAP_TARGET_PICK)
 				pSubMenu = m_mainMenu.GetSubMenu(3);
 
 			if (pSubMenu)
@@ -3592,14 +3596,14 @@ void CFWGCSDlgDlg::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu
 				}
 			}
 		}
-		// 位置装订子菜单：仅为“启用鼠标经纬度显示”设置自绘
+		// 位置装订子菜单：为“启用鼠标经纬度显示”和“目标点：地图选点”设置自绘
 		else if (nIndex == 3)
 		{
 			const int nItemCount = pPopupMenu->GetMenuItemCount();
 			for (int i = 0; i < nItemCount; ++i)
 			{
 				UINT nMenuID = pPopupMenu->GetMenuItemID(i);
-				if (nMenuID == ID_MENU_MAP_MOUSE_COORD)
+				if (nMenuID == ID_MENU_MAP_MOUSE_COORD || nMenuID == ID_MENU_MAP_TARGET_PICK)
 				{
 					MENUITEMINFO mi = {};
 					mi.cbSize = sizeof(mi);
@@ -3608,7 +3612,6 @@ void CFWGCSDlgDlg::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu
 					mi.dwItemData = nMenuID;
 					mi.wID = nMenuID;
 					pPopupMenu->SetMenuItemInfo(i, &mi, TRUE);
-					break;
 				}
 			}
 		}
@@ -3838,6 +3841,38 @@ void CFWGCSDlgDlg::InitMapWebView()
 									m_webViewEnvironment->CreateWebResourceResponse(
 										stream.Get(), 200, L"OK", headers, &response);
 									args->put_Response(response.Get());
+									return S_OK;
+								}).Get(),
+							nullptr);
+
+						// 接收来自 JS 的地图选点结果（目标点：地图选点 左键点击后回传经纬度）
+						m_webView->add_WebMessageReceived(
+							Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
+								[this](ICoreWebView2* sender, ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT
+								{
+									UNREFERENCED_PARAMETER(sender);
+									LPWSTR msgJson = nullptr;
+									if (FAILED(args->get_WebMessageAsJson(&msgJson)) || msgJson == nullptr)
+										return S_OK;
+									CStringW str(msgJson);
+									::CoTaskMemFree(msgJson);
+									if (str.Find(L"mapPickTargetResult") < 0)
+										return S_OK;
+									// 简单解析 "lat":number,"lng":number 或 "lng":number,"lat":number
+									double lat = 0, lng = 0;
+									int idxLat = str.Find(L"\"lat\":");
+									int idxLng = str.Find(L"\"lng\":");
+									if (idxLat >= 0) {
+										const wchar_t* pLat = (LPCWSTR)str + idxLat + 6;
+										swscanf_s(pLat, L"%lf", &lat);
+									}
+									if (idxLng >= 0) {
+										const wchar_t* pLng = (LPCWSTR)str + idxLng + 6;
+										swscanf_s(pLng, L"%lf", &lng);
+									}
+									struct MapPickResult { double lat; double lng; };
+									MapPickResult* pResult = new MapPickResult{ lat, lng };
+									::PostMessage(m_hWnd, WM_MAP_PICK_TARGET_RESULT, 0, reinterpret_cast<LPARAM>(pResult));
 									return S_OK;
 								}).Get(),
 							nullptr);
@@ -4608,6 +4643,62 @@ void CFWGCSDlgDlg::OnUpdateMenuMapMouseCoord(CCmdUI* pCmdUI)
 #else
 	pCmdUI->Enable(FALSE);
 #endif
+}
+
+void CFWGCSDlgDlg::OnMenuMapTargetPick()
+{
+#if FW_GCS_WITH_WEBVIEW2
+	m_mapPickTargetMode = true;
+	if (m_webView)
+	{
+		CStringA jsonA;
+		jsonA.Format(R"({"command":"setMapPickTarget","enabled":true})");
+		std::wstring jsonW(CA2W(jsonA.GetString()));
+		m_webView->PostWebMessageAsJson(jsonW.c_str());
+	}
+#endif
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuMapTargetPick(CCmdUI* pCmdUI)
+{
+#if FW_GCS_WITH_WEBVIEW2
+	pCmdUI->Enable(m_webView != nullptr);
+	pCmdUI->SetCheck(m_mapPickTargetMode);
+#else
+	pCmdUI->Enable(FALSE);
+#endif
+}
+
+// 地图选点结果：将经纬度写入 Page2 的 IDC_Display_EditData17(lon)、IDC_Display_EditData18(lat)
+LRESULT CFWGCSDlgDlg::OnMapPickTargetResult(WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(wParam);
+	struct MapPickResult { double lat; double lng; };
+	MapPickResult* pResult = reinterpret_cast<MapPickResult*>(lParam);
+	if (!pResult) return 0;
+	m_mapPickTargetMode = false;
+#if FW_GCS_WITH_WEBVIEW2
+	if (m_webView)
+	{
+		CStringA jsonA;
+		jsonA.Format(R"({"command":"setMapPickTarget","enabled":false})");
+		std::wstring jsonW(CA2W(jsonA.GetString()));
+		m_webView->PostWebMessageAsJson(jsonW.c_str());
+	}
+#endif
+	if (m_pPage2Dlg && m_pPage2Dlg->GetSafeHwnd())
+	{
+		// 与发射点一致：界面显示为度数（如 117.158990），发送时 Page2 会按 度*1000000 组包
+		CString strLon, strLat;
+		strLon.Format(_T("%.6f"), pResult->lng);
+		strLat.Format(_T("%.6f"), pResult->lat);
+		CWnd* pLon = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData17);
+		CWnd* pLat = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData18);
+		if (pLon) pLon->SetWindowText(strLon);
+		if (pLat) pLat->SetWindowText(strLat);
+	}
+	delete pResult;
+	return 0;
 }
 
 // ============================================================

@@ -3,6 +3,7 @@
 // 1) mapConfig / statusText 由 C++ 在 canvas.html 占位符处注入
 // 2) C++ 调用 PostWebMessageAsJson 推送 HUD 数据，JS 在 webview message 事件里接收并更新 hudState
 // 3) HUD 绘制集中在 drawHud，拆分多个小函数，方便你单独调整配色、位置、尺寸
+//（C++端数据推送前处理，此处接取数据不做gain）
 
 // DOM 获取
 const mapEl = document.getElementById('map');      // 地图容器（瓦片背景）
@@ -121,6 +122,8 @@ const TRAIL_SAVE_INTERVAL_MS = 500;  // 轨迹点保存间隔（毫秒）
 
 // 鼠标经纬度显示开关（由原生菜单控制）
 let mouseCoordEnabled = false;
+// 目标点地图选点模式：为 true 时左键点击地图将把该点经纬度回传给 C++，写入 Page2 目标点编辑框
+let mapPickTargetEnabled = false;
 
 function setMouseCoordEnabled(enabled) {
     mouseCoordEnabled = !!enabled;
@@ -864,9 +867,14 @@ if (window.chrome && window.chrome.webview) {
             return;
         }
 
-        // 处理控制类消息（例如：鼠标经纬度开关）
+        // 处理控制类消息（例如：鼠标经纬度开关、目标点选点模式）
         if (receivedData.command === 'setMouseCoord') {
             setMouseCoordEnabled(!!receivedData.enabled);
+            return;
+        }
+        if (receivedData.command === 'setMapPickTarget') {
+            mapPickTargetEnabled = !!receivedData.enabled;
+            if (mapEl) mapEl.style.cursor = mapPickTargetEnabled ? 'crosshair' : 'default';
             return;
         }
 
@@ -1103,12 +1111,31 @@ if (mapEl) {
         render();
     });
 
-    // 鼠标右键抬起：结束拖拽
+    // 鼠标右键抬起：结束拖拽（若处于目标点选点模式则恢复十字光标，否则恢复默认）
     document.addEventListener('mouseup', (e) => {
         if (e.button !== 2 || !dragging) return;
         dragging = false;
         if (mapEl) {
-            mapEl.style.cursor = 'default';
+            mapEl.style.cursor = mapPickTargetEnabled ? 'crosshair' : 'default';
+        }
+    });
+
+    // 目标点选点：左键点击地图时，将点击处经纬度回传给 C++（仅当 mapPickTargetEnabled 为 true）
+    mapEl.addEventListener('click', (e) => {
+        if (!mapPickTargetEnabled || e.button !== 0) return;
+        const rect = mapEl.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        if (mouseX < 0 || mouseX > rect.width || mouseY < 0 || mouseY > rect.height) return;
+        const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+        const mouseMapX = centerPoint.x - mapEl.clientWidth / 2 + mouseX;
+        const mouseMapY = centerPoint.y - mapEl.clientHeight / 2 + mouseY;
+        const ll = pointToLatLng(mouseMapX, mouseMapY, zoom);
+        mapPickTargetEnabled = false;
+        if (mapEl) mapEl.style.cursor = 'default';
+        if (window.chrome && window.chrome.webview) {
+            // 必须传对象，不能传 JSON.stringify 的字符串，否则 C++ get_WebMessageAsJson 会得到双重编码无法解析
+            window.chrome.webview.postMessage({ command: 'mapPickTargetResult', lat: ll.lat, lng: ll.lng });
         }
     });
 

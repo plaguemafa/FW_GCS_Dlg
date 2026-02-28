@@ -291,8 +291,9 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 		TRACE(_T("未勾选加载航路点：waypoints数组已清零（不发送航路点数据）\n"));
 	}
 	
-	packet.targetLongitude = static_cast<int32_t>(_ttoi(strData[17]));          // int32_t
-	packet.targetLatitude = static_cast<int32_t>(_ttoi(strData[18]));           // int32_t
+	// 目标点经纬度：界面为度数（如 117.158990），协议为 int32_t = 度 * 1000000
+	packet.targetLongitude = static_cast<int32_t>(_ttof(strData[17]) * 1000000.0);
+	packet.targetLatitude = static_cast<int32_t>(_ttof(strData[18]) * 1000000.0);
 	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]));           // int16_t
 	packet.launchLongitude2 = static_cast<int32_t>(_ttoi(strData[20]));         // int32_t
 	packet.launchLatitude2 = static_cast<int32_t>(_ttoi(strData[21]));          // int32_t

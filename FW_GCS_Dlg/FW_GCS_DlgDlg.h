@@ -37,6 +37,8 @@
 #define WM_UDP_DATA_RECEIVED  (WM_USER + 200)
 // 自定义消息：串口数据接收（由串口接收线程发送到主线程）
 #define WM_SERIAL_DATA_RECEIVED  (WM_USER + 201)
+// 自定义消息：地图选点结果（JS 左键选点后发回经纬度，由主线程更新 Page2）
+#define WM_MAP_PICK_TARGET_RESULT  (WM_USER + 202)
 
 // CFWGCSDlgDlg 对话框
 class CFWGCSDlgDlg : public CDialogEx
@@ -273,6 +275,7 @@ protected:
 	afx_msg void OnMenuCheckEngine();      // 发动机检查
 	// 位置装订菜单项
 	afx_msg void OnMenuMapMouseCoord();    // 启用/关闭鼠标经纬度显示
+	afx_msg void OnMenuMapTargetPick();    // 目标点：地图选点
 	// 菜单更新函数（用于显示选中状态）
 	afx_msg void OnUpdateMenuCtrlModeManual(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCtrlModeSemi(CCmdUI* pCmdUI);
@@ -285,6 +288,7 @@ protected:
 	afx_msg void OnUpdateMenuCheckSurface(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCheckEngine(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuMapMouseCoord(CCmdUI* pCmdUI); // 更新鼠标经纬度菜单勾选状态
+	afx_msg void OnUpdateMenuMapTargetPick(CCmdUI* pCmdUI); // 更新目标点选点菜单状态
 	afx_msg void OnNcPaint();
 	afx_msg void OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu);
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
@@ -295,6 +299,7 @@ protected:
 	afx_msg void OnBnClickedMenuBtn5();
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);  // 拦截只读 Radio Button 的点击
 	virtual BOOL PreTranslateMessage(MSG* pMsg);  // 拦截鼠标消息，阻止只读 Radio Button 的点击
+	afx_msg LRESULT OnMapPickTargetResult(WPARAM wParam, LPARAM lParam);  // 地图选点结果（经纬度写入 Page2）
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedSeriallink();
@@ -329,6 +334,8 @@ private:
 
 	// 鼠标经纬度提示开关（由“位置装订”菜单控制）
 	bool m_mouseCoordEnabled = false;
+	// 目标点地图选点模式：为 true 时地图左键点击将把经纬度写入 Page2 目标点编辑框
+	bool m_mapPickTargetMode = false;
 
 	void InitMapWebView();
 	void ResizeMapWebView(int cx, int cy);
