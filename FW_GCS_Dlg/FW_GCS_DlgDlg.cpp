@@ -247,13 +247,13 @@ void CFWGCSDlgDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_UDPlink, &CFWGCSDlgDlg::OnBnClickedUdplink)
 	ON_WM_DESTROY()
 	ON_MESSAGE(WM_UDP_DATA_RECEIVED, &CFWGCSDlgDlg::OnUdpDataReceivedMsg)
 	ON_MESSAGE(WM_SERIAL_DATA_RECEIVED, &CFWGCSDlgDlg::OnSerialDataReceivedMsg)
-	ON_BN_CLICKED(IDC_SerialLink, &CFWGCSDlgDlg::OnBnClickedSeriallink)
 	ON_COMMAND(ID_MENU_UDP_SETTINGS, &CFWGCSDlgDlg::OnMenuUdpSettings)
 	ON_COMMAND(ID_MENU_SERIAL_SETTINGS, &CFWGCSDlgDlg::OnMenuSerialSettings)
+	ON_COMMAND(ID_MENU_UDP_LINK, &CFWGCSDlgDlg::OnMenuUdpLink)
+	ON_COMMAND(ID_MENU_SERIAL_LINK, &CFWGCSDlgDlg::OnMenuSerialLink)
 	// 控制模式菜单项
 	ON_COMMAND(ID_MENU_CTRL_MODE_MANUAL, &CFWGCSDlgDlg::OnMenuCtrlModeManual)
 	ON_COMMAND(ID_MENU_CTRL_MODE_SEMI, &CFWGCSDlgDlg::OnMenuCtrlModeSemi)
@@ -470,8 +470,8 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			
 			menu5.AppendMenu(MF_STRING, ID_MENU_UDP_SETTINGS, _T("UDP通信设置"));
 			menu5.AppendMenu(MF_STRING, ID_MENU_SERIAL_SETTINGS, _T("422串口通信设置"));
-			//menu5.AppendMenu(MF_STRING, ID_MENU_UDP_LINK, _T("UDP连接"));
-			//menu5.AppendMenu(MF_STRING, ID_MENU_SERIAL_LINK, _T("串口连接"));
+			menu5.AppendMenu(MF_STRING, ID_MENU_UDP_LINK, _T("UDP连接"));
+			menu5.AppendMenu(MF_STRING, ID_MENU_SERIAL_LINK, _T("串口连接"));
 
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu1.Detach()), _T("控制模式"));
 			m_mainMenu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(menu2.Detach()), _T("任务指令"));
@@ -949,6 +949,12 @@ HCURSOR CFWGCSDlgDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+// 菜单“UDP连接”：与原 IDC_UDPlink 功能相同，连接/断开 UDP
+void CFWGCSDlgDlg::OnMenuUdpLink()
+{
+	OnBnClickedUdplink();
+}
+
 void CFWGCSDlgDlg::OnBnClickedUdplink()
 {
 	if (!m_bUdpConnected)
@@ -1260,6 +1266,43 @@ void CFWGCSDlgDlg::DisconnectUdp()
 	}
 
 	m_bUdpConnected = FALSE;
+
+	// 断开后清除所有显示控件（C++ 与 JS）为 0
+	ClearAllDisplayData();
+}
+
+// 清除所有显示控件数据为 0（主对话框、Page1、Page2 及 WebView JS 端）
+void CFWGCSDlgDlg::ClearAllDisplayData()
+{
+	// 主对话框及 Page1 上的 Display 控件（通过 UpdateControlText 统一更新）
+	static const UINT s_displayIds[] = {
+		IDC_Display0, IDC_Display1, IDC_Display2, IDC_Display3, IDC_Display4,
+		IDC_Display5, IDC_Display6, IDC_Display7, IDC_Display8, IDC_Display9,
+		IDC_Display10, IDC_Display11, IDC_Display12, IDC_Display13,
+		IDC_Display14, IDC_Display15, IDC_Display16, IDC_Display17, IDC_Display18, IDC_Display19, IDC_Display20, IDC_Display21, IDC_Display22,
+		IDC_Display23, IDC_Display24, IDC_Display25, IDC_Display26,
+		IDC_Display27, IDC_Display28, IDC_Display29, IDC_Display30,
+		IDC_Display32,
+		IDC_Display33, IDC_Display34, IDC_Display35, IDC_Display36, IDC_Display37, IDC_Display38, IDC_Display39, IDC_Display40, IDC_Display41, IDC_Display42, IDC_Display43,
+		IDC_Display44, IDC_Display45, IDC_Display46, IDC_Display47, IDC_Display48, IDC_Display49, IDC_Display50, IDC_Display51, IDC_Display52, IDC_Display53,
+		IDC_Display54, IDC_Display55, IDC_Display56, IDC_Display57, IDC_Display58,
+		IDC_Display59, IDC_Display60, IDC_Display61, IDC_Display62,
+		IDC_Display66, IDC_Display67, IDC_Display68, IDC_Display69, IDC_Display70, IDC_Display71, IDC_Display72, IDC_Display73
+	};
+	for (int i = 0; i < _countof(s_displayIds); i++)
+		UpdateControlText(s_displayIds[i], _T("0"));
+
+	// Page2 装订数据编辑框全部置 0
+	if (m_pPage2Dlg != NULL && m_pPage2Dlg->GetSafeHwnd() != NULL)
+		m_pPage2Dlg->ClearAllEditDataToZero();
+
+#if FW_GCS_WITH_WEBVIEW2
+	// 通知 JS 端清除 HUD/地图等显示数据为 0
+	if (m_webView != nullptr)
+	{
+		m_webView->PostWebMessageAsJson(L"{\"command\":\"clearHudData\"}");
+	}
+#endif
 }
 
 // 发送握手数据包
@@ -1629,6 +1672,12 @@ void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
 //   - 未连接时：打开串口，启动接收线程
 //   - 已连接时：停止接收线程，关闭串口
 // ============================================================================
+// 菜单“串口连接”：与原 IDC_SerialLink 功能相同，连接/断开串口
+void CFWGCSDlgDlg::OnMenuSerialLink()
+{
+	OnBnClickedSeriallink();
+}
+
 void CFWGCSDlgDlg::OnBnClickedSeriallink()
 {
 	if (!m_bSerialConnected)
@@ -3302,9 +3351,7 @@ void CFWGCSDlgDlg::OnSize(UINT nType, int cx, int cy)
 		if (h < 1) h = 1;
 		p->SetWindowPos(NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
 	};
-	// rc资源中底部按钮设计位置与大小：x, y, width, height位置依据窗口展开大小（基于1920x1080比例分配）
-	placeBottomControl(IDC_UDPlink,    9, 568, 40, 16);
-	placeBottomControl(IDC_SerialLink, 52, 568, 40, 16);
+	// rc资源中底部按钮设计位置与大小：x, y, width, height（UDP/串口连接已改为菜单“通信设置”子项）
 }
 
 void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemStruct)
@@ -3324,13 +3371,17 @@ void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemSt
 			(nMenuID == ID_MENU_MAP_MOUSE_COORD) || (itemData == ID_MENU_MAP_MOUSE_COORD) ||
 			(nMenuID == ID_MENU_MAP_TARGET_PICK) || (itemData == ID_MENU_MAP_TARGET_PICK) ||
 			(nMenuID == ID_MENU_MAP_PARACHUTE_PICK) || (itemData == ID_MENU_MAP_PARACHUTE_PICK) ||
-			(nMenuID == ID_MENU_MAP_LAUNCH_PICK) || (itemData == ID_MENU_MAP_LAUNCH_PICK);
+			(nMenuID == ID_MENU_MAP_LAUNCH_PICK) || (itemData == ID_MENU_MAP_LAUNCH_PICK) ||
+			(nMenuID == ID_MENU_UDP_LINK) || (itemData == ID_MENU_UDP_LINK) ||
+			(nMenuID == ID_MENU_SERIAL_LINK) || (itemData == ID_MENU_SERIAL_LINK) ||
+			(nMenuID == ID_MENU_UDP_SETTINGS) || (itemData == ID_MENU_UDP_SETTINGS) ||
+			(nMenuID == ID_MENU_SERIAL_SETTINGS) || (itemData == ID_MENU_SERIAL_SETTINGS);
 
 		if (bIsSubMenuItem)
 		{
 			// 子菜单项：通过菜单ID获取文本
 			CMenu* pSubMenu = NULL;
-			UINT nActualMenuID = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && (nMenuID <= ID_MENU_CHECK_ENGINE || nMenuID == ID_MENU_CHECK_DETAIL)) || (nMenuID == ID_MENU_MAP_MOUSE_COORD) || (nMenuID == ID_MENU_MAP_TARGET_PICK) || (nMenuID == ID_MENU_MAP_PARACHUTE_PICK) || (nMenuID == ID_MENU_MAP_LAUNCH_PICK)
+			UINT nActualMenuID = (nMenuID >= ID_MENU_CTRL_MODE_MANUAL && (nMenuID <= ID_MENU_CHECK_ENGINE || nMenuID == ID_MENU_CHECK_DETAIL)) || (nMenuID == ID_MENU_MAP_MOUSE_COORD) || (nMenuID == ID_MENU_MAP_TARGET_PICK) || (nMenuID == ID_MENU_MAP_PARACHUTE_PICK) || (nMenuID == ID_MENU_MAP_LAUNCH_PICK) || (nMenuID == ID_MENU_UDP_LINK) || (nMenuID == ID_MENU_SERIAL_LINK) || (nMenuID == ID_MENU_UDP_SETTINGS) || (nMenuID == ID_MENU_SERIAL_SETTINGS)
 				? nMenuID
 				: static_cast<UINT>(itemData);
 
@@ -3342,6 +3393,8 @@ void CFWGCSDlgDlg::OnMeasureItem(int nIDCtl, LPMEASUREITEMSTRUCT lpMeasureItemSt
 				pSubMenu = m_mainMenu.GetSubMenu(2);
 			else if (nActualMenuID == ID_MENU_MAP_MOUSE_COORD || nActualMenuID == ID_MENU_MAP_TARGET_PICK || nActualMenuID == ID_MENU_MAP_PARACHUTE_PICK || nActualMenuID == ID_MENU_MAP_LAUNCH_PICK)
 				pSubMenu = m_mainMenu.GetSubMenu(3);
+			else if (nActualMenuID == ID_MENU_UDP_LINK || nActualMenuID == ID_MENU_SERIAL_LINK || nActualMenuID == ID_MENU_UDP_SETTINGS || nActualMenuID == ID_MENU_SERIAL_SETTINGS)
+				pSubMenu = m_mainMenu.GetSubMenu(4);
 
 			if (pSubMenu)
 			{
@@ -3417,7 +3470,11 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			(nMenuID == ID_MENU_MAP_MOUSE_COORD) || (lpDrawItemStruct->itemData == ID_MENU_MAP_MOUSE_COORD) ||
 			(nMenuID == ID_MENU_MAP_TARGET_PICK) || (lpDrawItemStruct->itemData == ID_MENU_MAP_TARGET_PICK) ||
 			(nMenuID == ID_MENU_MAP_PARACHUTE_PICK) || (lpDrawItemStruct->itemData == ID_MENU_MAP_PARACHUTE_PICK) ||
-			(nMenuID == ID_MENU_MAP_LAUNCH_PICK) || (lpDrawItemStruct->itemData == ID_MENU_MAP_LAUNCH_PICK);
+			(nMenuID == ID_MENU_MAP_LAUNCH_PICK) || (lpDrawItemStruct->itemData == ID_MENU_MAP_LAUNCH_PICK) ||
+			(nMenuID == ID_MENU_UDP_LINK) || (lpDrawItemStruct->itemData == ID_MENU_UDP_LINK) ||
+			(nMenuID == ID_MENU_SERIAL_LINK) || (lpDrawItemStruct->itemData == ID_MENU_SERIAL_LINK) ||
+			(nMenuID == ID_MENU_UDP_SETTINGS) || (lpDrawItemStruct->itemData == ID_MENU_UDP_SETTINGS) ||
+			(nMenuID == ID_MENU_SERIAL_SETTINGS) || (lpDrawItemStruct->itemData == ID_MENU_SERIAL_SETTINGS);
 		
 		if (!bIsSubMenuItem)
 		{
@@ -3475,9 +3532,10 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			dc.SelectObject(pOld);
 		}
 		else if ((nMenuID >= ID_MENU_CTRL_MODE_MANUAL && (nMenuID <= ID_MENU_CHECK_ENGINE || nMenuID == ID_MENU_CHECK_DETAIL)) ||
-			     (nMenuID == ID_MENU_MAP_MOUSE_COORD) || (nMenuID == ID_MENU_MAP_TARGET_PICK) || (nMenuID == ID_MENU_MAP_PARACHUTE_PICK) || (nMenuID == ID_MENU_MAP_LAUNCH_PICK))
+			     (nMenuID == ID_MENU_MAP_MOUSE_COORD) || (nMenuID == ID_MENU_MAP_TARGET_PICK) || (nMenuID == ID_MENU_MAP_PARACHUTE_PICK) || (nMenuID == ID_MENU_MAP_LAUNCH_PICK) ||
+			     (nMenuID == ID_MENU_UDP_LINK) || (nMenuID == ID_MENU_SERIAL_LINK) || (nMenuID == ID_MENU_UDP_SETTINGS) || (nMenuID == ID_MENU_SERIAL_SETTINGS))
 		{
-			// 子菜单项：检查是否需要显示深蓝色（选中状态）
+			// 子菜单项：检查是否需要显示深蓝色（选中/连接状态）
 			BOOL bShouldHighlight = FALSE;
 			if (nMenuID == ID_MENU_CTRL_MODE_MANUAL && m_controlMode_B0 == 0) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CTRL_MODE_SEMI && m_controlMode_B0 == 1) bShouldHighlight = TRUE;
@@ -3493,6 +3551,8 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			else if (nMenuID == ID_MENU_MAP_TARGET_PICK && m_mapPickTargetMode) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_PARACHUTE_PICK && m_mapPickParachuteMode) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_LAUNCH_PICK && m_mapPickLaunchMode) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_UDP_LINK && m_bUdpConnected) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_SERIAL_LINK && m_bSerialConnected) bShouldHighlight = TRUE;
 
 			// 设置背景色：选中状态用深蓝色，悬停用系统高亮色
 			COLORREF bg;
@@ -3517,6 +3577,8 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 				pSubMenu = m_mainMenu.GetSubMenu(2);
 			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD || nMenuID == ID_MENU_MAP_TARGET_PICK || nMenuID == ID_MENU_MAP_PARACHUTE_PICK || nMenuID == ID_MENU_MAP_LAUNCH_PICK)
 				pSubMenu = m_mainMenu.GetSubMenu(3);
+			else if (nMenuID == ID_MENU_UDP_LINK || nMenuID == ID_MENU_SERIAL_LINK || nMenuID == ID_MENU_UDP_SETTINGS || nMenuID == ID_MENU_SERIAL_SETTINGS)
+				pSubMenu = m_mainMenu.GetSubMenu(4);
 
 			if (pSubMenu)
 			{
@@ -3528,6 +3590,7 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 				text = _T("菜单项");
 			}
 
+			// 统一使用菜单字体
 			CFont* pFont = m_menuFont.GetSafeHandle()
 				? &m_menuFont
 				: CFont::FromHandle((HFONT)GetStockObject(DEFAULT_GUI_FONT));
@@ -3535,20 +3598,17 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			dc.SetTextColor(fg);
 			dc.SetBkMode(TRANSPARENT);
 
-			// 绘制勾选标记（如果选中）
+			// 统一缩进：所有子菜单项左侧预留 24 像素（勾选区），文字起始位置一致
+			const int kSubMenuTextLeft = 24;
+			rc.left += kSubMenuTextLeft;
 			if (bShouldHighlight)
 			{
-				rc.left += 24;  // 为勾选标记留出更多空间
 				// 绘制勾选标记 "✓"
-				CRect checkRect(rc.left - 22, rc.top, rc.left - 6, rc.bottom);
+				CRect checkRect(rc.left - kSubMenuTextLeft, rc.top, rc.left - 6, rc.bottom);
 				dc.DrawText(_T("✓"), &checkRect, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
 			}
-			else
-			{
-				rc.left += 24;  // 保持对齐
-			}
 
-			dc.DrawText(text, &rc, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOCLIP);  // 添加 DT_NOCLIP 防止文字被裁剪
+			dc.DrawText(text, &rc, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOCLIP);
 			dc.SelectObject(pOld);
 		}
 
@@ -3596,6 +3656,25 @@ void CFWGCSDlgDlg::OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu
 			{
 				UINT nMenuID = pPopupMenu->GetMenuItemID(i);
 				if (nMenuID == ID_MENU_MAP_MOUSE_COORD || nMenuID == ID_MENU_MAP_TARGET_PICK || nMenuID == ID_MENU_MAP_PARACHUTE_PICK || nMenuID == ID_MENU_MAP_LAUNCH_PICK)
+				{
+					MENUITEMINFO mi = {};
+					mi.cbSize = sizeof(mi);
+					mi.fMask = MIIM_FTYPE | MIIM_DATA | MIIM_ID;
+					mi.fType = MFT_OWNERDRAW;
+					mi.dwItemData = nMenuID;
+					mi.wID = nMenuID;
+					pPopupMenu->SetMenuItemInfo(i, &mi, TRUE);
+				}
+			}
+		}
+		// 通信设置子菜单：全部自绘，统一缩进与字体（UDP/串口连接时深蓝色高亮）
+		else if (nIndex == 4)
+		{
+			const int nItemCount = pPopupMenu->GetMenuItemCount();
+			for (int i = 0; i < nItemCount; ++i)
+			{
+				UINT nMenuID = pPopupMenu->GetMenuItemID(i);
+				if (nMenuID == ID_MENU_UDP_SETTINGS || nMenuID == ID_MENU_SERIAL_SETTINGS || nMenuID == ID_MENU_UDP_LINK || nMenuID == ID_MENU_SERIAL_LINK)
 				{
 					MENUITEMINFO mi = {};
 					mi.cbSize = sizeof(mi);

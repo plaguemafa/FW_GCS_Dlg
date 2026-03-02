@@ -202,6 +202,37 @@ BOOL CPage2Dlg::OnInitDialog()
 }
 
 // 更新数据显示（Page2当前不显示接收数据，保留接口以兼容主对话框调用）
+void CPage2Dlg::ClearAllEditDataToZero()
+{
+	if (m_editSendData2.GetSafeHwnd() != NULL)  m_editSendData2.SetWindowText(_T("0"));
+	if (m_editSendData3.GetSafeHwnd() != NULL)  m_editSendData3.SetWindowText(_T("0"));
+	if (m_editSendData4.GetSafeHwnd() != NULL)  m_editSendData4.SetWindowText(_T("0"));
+	if (m_editSendData5.GetSafeHwnd() != NULL)  m_editSendData5.SetWindowText(_T("0"));
+	if (m_editSendData6.GetSafeHwnd() != NULL)  m_editSendData6.SetWindowText(_T("0"));
+	if (m_editSendData7.GetSafeHwnd() != NULL)  m_editSendData7.SetWindowText(_T("0"));
+	if (m_editSendData8.GetSafeHwnd() != NULL)  m_editSendData8.SetWindowText(_T("0"));
+	if (m_editSendData9.GetSafeHwnd() != NULL)  m_editSendData9.SetWindowText(_T("0"));
+	if (m_editSendData10.GetSafeHwnd() != NULL) m_editSendData10.SetWindowText(_T("0"));
+	if (m_editSendData11.GetSafeHwnd() != NULL) m_editSendData11.SetWindowText(_T("0"));
+	if (m_editSendData12.GetSafeHwnd() != NULL) m_editSendData12.SetWindowText(_T("0"));
+	if (m_editSendData13.GetSafeHwnd() != NULL) m_editSendData13.SetWindowText(_T("0"));
+	if (m_editSendData14.GetSafeHwnd() != NULL) m_editSendData14.SetWindowText(_T("0"));
+	if (m_editSendData15.GetSafeHwnd() != NULL) m_editSendData15.SetWindowText(_T("0"));
+	if (m_editSendData16.GetSafeHwnd() != NULL) m_editSendData16.SetWindowText(_T("0"));
+	if (m_editSendData17.GetSafeHwnd() != NULL) m_editSendData17.SetWindowText(_T("0"));
+	if (m_editSendData18.GetSafeHwnd() != NULL) m_editSendData18.SetWindowText(_T("0"));
+	if (m_editSendData19.GetSafeHwnd() != NULL) m_editSendData19.SetWindowText(_T("0"));
+	if (m_editSendData20.GetSafeHwnd() != NULL) m_editSendData20.SetWindowText(_T("0"));
+	if (m_editSendData21.GetSafeHwnd() != NULL) m_editSendData21.SetWindowText(_T("0"));
+	if (m_editSendData22.GetSafeHwnd() != NULL) m_editSendData22.SetWindowText(_T("0"));
+	if (m_editSendData23.GetSafeHwnd() != NULL) m_editSendData23.SetWindowText(_T("0"));
+	if (m_editSendData24.GetSafeHwnd() != NULL) m_editSendData24.SetWindowText(_T("0"));
+	if (m_editSendData25.GetSafeHwnd() != NULL) m_editSendData25.SetWindowText(_T("0"));
+	if (m_editSendData26.GetSafeHwnd() != NULL) m_editSendData26.SetWindowText(_T("0"));
+	if (m_editSendData27.GetSafeHwnd() != NULL) m_editSendData27.SetWindowText(_T("0"));
+	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.SetWindowText(_T("0"));
+}
+
 void CPage2Dlg::UpdateDisplay(const UdpRecvDataPacket* pPacket)
 {
 	// Page2对话框当前不显示接收数据，此函数保留为空实现
@@ -394,7 +425,7 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	{
 		// 全部成功
 		TRACE(_T("UDP数据发送成功（全部 %d 次都成功）。\n"), nSuccessCount);
-		MessageBox(_T("UDP数据发送成功（已发送3包次，间隔10ms）。"), _T("发送成功"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+		MessageBox(_T("UDP数据发送成功\n（已发送3包次，间隔10ms）。"), _T("发送成功"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
 	}
 }
 

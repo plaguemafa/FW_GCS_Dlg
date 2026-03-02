@@ -70,6 +70,8 @@ public:
 	
 	// 更新数据显示（Page2当前不显示接收数据，保留接口以兼容主对话框调用）
 	void UpdateDisplay(const UdpRecvDataPacket* pPacket);
+	// 将所有装订数据编辑框清空为 0（UDP 断开时由主对话框调用）
+	void ClearAllEditDataToZero();
 	// 发送装订参数数据（保留函数，但不再由按钮触发）
 	void OnBnClickedButtonSendData();
 	

@@ -871,6 +871,28 @@ if (window.chrome && window.chrome.webview) {
             return;
         }
 
+        // 处理 UDP 断开后清除所有 HUD/地图显示数据为 0
+        if (receivedData.command === 'clearHudData') {
+            hudState = { pitch: 0, roll: 0, yaw: 0, ias: 0, tas: 0, alt: 0, mach: 0, aoa: 0, g: 1.0, rpm: 0 };
+            hudBottomInfoData = { gpsGroundSpeed: 0, gpsVerticalSpeed: 0, gpsHour: 0, gpsMinute: 0, gpsSecond: 0 };
+            hudGroup2Data = { throttle: 0, batteryVoltage: 0, fuelRemaining: 0, engineTemp: 0, satelitesNum: 0, gpsStatus: 0, navStatus: 0, targetWaypoint: 0, distanceToGo: 0, crossTrackError: 0, commandHeading: 0, courseDeviation: 0, commandSpeed: 0, commandAltitude: 0, commandTime: 0, payloadType: 0, ammoRemaining: 0, selfTestResult: 0 };
+            hudGroup3Data = { switchStatus_B1: 0, switchStatus_B4: 0, switchStatus_B2: 0, switchStatus_B3: 0, switchStatus_B0: 0, switchStatus_B6: 0, switchStatus_B5: 0, switchStatus_B7: 0 };
+            aircraftData = { longitude: null, latitude: null, course: null };
+            targetData = { longitude: null, latitude: null, course: null };
+            aircraftTrail = [];
+            activeAlarms = [];
+            drawHud();
+            if (hudGroup2Canvas && hudGroup2Ctx) drawHudGroup2();
+            if (hudGroup3Canvas && hudGroup3Ctx) drawHudGroup3();
+            if (bottomInfoCanvas && bottomInfoCtx) drawBottomInfoBar(window.innerWidth, window.innerHeight, { groundSpeed: 0, verticalSpeed: 0, gpsHour: 0, gpsMinute: 0, gpsSecond: 0 }, {});
+            if (aircraftCanvas && aircraftCtx) {
+                drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+                drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
+            }
+            drawAlarmPopups();
+            return;
+        }
+
         // 处理控制类消息（例如：鼠标经纬度开关、目标点选点模式）
         if (receivedData.command === 'setMouseCoord') {
             setMouseCoordEnabled(!!receivedData.enabled);

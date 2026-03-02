@@ -235,6 +235,7 @@ protected:
 	void ProcessReceivedData(const UdpRecvDataPacket* pPacket);  // 处理接收到的数据包
 	static UINT UdpRecvThread(LPVOID pParam);  // UDP接收线程函数（静态）
 	void UpdateControlText(UINT nID, const CString& strText);  // 辅助函数：更新控件文本（优先在子对话框中查找）
+	void ClearAllDisplayData();  // 断开UDP后清除所有显示控件及JS端数据为0
 	
 	// UDP配置管理函数
 	void LoadUdpConfig();                 // 从注册表加载UDP配置（如果没有则使用宏默认值）
@@ -260,6 +261,8 @@ protected:
 	afx_msg void OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct);
 	afx_msg void OnMenuUdpSettings();      // UDP通信设置菜单项
 	afx_msg void OnMenuSerialSettings();   // 串口通信设置菜单项
+	afx_msg void OnMenuUdpLink();          // UDP连接（原 IDC_UDPlink 功能）
+	afx_msg void OnMenuSerialLink();       // 串口连接（原 IDC_SerialLink 功能）
 	// 控制模式菜单项
 	afx_msg void OnMenuCtrlModeManual();   // 手动遥控模式
 	afx_msg void OnMenuCtrlModeSemi();     // 半自主模式

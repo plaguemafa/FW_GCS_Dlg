@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ 生成的包含文件。
-// 供 FWGCSDlg.rc 使用
+// Microsoft Visual C++ ?????????????
+// ?? FWGCSDlg.rc ???
 //
 #define IDI_APPICON                     1
 #define IDD_FW_GCS_DLG_DIALOG           102
@@ -197,13 +197,15 @@
 #define ID_MENU_MAP_LAUNCH_PICK         32787
 #define ID_MENU_SHOW_PAGE2              32788
 #define ID_MENU_CHECK_DETAIL            32789
+#define ID_MENU_UDP_LINK                32790
+#define ID_MENU_SERIAL_LINK             32791
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        145
-#define _APS_NEXT_COMMAND_VALUE         32790
+#define _APS_NEXT_COMMAND_VALUE         32792
 #define _APS_NEXT_CONTROL_VALUE         1167
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
