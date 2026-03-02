@@ -250,8 +250,9 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.frameHeader = 0xF00F;  // 设置帧头（装订参数包）
 	
 	// 填充数据（根据数据类型转换）
-	packet.launchLongitude = static_cast<int32_t>(_ttoi(strData[2]));            // int32_t
-	packet.launchLatitude = static_cast<int32_t>(_ttoi(strData[3]));             // int32_t
+	// 发射点经纬度：界面为度数，协议为 int32_t = 度 * 1000000
+	packet.launchLongitude = static_cast<int32_t>(_ttof(strData[2]) * 1000000.0);
+	packet.launchLatitude = static_cast<int32_t>(_ttof(strData[3]) * 1000000.0);
 	packet.launchAltitude = static_cast<int16_t>(_ttoi(strData[4]));             // int16_t
 	packet.initPitch = static_cast<int16_t>(_ttoi(strData[5]));                  // int16_t
 	packet.initYaw = static_cast<int16_t>(_ttoi(strData[6]));                    // int16_t
@@ -298,8 +299,9 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.launchLongitude2 = static_cast<int32_t>(_ttoi(strData[20]));         // int32_t
 	packet.launchLatitude2 = static_cast<int32_t>(_ttoi(strData[21]));          // int32_t
 	packet.launchAltitude2 = static_cast<int16_t>(_ttoi(strData[22]));          // int16_t
-	packet.parachuteLongitude = static_cast<int32_t>(_ttoi(strData[23]));       // int32_t
-	packet.parachuteLatitude = static_cast<int32_t>(_ttoi(strData[24]));        // int32_t
+	// 开伞点经纬度：界面为度数，协议为 int32_t = 度 * 1000000
+	packet.parachuteLongitude = static_cast<int32_t>(_ttof(strData[23]) * 1000000.0);
+	packet.parachuteLatitude = static_cast<int32_t>(_ttof(strData[24]) * 1000000.0);
 	packet.parachuteAltitude = static_cast<int16_t>(_ttoi(strData[25]));        // int16_t
 	packet.elevatorCmd = static_cast<int8_t>(_ttoi(strData[26]));               // int8_t
 	packet.aileronCmd = static_cast<int8_t>(_ttoi(strData[27]));                // int8_t

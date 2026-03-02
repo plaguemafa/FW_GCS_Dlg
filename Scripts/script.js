@@ -124,6 +124,10 @@ const TRAIL_SAVE_INTERVAL_MS = 500;  // 轨迹点保存间隔（毫秒）
 let mouseCoordEnabled = false;
 // 目标点地图选点模式：为 true 时左键点击地图将把该点经纬度回传给 C++，写入 Page2 目标点编辑框
 let mapPickTargetEnabled = false;
+// 开伞点地图选点模式：为 true 时左键点击地图将把该点经纬度回传给 C++，写入 Page2 开伞点编辑框
+let mapPickParachuteEnabled = false;
+// 发射点地图选点模式：为 true 时左键点击地图将把该点经纬度回传给 C++，写入 Page2 发射点编辑框
+let mapPickLaunchEnabled = false;
 
 function setMouseCoordEnabled(enabled) {
     mouseCoordEnabled = !!enabled;
@@ -874,7 +878,17 @@ if (window.chrome && window.chrome.webview) {
         }
         if (receivedData.command === 'setMapPickTarget') {
             mapPickTargetEnabled = !!receivedData.enabled;
-            if (mapEl) mapEl.style.cursor = mapPickTargetEnabled ? 'crosshair' : 'default';
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            return;
+        }
+        if (receivedData.command === 'setMapPickParachute') {
+            mapPickParachuteEnabled = !!receivedData.enabled;
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            return;
+        }
+        if (receivedData.command === 'setMapPickLaunch') {
+            mapPickLaunchEnabled = !!receivedData.enabled;
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
             return;
         }
 
@@ -1111,18 +1125,20 @@ if (mapEl) {
         render();
     });
 
-    // 鼠标右键抬起：结束拖拽（若处于目标点选点模式则恢复十字光标，否则恢复默认）
+    // 鼠标右键抬起：结束拖拽（若处于目标点/开伞点/发射点选点模式则恢复十字光标，否则恢复默认）
     document.addEventListener('mouseup', (e) => {
         if (e.button !== 2 || !dragging) return;
         dragging = false;
         if (mapEl) {
-            mapEl.style.cursor = mapPickTargetEnabled ? 'crosshair' : 'default';
+            mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
         }
     });
 
-    // 目标点选点：左键点击地图时，将点击处经纬度回传给 C++（仅当 mapPickTargetEnabled 为 true）
+    // 目标点/开伞点/发射点选点：左键点击地图时，将点击处经纬度回传给 C++（按当前选点模式回传对应 command）
     mapEl.addEventListener('click', (e) => {
-        if (!mapPickTargetEnabled || e.button !== 0) return;
+        if (e.button !== 0) return;
+        const inAnyPickMode = mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled;
+        if (!inAnyPickMode) return;
         const rect = mapEl.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
@@ -1131,11 +1147,25 @@ if (mapEl) {
         const mouseMapX = centerPoint.x - mapEl.clientWidth / 2 + mouseX;
         const mouseMapY = centerPoint.y - mapEl.clientHeight / 2 + mouseY;
         const ll = pointToLatLng(mouseMapX, mouseMapY, zoom);
-        mapPickTargetEnabled = false;
-        if (mapEl) mapEl.style.cursor = 'default';
-        if (window.chrome && window.chrome.webview) {
-            // 必须传对象，不能传 JSON.stringify 的字符串，否则 C++ get_WebMessageAsJson 会得到双重编码无法解析
-            window.chrome.webview.postMessage({ command: 'mapPickTargetResult', lat: ll.lat, lng: ll.lng });
+        if (mapPickTargetEnabled) {
+            mapPickTargetEnabled = false;
+            if (mapEl) mapEl.style.cursor = (mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            if (window.chrome && window.chrome.webview)
+                window.chrome.webview.postMessage({ command: 'mapPickTargetResult', lat: ll.lat, lng: ll.lng });
+            return;
+        }
+        if (mapPickParachuteEnabled) {
+            mapPickParachuteEnabled = false;
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            if (window.chrome && window.chrome.webview)
+                window.chrome.webview.postMessage({ command: 'mapPickParachuteResult', lat: ll.lat, lng: ll.lng });
+            return;
+        }
+        if (mapPickLaunchEnabled) {
+            mapPickLaunchEnabled = false;
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled) ? 'crosshair' : 'default';
+            if (window.chrome && window.chrome.webview)
+                window.chrome.webview.postMessage({ command: 'mapPickLaunchResult', lat: ll.lat, lng: ll.lng });
         }
     });
 

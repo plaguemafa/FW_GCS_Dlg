@@ -193,13 +193,17 @@
 #define ID_MENU_CHECK_ENGINE            32783
 #define ID_MENU_MAP_MOUSE_COORD         32784
 #define ID_MENU_MAP_TARGET_PICK         32785
+#define ID_MENU_MAP_PARACHUTE_PICK      32786
+#define ID_MENU_MAP_LAUNCH_PICK         32787
+#define ID_MENU_SHOW_PAGE2              32788
+#define ID_MENU_CHECK_DETAIL            32789
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        145
-#define _APS_NEXT_COMMAND_VALUE         32786
+#define _APS_NEXT_COMMAND_VALUE         32790
 #define _APS_NEXT_CONTROL_VALUE         1167
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
