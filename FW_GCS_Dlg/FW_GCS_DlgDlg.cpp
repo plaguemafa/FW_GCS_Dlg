@@ -110,6 +110,10 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_bUdpThreadRunning = FALSE; 				// 初始化UDP线程运行标志为未运行
 	m_bUdpRemoteResponded = FALSE; 				// 初始化远程响应标志为未响应
 	m_dwLastUdpUiUpdate = 0;                   // 上次UI更新时间（限频用）
+	m_dwUdpRecvCount = 0;
+	m_ullUdpConnectTime = 0;
+	m_ullLastUdpRecvTime = 0;
+	m_bPacketLossAlarmShown = FALSE;
 	memset(&m_udpRemoteAddr, 0, sizeof(m_udpRemoteAddr)); // 清空远程地址结构
 	
 	// UDP配置初始化（使用宏定义的默认值）
@@ -248,6 +252,7 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_DESTROY()
+	ON_WM_TIMER()
 	ON_MESSAGE(WM_UDP_DATA_RECEIVED, &CFWGCSDlgDlg::OnUdpDataReceivedMsg)
 	ON_MESSAGE(WM_SERIAL_DATA_RECEIVED, &CFWGCSDlgDlg::OnSerialDataReceivedMsg)
 	ON_COMMAND(ID_MENU_UDP_SETTINGS, &CFWGCSDlgDlg::OnMenuUdpSettings)
@@ -1235,6 +1240,11 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 
 	// 设置连接标志（只有在收到响应后才设置）
 	m_bUdpConnected = TRUE;
+	m_ullUdpConnectTime = GetTickCount64();
+	m_ullLastUdpRecvTime = GetTickCount64();
+	m_dwUdpRecvCount = 0;
+	m_bPacketLossAlarmShown = FALSE;
+	::SetTimer(GetSafeHwnd(), 1, 400, NULL);  // 400ms 检查一次是否超时未收包，用于通信丢包报警
 	TRACE(_T("UDP连接成功: 已收到远程地址响应 (%s:%d)\n"), UDP_REMOTE_IP, UDP_REMOTE_PORT);
 
 	return TRUE;
@@ -1266,6 +1276,12 @@ void CFWGCSDlgDlg::DisconnectUdp()
 	}
 
 	m_bUdpConnected = FALSE;
+	::KillTimer(GetSafeHwnd(), 1);
+
+#if FW_GCS_WITH_WEBVIEW2
+	if (m_webView != nullptr)
+		m_webView->PostWebMessageAsJson(L"{\"command\":\"hidePacketLossAlarm\"}");
+#endif
 
 	// 断开后清除所有显示控件（C++ 与 JS）为 0
 	ClearAllDisplayData();
@@ -1509,6 +1525,29 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 	return 0;
 }
 
+// 定时器：检查 UDP 收包超时，触发通信丢包中央横幅报警
+void CFWGCSDlgDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == 1 && m_bUdpConnected)
+	{
+		ULONGLONG now = GetTickCount64();
+		ULONGLONG elapsedMs = now - m_ullUdpConnectTime;
+		double rate = 0.0;
+		if (elapsedMs > 0 && m_dwUdpRecvCount > 0)
+			rate = (double)m_dwUdpRecvCount / (elapsedMs / 1000.0);  // 包/秒
+		ULONGLONG timeoutMs = (rate > 0.01) ? (ULONGLONG)(10000.0 / rate) : 2000;  // 10 倍平均间隔无包则报警；尚未有统计时 2s
+		if ((now - m_ullLastUdpRecvTime) > timeoutMs && !m_bPacketLossAlarmShown)
+		{
+			m_bPacketLossAlarmShown = TRUE;
+#if FW_GCS_WITH_WEBVIEW2
+			if (m_webView != nullptr)
+				m_webView->PostWebMessageAsJson(L"{\"command\":\"showPacketLossAlarm\"}");
+#endif
+		}
+	}
+	CDialogEx::OnTimer(nIDEvent);
+}
+
 // 处理接收到的UDP数据消息
 LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 {
@@ -1546,6 +1585,17 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 			return 0;
 		}
 		m_dwLastUdpUiUpdate = dwNow;
+
+		// 更新收包统计（用于通信丢包报警：平均速率的 10 倍时间内未收包则弹窗）
+		m_ullLastUdpRecvTime = GetTickCount64();
+		m_dwUdpRecvCount++;
+	#if FW_GCS_WITH_WEBVIEW2
+		if (m_bPacketLossAlarmShown && m_webView != nullptr)
+		{
+			m_webView->PostWebMessageAsJson(L"{\"command\":\"packetLossAlarmRecovered\",\"countdownSeconds\":10}");
+			m_bPacketLossAlarmShown = FALSE;
+		}
+	#endif
 
 		ProcessReceivedData(pPacket);
 		

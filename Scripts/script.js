@@ -45,6 +45,10 @@ const alarmNames = [
 // activeAlarms: [{ index: number, lastSeen: number }]
 let activeAlarms = [];
 
+// 通信丢包中央横幅报警（UDP 连接下超时未收包触发，样式与协议报警一致，居中偏下）
+// phase: 'idle' | 'showing' | 'countdown'；countdown 时 10s 后自动关闭或点击关闭
+let packetLossAlarm = { show: false, phase: 'idle', countdownEnd: 0, countdownSeconds: 10, intervalId: null };
+
 // HUD 状态（由原生推送的数据结构，可按需扩展）
 let hudState = {
     pitch: 0, roll: 0, yaw: 0,     // 姿态
@@ -871,6 +875,41 @@ if (window.chrome && window.chrome.webview) {
             return;
         }
 
+        // 通信丢包报警：C++ 检测到平均 10 倍间隔未收包时显示
+        if (receivedData.command === 'showPacketLossAlarm') {
+            if (packetLossAlarm.intervalId) clearInterval(packetLossAlarm.intervalId);
+            packetLossAlarm.show = true;
+            packetLossAlarm.phase = 'showing';
+            packetLossAlarm.intervalId = null;
+            drawAlarmPopups();
+            return;
+        }
+        if (receivedData.command === 'packetLossAlarmRecovered') {
+            packetLossAlarm.phase = 'countdown';
+            packetLossAlarm.countdownSeconds = receivedData.countdownSeconds || 10;
+            packetLossAlarm.countdownEnd = Date.now() + packetLossAlarm.countdownSeconds * 1000;
+            if (packetLossAlarm.intervalId) clearInterval(packetLossAlarm.intervalId);
+            packetLossAlarm.intervalId = setInterval(() => {
+                if (Date.now() >= packetLossAlarm.countdownEnd) {
+                    clearInterval(packetLossAlarm.intervalId);
+                    packetLossAlarm.intervalId = null;
+                    packetLossAlarm.show = false;
+                    packetLossAlarm.phase = 'idle';
+                }
+                drawAlarmPopups();
+            }, 500);
+            drawAlarmPopups();
+            return;
+        }
+        if (receivedData.command === 'hidePacketLossAlarm') {
+            if (packetLossAlarm.intervalId) clearInterval(packetLossAlarm.intervalId);
+            packetLossAlarm.intervalId = null;
+            packetLossAlarm.show = false;
+            packetLossAlarm.phase = 'idle';
+            drawAlarmPopups();
+            return;
+        }
+
         // 处理 UDP 断开后清除所有 HUD/地图显示数据为 0
         if (receivedData.command === 'clearHudData') {
             hudState = { pitch: 0, roll: 0, yaw: 0, ias: 0, tas: 0, alt: 0, mach: 0, aoa: 0, g: 1.0, rpm: 0 };
@@ -881,6 +920,10 @@ if (window.chrome && window.chrome.webview) {
             targetData = { longitude: null, latitude: null, course: null };
             aircraftTrail = [];
             activeAlarms = [];
+            if (packetLossAlarm.intervalId) clearInterval(packetLossAlarm.intervalId);
+            packetLossAlarm.intervalId = null;
+            packetLossAlarm.show = false;
+            packetLossAlarm.phase = 'idle';
             drawHud();
             if (hudGroup2Canvas && hudGroup2Ctx) drawHudGroup2();
             if (hudGroup3Canvas && hudGroup3Ctx) drawHudGroup3();
@@ -1748,25 +1791,34 @@ function initAlarmCanvas() {
 
         // 点击事件放在 document 上，避免遮挡地图拖动
         document.addEventListener('click', (e) => {
-            if (!activeAlarms || activeAlarms.length === 0) {
-                return;
-            }
-
             const x = e.clientX;
             const y = e.clientY;
-
-            // 检查点击是否在某个弹窗内
             const w = window.innerWidth;
             const h = window.innerHeight;
             const centerX = w / 2;
-            const baseY = h * 0.2;  // 窗口高度的1/5处
+            const alarmWidth = 400;
             const alarmHeight = 50;
             const alarmSpacing = 10;
-            const alarmWidth = 400;
 
+            // 通信丢包弹窗：居中偏下，点击即关闭
+            if ((packetLossAlarm.show || packetLossAlarm.phase === 'countdown') && packetLossAlarm.phase !== 'idle') {
+                const packetLossBaseY = h * 0.75;
+                if (x >= centerX - alarmWidth / 2 && x <= centerX + alarmWidth / 2 &&
+                    y >= packetLossBaseY && y <= packetLossBaseY + alarmHeight) {
+                    if (packetLossAlarm.intervalId) clearInterval(packetLossAlarm.intervalId);
+                    packetLossAlarm.intervalId = null;
+                    packetLossAlarm.show = false;
+                    packetLossAlarm.phase = 'idle';
+                    drawAlarmPopups();
+                    e.stopPropagation();
+                    return;
+                }
+            }
+
+            if (!activeAlarms || activeAlarms.length === 0) return;
+            const baseY = h * 0.2;
             for (let i = 0; i < activeAlarms.length; i++) {
                 const alarmY = baseY + i * (alarmHeight + alarmSpacing);
-
                 if (x >= centerX - alarmWidth / 2 && x <= centerX + alarmWidth / 2 &&
                     y >= alarmY && y <= alarmY + alarmHeight) {
                     activeAlarms.splice(i, 1);
@@ -1791,7 +1843,7 @@ function resizeAlarmCanvas() {
     alarmCanvas.style.height = h + 'px';
 }
 
-// 绘制报警弹窗
+// 绘制报警弹窗（协议报警 + 通信丢包报警，样式与 UdpData.h alarmStatus 一致）
 function drawAlarmPopups() {
     if (!alarmCtx || !alarmCanvas) {
         initAlarmCanvas();
@@ -1802,66 +1854,80 @@ function drawAlarmPopups() {
 
     const w = window.innerWidth;
     const h = window.innerHeight;
+    const centerX = w / 2;
+    const alarmWidth = 400;
+    const alarmHeight = 50;
+    const alarmSpacing = 10;
+    const cornerRadius = 8;
 
     // 清空画布
     alarmCtx.clearRect(0, 0, w, h);
 
-    if (!activeAlarms || activeAlarms.length === 0) {
-        return;
-    }
-
-    // 弹窗参数
-    const centerX = w / 2;
-    const baseY = h * 0.2;  // 窗口高度的1/5处（第一个弹窗的初始位置）
-    const alarmWidth = 400;
-    const alarmHeight = 50;
-    const alarmSpacing = 10;
-    const cornerRadius = 8;  // 圆角半径
-
-    // 设置文字样式
     alarmCtx.fillStyle = '#000000';
     alarmCtx.font = 'bold 18px Consolas, monospace';
     alarmCtx.textAlign = 'center';
     alarmCtx.textBaseline = 'middle';
 
-    // 超时未点击则关闭（30s），收到1会刷新倒计时
+    // 1) 协议报警（顶层中央偏上，与 UdpData.h 90-95 一致）
+    const baseY = h * 0.2;
     const now = Date.now();
-    activeAlarms = activeAlarms.filter(a => (now - a.lastSeen) < 30000);
-    if (activeAlarms.length === 0) {
-        return;
+    if (activeAlarms && activeAlarms.length > 0) {
+        activeAlarms = activeAlarms.filter(a => (now - a.lastSeen) < 30000);
+        for (let i = 0; i < activeAlarms.length; i++) {
+            const alarmIndex = activeAlarms[i].index;
+            const alarmY = baseY + i * (alarmHeight + alarmSpacing);
+            const alarmText = alarmNames[alarmIndex] || ('\u62a5\u8b66' + (alarmIndex + 1));
+            const x = centerX - alarmWidth / 2;
+            const y = alarmY;
+            alarmCtx.fillStyle = 'rgba(255, 200, 0, 0.9)';
+            alarmCtx.beginPath();
+            alarmCtx.moveTo(x + cornerRadius, y);
+            alarmCtx.lineTo(x + alarmWidth - cornerRadius, y);
+            alarmCtx.quadraticCurveTo(x + alarmWidth, y, x + alarmWidth, y + cornerRadius);
+            alarmCtx.lineTo(x + alarmWidth, y + alarmHeight - cornerRadius);
+            alarmCtx.quadraticCurveTo(x + alarmWidth, y + alarmHeight, x + alarmWidth - cornerRadius, y + alarmHeight);
+            alarmCtx.lineTo(x + cornerRadius, y + alarmHeight);
+            alarmCtx.quadraticCurveTo(x, y + alarmHeight, x, y + alarmHeight - cornerRadius);
+            alarmCtx.lineTo(x, y + cornerRadius);
+            alarmCtx.quadraticCurveTo(x, y, x + cornerRadius, y);
+            alarmCtx.closePath();
+            alarmCtx.fill();
+            alarmCtx.strokeStyle = '#000000';
+            alarmCtx.lineWidth = 2;
+            alarmCtx.stroke();
+            alarmCtx.fillStyle = '#000000';
+            alarmCtx.fillText(alarmText, centerX, alarmY + alarmHeight / 2);
+        }
     }
 
-    // 绘制每个报警弹窗
-    for (let i = 0; i < activeAlarms.length; i++) {
-        const alarmIndex = activeAlarms[i].index;
-        const alarmY = baseY + i * (alarmHeight + alarmSpacing);
-        const alarmText = alarmNames[alarmIndex] || ('\u62a5\u8b66' + (alarmIndex + 1));
-        const x = centerX - alarmWidth / 2;
-        const y = alarmY;
-
-        // 绘制圆角矩形背景（黄色警告色）
-        alarmCtx.fillStyle = 'rgba(255, 200, 0, 0.9)';  // 黄色警告色
+    // 2) 通信丢包报警（居中偏下，错开协议弹窗，样式一致）
+    if (packetLossAlarm.show || packetLossAlarm.phase === 'countdown') {
+        const packetLossBaseY = h * 0.75;
+        const px = centerX - alarmWidth / 2;
+        const py = packetLossBaseY;
+        let text = '\u6ce8\u610f\uff1a\u901a\u4fe1\u4e22\u5305';  // 注意：通信丢包
+        if (packetLossAlarm.phase === 'countdown' && packetLossAlarm.countdownEnd > 0) {
+            const secLeft = Math.max(0, Math.ceil((packetLossAlarm.countdownEnd - Date.now()) / 1000));
+            text = '\u901a\u4fe1\u6062\u590d\uff0c' + secLeft + 's\u540e\u5173\u95ed';  // 通信恢复，Xs后关闭
+        }
+        alarmCtx.fillStyle = 'rgba(255, 200, 0, 0.9)';
         alarmCtx.beginPath();
-        alarmCtx.moveTo(x + cornerRadius, y);
-        alarmCtx.lineTo(x + alarmWidth - cornerRadius, y);
-        alarmCtx.quadraticCurveTo(x + alarmWidth, y, x + alarmWidth, y + cornerRadius);
-        alarmCtx.lineTo(x + alarmWidth, y + alarmHeight - cornerRadius);
-        alarmCtx.quadraticCurveTo(x + alarmWidth, y + alarmHeight, x + alarmWidth - cornerRadius, y + alarmHeight);
-        alarmCtx.lineTo(x + cornerRadius, y + alarmHeight);
-        alarmCtx.quadraticCurveTo(x, y + alarmHeight, x, y + alarmHeight - cornerRadius);
-        alarmCtx.lineTo(x, y + cornerRadius);
-        alarmCtx.quadraticCurveTo(x, y, x + cornerRadius, y);
+        alarmCtx.moveTo(px + cornerRadius, py);
+        alarmCtx.lineTo(px + alarmWidth - cornerRadius, py);
+        alarmCtx.quadraticCurveTo(px + alarmWidth, py, px + alarmWidth, py + cornerRadius);
+        alarmCtx.lineTo(px + alarmWidth, py + alarmHeight - cornerRadius);
+        alarmCtx.quadraticCurveTo(px + alarmWidth, py + alarmHeight, px + alarmWidth - cornerRadius, py + alarmHeight);
+        alarmCtx.lineTo(px + cornerRadius, py + alarmHeight);
+        alarmCtx.quadraticCurveTo(px, py + alarmHeight, px, py + alarmHeight - cornerRadius);
+        alarmCtx.lineTo(px, py + cornerRadius);
+        alarmCtx.quadraticCurveTo(px, py, px + cornerRadius, py);
         alarmCtx.closePath();
         alarmCtx.fill();
-
-        // 绘制黑色边框
         alarmCtx.strokeStyle = '#000000';
         alarmCtx.lineWidth = 2;
         alarmCtx.stroke();
-
-        // 绘制文字（黑色）
         alarmCtx.fillStyle = '#000000';
-        alarmCtx.fillText(alarmText, centerX, alarmY + alarmHeight / 2);
+        alarmCtx.fillText(text, centerX, py + alarmHeight / 2);
     }
 }
 

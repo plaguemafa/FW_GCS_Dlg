@@ -85,6 +85,11 @@ protected:
 	BOOL m_bUdpRemoteResponded;           // 远程地址响应标志（用于验证连接）
 	CCriticalSection m_csUdpResponse;      // 保护响应标志的临界区
 	DWORD m_dwLastUdpUiUpdate;            // 上次UI更新时间（用于限频）
+	// 通信丢包报警：统计建立后的平均收包率，超过 10 倍平均间隔未收包则弹窗
+	DWORD m_dwUdpRecvCount;              // 连接后累计收到的 UDP 包数
+	ULONGLONG m_ullUdpConnectTime;       // 连接成功时的时间（GetTickCount64）
+	ULONGLONG m_ullLastUdpRecvTime;      // 最后一次收到包的时间
+	BOOL m_bPacketLossAlarmShown;        // 是否已向 JS 发送了“通信丢包”弹窗（恢复后置 FALSE）
 	
 	// UDP配置参数（运行时配置，优先于宏定义）
 	CString m_strUdpLocalIP;               // 本机IP（通常为"0.0.0.0"表示监听所有接口）
@@ -254,6 +259,7 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	afx_msg void OnBnClickedUdplink();
 	afx_msg void OnDestroy();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);  // 定时检查 UDP 收包超时（通信丢包报警）
 	afx_msg LRESULT OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam);  // 自定义消息：UDP数据接收
 	afx_msg LRESULT OnSerialDataReceivedMsg(WPARAM wParam, LPARAM lParam);  // 自定义消息：串口数据接收
 	afx_msg void OnSize(UINT nType, int cx, int cy);  // 窗口大小改变时调整子对话框位置
