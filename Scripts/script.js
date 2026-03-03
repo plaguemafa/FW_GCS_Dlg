@@ -1042,11 +1042,10 @@ if (window.chrome && window.chrome.webview) {
         if (receivedData.latitude !== undefined) {
             aircraftData.latitude = receivedData.latitude;
         }
-        if (receivedData.gpsCourse !== undefined) {
-            aircraftData.course = receivedData.gpsCourse;
-            // 归一化到0-359度范围
-            aircraftData.course = ((aircraftData.course % 360) + 360) % 360;
-        }
+        // 航向角：使用姿态航向 yaw（与HUD航向带一致），若无则回退到0
+        if (receivedData.yaw !== undefined && !isNaN(receivedData.yaw)) {
+            aircraftData.course = ((receivedData.yaw % 360) + 360) % 360;
+        } else {aircraftData.course = 0.0;}
         
         // 更新目标位置和航向数据（地图目标标识）
         if (receivedData.targetLongitude !== undefined) {
@@ -1379,7 +1378,8 @@ function drawAircraftOnMap(lat, lng, course) {
     
     aircraftCtx.save();
     aircraftCtx.translate(aircraftX, aircraftY);
-    const canvasAngle = -course + 90;
+    // NED：0=北(屏幕上方)，顺时针为正；Canvas 顺时针为正，故直接用 course
+    const canvasAngle = course;
     aircraftCtx.rotate(canvasAngle * Math.PI / 180);
     
     aircraftCtx.shadowBlur = 0;
@@ -1517,7 +1517,8 @@ function drawTargetOnMap(lat, lng, course) {
     
     aircraftCtx.save();
     aircraftCtx.translate(targetX, targetY);
-    const canvasAngle = -course + 90;
+    // NED：0=北(屏幕上方)，顺时针为正
+    const canvasAngle = course;
     aircraftCtx.rotate(canvasAngle * Math.PI / 180);
     
     aircraftCtx.shadowBlur = 0;

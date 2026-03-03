@@ -106,4 +106,7 @@
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <Xml Include="..\x64\Debug\waypoints.xml" />
+  </ItemGroup>
 </Project>
