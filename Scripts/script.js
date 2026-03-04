@@ -289,59 +289,58 @@ function drawHeadingTape(centerX, y, width, height, heading, colors) {
     hudCtx.stroke();
 
     const pxPerDeg = width / 90; // 90度范围
-    
-    // 设置文字样式（在循环外设置一次，避免重复设置）
-    hudCtx.fillStyle = colors.text;  // 确保使用文字颜色
+    const norm = (deg) => ((Math.round(deg) % 360) + 360) % 360;
+
+    hudCtx.fillStyle = colors.text;
     hudCtx.font = '10px Consolas, monospace';
     hudCtx.textAlign = 'center';
-
-    // 先绘制每1度的小刻度（跳过5的倍数，避免与后续刻度重叠）
     hudCtx.strokeStyle = colors.line;
+
+    // 1) 每1度小刻度（跳过 5n、10n 位置，由步骤2、3绘制）
     for (let d = -45; d <= 45; d += 1) {
-        // 跳过5的倍数，这些位置会被后续的短刻度和长刻度覆盖
-        if (d % 5 === 0) continue;
-        
+        const actualHdg = norm(heading + d);
+        if (actualHdg % 5 === 0) continue;  // 5n、10n 处跳过
         const x = centerX + d * pxPerDeg;
         if (x < left || x > left + width) continue;
-        
-        // 小刻度长度设为2，小于短刻度的4
-        const tickLen = 2;
-        
         hudCtx.beginPath();
         hudCtx.moveTo(x, y + height);
-        hudCtx.lineTo(x, y + height - tickLen);
+        hudCtx.lineTo(x, y + height - 2);
         hudCtx.stroke();
     }
-    
-    // 绘制所有刻度（每5度一个短刻度，每10度一个长刻度+数字）
-    for (let d = -45; d <= 45; d += 5) {
-        const hdgRaw = heading + d;
-        const hdg = Math.round((hdgRaw + 360) % 360) + 1;
+
+    const toD = (degVal) => {
+        let d = ((degVal - heading + 360) % 360);
+        if (d > 180) d -= 360;
+        return d;
+    };
+
+    // 2) 5n 中刻度（5、15、25…），跳过 10n，直接计算位置
+    for (let n = 0; n < 36; n++) {
+        const deg5n = n * 10 + 5;  // 5, 15, 25, ..., 355
+        const d = toD(deg5n);
+        if (d < -45 || d > 45) continue;
         const x = centerX + d * pxPerDeg;
         if (x < left || x > left + width) continue;
-        
-        // 判断是否为10度倍数：只使用 d % 10 === 0，避免重复绘制
-        // d 是固定步长（每5度），所以 d % 10 === 0 的位置就是每10度的位置
-        const isMajorTick = (d % 10 === 0);
-        const tickLen = isMajorTick ? 8 : 4;
-        
-        // 绘制刻度线
-        hudCtx.strokeStyle = colors.line;
         hudCtx.beginPath();
         hudCtx.moveTo(x, y + height);
-        hudCtx.lineTo(x, y + height - tickLen);
+        hudCtx.lineTo(x, y + height - 5);  // 中等长度，介于 1° 与 10n 之间
         hudCtx.stroke();
-        
-        // 10度倍数处显示数字标签（只在 d % 10 === 0 时绘制，避免重复）
-        if (isMajorTick) {
-            // 确保 fillStyle 是文字颜色
-            hudCtx.fillStyle = colors.text;
-            // 计算要显示的航向值：确保是10的倍数
-            // 使用 hdgRaw 计算，四舍五入到最近的10的倍数，并确保是0-359范围内的值
-            const displayHdg = Math.round(hdgRaw / 10) * 10;
-            const normalizedHdg = ((displayHdg % 360) + 360) % 360;  // 归一化到 0-359
-            hudCtx.fillText(normalizedHdg.toString().padStart(3, '0'), x, y + height - 14);
-        }
+    }
+
+    // 3) 10n 长刻度+数字
+    const labelY = y + height - 14;
+    for (let n = 0; n < 36; n++) {
+        const deg10n = n * 10;
+        const d = toD(deg10n);
+        if (d < -45 || d > 45) continue;
+        const x = centerX + d * pxPerDeg;
+        if (x < left || x > left + width) continue;
+        hudCtx.beginPath();
+        hudCtx.moveTo(x, y + height);
+        hudCtx.lineTo(x, y + height - 8);
+        hudCtx.stroke();
+        hudCtx.fillStyle = colors.text;
+        hudCtx.fillText(deg10n.toString().padStart(3, '0'), x, labelY);
     }
 
     // 指示三角（固定在中心）
