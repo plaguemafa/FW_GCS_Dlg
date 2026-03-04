@@ -3,6 +3,7 @@
 // 1) mapConfig / statusText 由 C++ 在 canvas.html 占位符处注入
 // 2) C++ 调用 PostWebMessageAsJson 推送 HUD 数据，JS 在 webview message 事件里接收并更新 hudState
 // 3) HUD 绘制集中在 drawHud，拆分多个小函数，方便你单独调整配色、位置、尺寸
+// 本文件编码变动不需要重新编译，webview本身支持直接加载js
 //（C++端数据推送前处理，此处接取数据不做gain）
 
 // DOM 获取
@@ -132,6 +133,13 @@ let mapPickTargetEnabled = false;
 let mapPickParachuteEnabled = false;
 // 发射点地图选点模式：为 true 时左键点击地图将把该点经纬度回传给 C++，写入 Page2 发射点编辑框
 let mapPickLaunchEnabled = false;
+
+// 开伞点选点结果（用户地图单击后存储，用于在地图上绘制伞形图标）
+let parachutePoint = { lat: null, lng: null };
+// 目标点选点结果（用户地图单击后存储，用于在地图上绘制准星图标）
+let targetPickPoint = { lat: null, lng: null };
+// 发射点选点结果（用户地图单击后存储，用于在地图上绘制山字箭头图标）
+let launchPickPoint = { lat: null, lng: null };
 
 function setMouseCoordEnabled(enabled) {
     mouseCoordEnabled = !!enabled;
@@ -930,7 +938,9 @@ if (window.chrome && window.chrome.webview) {
             if (aircraftCanvas && aircraftCtx) {
                 drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
                 drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
-            }
+                drawParachuteOnMap(parachutePoint.lat, parachutePoint.lng);
+                drawTargetPickOnMap(targetPickPoint.lat, targetPickPoint.lng);
+                drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);            }
             drawAlarmPopups();
             return;
         }
@@ -1071,6 +1081,9 @@ if (window.chrome && window.chrome.webview) {
         if (aircraftCanvas && aircraftCtx) {
             drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
             drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
+            drawParachuteOnMap(parachutePoint.lat, parachutePoint.lng);
+            drawTargetPickOnMap(targetPickPoint.lat, targetPickPoint.lng);
+            drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);
         }
     });
 }
@@ -1146,6 +1159,9 @@ function render() {
             if (targetData.latitude !== null && targetData.longitude !== null && targetData.course !== null) {
                 drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
             }
+            drawParachuteOnMap(parachutePoint.lat, parachutePoint.lng);
+            drawTargetPickOnMap(targetPickPoint.lat, targetPickPoint.lng);
+            drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);
         }
     } catch (err) {
         console.error('Error in render:', err);
@@ -1212,23 +1228,29 @@ if (mapEl) {
         const ll = pointToLatLng(mouseMapX, mouseMapY, zoom);
         if (mapPickTargetEnabled) {
             mapPickTargetEnabled = false;
+            targetPickPoint = { lat: ll.lat, lng: ll.lng };
             if (mapEl) mapEl.style.cursor = (mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
             if (window.chrome && window.chrome.webview)
                 window.chrome.webview.postMessage({ command: 'mapPickTargetResult', lat: ll.lat, lng: ll.lng });
+            render();
             return;
         }
         if (mapPickParachuteEnabled) {
             mapPickParachuteEnabled = false;
+            parachutePoint = { lat: ll.lat, lng: ll.lng };
             if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
             if (window.chrome && window.chrome.webview)
                 window.chrome.webview.postMessage({ command: 'mapPickParachuteResult', lat: ll.lat, lng: ll.lng });
+            render();
             return;
         }
         if (mapPickLaunchEnabled) {
             mapPickLaunchEnabled = false;
+            launchPickPoint = { lat: ll.lat, lng: ll.lng };
             if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled) ? 'crosshair' : 'default';
             if (window.chrome && window.chrome.webview)
                 window.chrome.webview.postMessage({ command: 'mapPickLaunchResult', lat: ll.lat, lng: ll.lng });
+            render();
         }
     });
 
@@ -1619,6 +1641,166 @@ function drawTargetOnMap(lat, lng, course) {
     aircraftCtx.closePath();
     aircraftCtx.stroke();
     
+    aircraftCtx.restore();
+}
+
+// 绘制地图上的开伞点标识（简化伞形：上为等腰三角形伞盖，下为短竖线）
+function drawParachuteOnMap(lat, lng) {
+    if (!aircraftCanvas || !aircraftCtx || !mapEl) return;
+    if (lat === null || lng === null || isNaN(lat) || isNaN(lng)) return;
+
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    const pt = latLngToPoint(lat, lng, zoom);
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+    const x = pt.x - topLeft.x;
+    const y = pt.y - topLeft.y;
+
+    if (x < -45 || x > width + 45 || y < -45 || y > height + 45) return;
+
+    aircraftCtx.save();
+    aircraftCtx.translate(x, y);
+
+    const triH = 7 * 1.15;
+    const triW = 30 * 1.15;
+    const lineLen = 8 * 1.15;
+    const lineStartY = triH * 0.3;
+
+    // 等腰三角形（伞盖）：顶点在上，底边在下
+    aircraftCtx.fillStyle = '#1a3a8a';
+    aircraftCtx.strokeStyle = '#ffffff';
+    aircraftCtx.lineWidth = 1.5 * 1.15;
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -triH);
+    aircraftCtx.lineTo(-triW / 2, lineStartY);
+    aircraftCtx.lineTo(triW / 2, lineStartY);
+    aircraftCtx.closePath();
+    aircraftCtx.fill();
+    aircraftCtx.stroke();
+
+    // 竖矩形（填充+白色描边）
+    const rectW = 4;
+    aircraftCtx.fillStyle = '#1a3a8a';
+    aircraftCtx.strokeStyle = '#ffffff';
+    aircraftCtx.lineWidth = 1.5;
+    aircraftCtx.fillRect(-rectW / 2, lineStartY, rectW, lineLen);
+    aircraftCtx.strokeRect(-rectW / 2, lineStartY, rectW, lineLen);
+
+    aircraftCtx.restore();
+}
+
+// 绘制地图上的目标点选点标识（准星样式：中心实心点 + 同心空心圆 + 四向从圆缘外伸的短线）
+function drawTargetPickOnMap(lat, lng) {
+    if (!aircraftCanvas || !aircraftCtx || !mapEl) return;
+    if (lat === null || lng === null || isNaN(lat) || isNaN(lng)) return;
+
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    const pt = latLngToPoint(lat, lng, zoom);
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+    const x = pt.x - topLeft.x;
+    const y = pt.y - topLeft.y;
+
+    if (x < -50 || x > width + 50 || y < -50 || y > height + 50) return;
+
+    aircraftCtx.save();
+    aircraftCtx.translate(x, y);
+
+    const color = '#8b0000';
+    const R = 8;           // 空心圆半径
+    const tickLen = 6;       // 从圆缘向外延伸的短线长度
+    const lineW = 1.5;
+
+    // 同心空心圆
+    aircraftCtx.strokeStyle = color;
+    aircraftCtx.lineWidth = lineW;
+    aircraftCtx.beginPath();
+    aircraftCtx.arc(0, 0, R, 0, Math.PI * 2);
+    aircraftCtx.stroke();
+
+    // 四根短线：从圆环外缘向外延伸（上、下、左、右）
+    aircraftCtx.strokeStyle = color;
+    aircraftCtx.lineWidth = lineW;
+    aircraftCtx.lineCap = 'round';
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, -R);
+    aircraftCtx.lineTo(0, -R - tickLen);
+    aircraftCtx.moveTo(0, R);
+    aircraftCtx.lineTo(0, R + tickLen);
+    aircraftCtx.moveTo(-R, 0);
+    aircraftCtx.lineTo(-R - tickLen, 0);
+    aircraftCtx.moveTo(R, 0);
+    aircraftCtx.lineTo(R + tickLen, 0);
+    aircraftCtx.stroke();
+
+    // 中心实心点（靶心）
+    aircraftCtx.fillStyle = color;
+    aircraftCtx.beginPath();
+    aircraftCtx.arc(0, 0, 2.5, 0, Math.PI * 2);
+    aircraftCtx.fill();
+
+    aircraftCtx.restore();
+}
+
+// 绘制地图上的发射点选点标识（山字形状带箭头：黑色，尺寸参考开伞/目标点图标）
+function drawLaunchPickOnMap(lat, lng) {
+    if (!aircraftCanvas || !aircraftCtx || !mapEl) return;
+    if (lat === null || lng === null || isNaN(lat) || isNaN(lng)) return;
+
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    const pt = latLngToPoint(lat, lng, zoom);
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+    const x = pt.x - topLeft.x;
+    const y = pt.y - topLeft.y;
+
+    if (x < -50 || x > width + 50 || y < -50 || y > height + 50) return;
+
+    aircraftCtx.save();
+    aircraftCtx.translate(x, y);
+
+    const black = '#000000';
+    const lineW = 1.5;
+    const halfW = 9;        // 山字半宽，与开伞/目标点图标相当
+    const baseY = 8;       // 山字纵高 y
+    const topY = -2;        // 山字两竖上端 y
+    const arrowTipY = -14;  // 箭头尖端 y
+    const arrowHeadW = 5;   // 箭头 V 的半宽
+    const arrowHeadH = 6;   // 箭头 V 的高度
+
+    aircraftCtx.strokeStyle = black;
+    aircraftCtx.fillStyle = black;
+    aircraftCtx.lineWidth = lineW;
+    aircraftCtx.lineCap = 'square';
+    aircraftCtx.lineJoin = 'miter';
+
+    // 山字：左竖、右竖、底横
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(-halfW, topY);
+    aircraftCtx.lineTo(-halfW, baseY);
+    aircraftCtx.moveTo(halfW, topY);
+    aircraftCtx.lineTo(halfW, baseY);
+    aircraftCtx.moveTo(-halfW, baseY);
+    aircraftCtx.lineTo(halfW, baseY);
+    aircraftCtx.stroke();
+
+    // 箭头竖线：从底边中心向上
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, baseY);
+    aircraftCtx.lineTo(0, arrowTipY);
+    aircraftCtx.stroke();
+
+    // 箭头 V 形头
+    aircraftCtx.beginPath();
+    aircraftCtx.moveTo(0, arrowTipY);
+    aircraftCtx.lineTo(-arrowHeadW, arrowTipY + arrowHeadH);
+    aircraftCtx.moveTo(0, arrowTipY);
+    aircraftCtx.lineTo(arrowHeadW, arrowTipY + arrowHeadH);
+    aircraftCtx.stroke();
+
     aircraftCtx.restore();
 }
 
