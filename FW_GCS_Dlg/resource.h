@@ -199,13 +199,14 @@
 #define ID_MENU_CHECK_DETAIL            32789
 #define ID_MENU_UDP_LINK                32790
 #define ID_MENU_SERIAL_LINK             32791
+#define ID_MENU_MAP_WAYPOINT_PICK       32792
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        145
-#define _APS_NEXT_COMMAND_VALUE         32792
+#define _APS_NEXT_COMMAND_VALUE         32793
 #define _APS_NEXT_CONTROL_VALUE         1167
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

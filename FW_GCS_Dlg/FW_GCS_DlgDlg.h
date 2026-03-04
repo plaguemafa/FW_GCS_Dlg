@@ -38,9 +38,10 @@
 // 自定义消息：串口数据接收（由串口接收线程发送到主线程）
 #define WM_SERIAL_DATA_RECEIVED  (WM_USER + 201)
 // 自定义消息：地图选点结果（JS 左键选点后发回经纬度，由主线程更新 Page2）
-#define WM_MAP_PICK_TARGET_RESULT  (WM_USER + 202)
-#define WM_MAP_PICK_PARACHUTE_RESULT  (WM_USER + 203)
-#define WM_MAP_PICK_LAUNCH_RESULT  (WM_USER + 204)
+#define WM_MAP_PICK_TARGET_RESULT    (WM_USER + 202)
+#define WM_MAP_PICK_PARACHUTE_RESULT (WM_USER + 203)
+#define WM_MAP_PICK_LAUNCH_RESULT    (WM_USER + 204)
+#define WM_MAP_PICK_WAYPOINT_RESULT  (WM_USER + 205)
 
 // CFWGCSDlgDlg 对话框
 class CFWGCSDlgDlg : public CDialogEx
@@ -285,6 +286,7 @@ protected:
 	afx_msg void OnMenuCheckDetail();      // 详细自检结果：呼出 Page1 对话框
 	// 位置装订菜单项
 	afx_msg void OnMenuMapMouseCoord();    // 启用/关闭鼠标经纬度显示
+	afx_msg void OnMenuMapWaypointPick();  // 航路点：地图选点（多次点击依次装订1~100航路点）
 	afx_msg void OnMenuMapTargetPick();    // 目标点：地图选点
 	afx_msg void OnMenuMapParachutePick(); // 开伞点：地图选点
 	afx_msg void OnMenuMapLaunchPick();    // 发射点：地图选点
@@ -301,6 +303,7 @@ protected:
 	afx_msg void OnUpdateMenuCheckSurface(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCheckEngine(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuMapMouseCoord(CCmdUI* pCmdUI); // 更新鼠标经纬度菜单勾选状态
+	afx_msg void OnUpdateMenuMapWaypointPick(CCmdUI* pCmdUI); // 更新航路点选点菜单状态
 	afx_msg void OnUpdateMenuMapTargetPick(CCmdUI* pCmdUI); // 更新目标点选点菜单状态
 	afx_msg void OnUpdateMenuMapParachutePick(CCmdUI* pCmdUI); // 更新开伞点选点菜单状态
 	afx_msg void OnUpdateMenuMapLaunchPick(CCmdUI* pCmdUI);    // 更新发射点选点菜单状态
@@ -314,9 +317,10 @@ protected:
 	afx_msg void OnBnClickedMenuBtn5();
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);  // 拦截只读 Radio Button 的点击
 	virtual BOOL PreTranslateMessage(MSG* pMsg);  // 拦截鼠标消息，阻止只读 Radio Button 的点击
-	afx_msg LRESULT OnMapPickTargetResult(WPARAM wParam, LPARAM lParam);  // 目标点选点结果（写入 EditData17/18）
-	afx_msg LRESULT OnMapPickParachuteResult(WPARAM wParam, LPARAM lParam);  // 开伞点选点结果（写入 EditData23/24）
-	afx_msg LRESULT OnMapPickLaunchResult(WPARAM wParam, LPARAM lParam);     // 发射点选点结果（写入 EditData2/3）
+	afx_msg LRESULT OnMapPickTargetResult(WPARAM wParam, LPARAM lParam);       // 目标点选点结果（写入 EditData17/18）
+	afx_msg LRESULT OnMapPickParachuteResult(WPARAM wParam, LPARAM lParam);    // 开伞点选点结果（写入 EditData23/24）
+	afx_msg LRESULT OnMapPickLaunchResult(WPARAM wParam, LPARAM lParam);       // 发射点选点结果（写入 EditData2/3）
+	afx_msg LRESULT OnMapPickWaypointResult(WPARAM wParam, LPARAM lParam);     // 航路点选点结果（填入 Page2 航路点列表）
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedSeriallink();
@@ -351,6 +355,8 @@ private:
 
 	// 鼠标经纬度提示开关（由“位置装订”菜单控制）
 	bool m_mouseCoordEnabled = false;
+	// 航路点地图选点模式：为 true 时地图左键点击将按顺序装订 1~100 号航路点
+	bool m_mapPickWaypointMode = false;
 	// 目标点地图选点模式：为 true 时地图左键点击将把经纬度写入 Page2 目标点编辑框
 	bool m_mapPickTargetMode = false;
 	// 开伞点地图选点模式：为 true 时地图左键点击将把经纬度写入 Page2 开伞点编辑框

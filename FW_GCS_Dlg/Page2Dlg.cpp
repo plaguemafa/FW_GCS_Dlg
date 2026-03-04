@@ -26,6 +26,7 @@ CPage2Dlg::CPage2Dlg(CWnd* pParent /*=nullptr*/)
 	, m_nEditingItem(-1)
 	, m_nEditingSubItem(-1)
 	, m_nCurrentWaypointCount(0)
+	, m_nNextWaypointIndexForMapPick(0)
 {
 	memset(m_currentWaypoints, 0, sizeof(m_currentWaypoints));
 }
@@ -199,6 +200,105 @@ BOOL CPage2Dlg::OnInitDialog()
 	}
 	
 	return TRUE;
+}
+
+// 重置航路点装订计数器（重新从1号点开始）
+void CPage2Dlg::ResetWaypointPickFromMap()
+{
+	m_nNextWaypointIndexForMapPick = 0;
+}
+
+// 从地图选点结果写入第 n 个航路点（第1次点击->1号点，第2次->2号点，以此类推）
+bool CPage2Dlg::ApplyWaypointFromMap(double lat, double lng)
+{
+	if (m_listWaypoints.GetSafeHwnd() == NULL)
+		return false;
+
+	// 超过100个则忽略后续点击
+	if (m_nNextWaypointIndexForMapPick >= 100)
+	{
+		TRACE(_T("ApplyWaypointFromMap: 已达到100个航路点，忽略后续地图选点\n"));
+		return true;
+	}
+
+	int idx = m_nNextWaypointIndexForMapPick; // 0-based
+
+	// 如有正在编辑的单元格，先结束编辑，避免覆盖未保存内容
+	if (m_nEditingItem >= 0)
+	{
+		EndEditCell(FALSE);
+	}
+
+	// 如果当前航路点数量不足，扩展列表并补齐中间空位
+	if (idx >= m_nCurrentWaypointCount)
+	{
+		int oldCount = m_nCurrentWaypointCount;
+		m_nCurrentWaypointCount = idx + 1;
+		if (m_nCurrentWaypointCount > 100)
+			m_nCurrentWaypointCount = 100;
+
+		for (int i = oldCount; i <= idx && i < 100; ++i)
+		{
+			CString strIndex, strLon, strLat, strAlt;
+			strIndex.Format(_T("%d"), i + 1);
+			strLon = _T("0.000000");
+			strLat = _T("0.000000");
+			strAlt = _T("0");
+
+			int nItem = m_listWaypoints.InsertItem(i, strIndex);
+			if (nItem >= 0)
+			{
+				m_listWaypoints.SetItemText(nItem, 1, strLon);
+				m_listWaypoints.SetItemText(nItem, 2, strLat);
+				m_listWaypoints.SetItemText(nItem, 3, strAlt);
+			}
+
+			m_currentWaypoints[i].longitude = 0;
+			m_currentWaypoints[i].latitude = 0;
+			m_currentWaypoints[i].altitude = 0;
+		}
+	}
+
+	// 将当前点击经纬度写入第 idx 个航路点（高度保持原值，若为新行则为0）
+	if (idx < 0 || idx >= 100)
+		return (m_nNextWaypointIndexForMapPick >= 100);
+
+	double dLongitude = lng;
+	double dLatitude = lat;
+
+	CString strIndex, strLongitude, strLatitude;
+	strIndex.Format(_T("%d"), idx + 1);
+	strLongitude.Format(_T("%.6f"), dLongitude);
+	strLatitude.Format(_T("%.6f"), dLatitude);
+
+	// 更新列表控件显示
+	if (m_listWaypoints.GetItemCount() <= idx)
+	{
+		int nItem = m_listWaypoints.InsertItem(idx, strIndex);
+		if (nItem >= 0)
+		{
+			m_listWaypoints.SetItemText(nItem, 1, strLongitude);
+			m_listWaypoints.SetItemText(nItem, 2, strLatitude);
+		}
+	}
+	else
+	{
+		m_listWaypoints.SetItemText(idx, 0, strIndex);
+		m_listWaypoints.SetItemText(idx, 1, strLongitude);
+		m_listWaypoints.SetItemText(idx, 2, strLatitude);
+	}
+
+	// 更新内存中的航路点数据（协议格式：度 * 1000000）
+	m_currentWaypoints[idx].longitude = static_cast<int32_t>(dLongitude * 1000000.0);
+	m_currentWaypoints[idx].latitude = static_cast<int32_t>(dLatitude * 1000000.0);
+
+	TRACE(_T("ApplyWaypointFromMap: 航路点 %d 设为 lon=%.6f, lat=%.6f\n"),
+		idx + 1, dLongitude, dLatitude);
+
+	// 准备下一次点击 -> 下一个航路点
+	++m_nNextWaypointIndexForMapPick;
+
+	return (m_nNextWaypointIndexForMapPick >= 100);
 }
 
 // 更新数据显示（Page2当前不显示接收数据，保留接口以兼容主对话框调用）

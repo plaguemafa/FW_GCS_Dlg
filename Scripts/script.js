@@ -133,6 +133,8 @@ let mapPickTargetEnabled = false;
 let mapPickParachuteEnabled = false;
 // 发射点地图选点模式：为 true 时左键点击地图将把该点经纬度回传给 C++，写入 Page2 发射点编辑框
 let mapPickLaunchEnabled = false;
+// 航路点地图选点模式：为 true 时左键点击地图将把该点经纬度回传给 C++，填充 Page2 航路点列表
+let mapPickWaypointEnabled = false;
 
 // 开伞点选点结果（用户地图单击后存储，用于在地图上绘制伞形图标）
 let parachutePoint = { lat: null, lng: null };
@@ -945,24 +947,29 @@ if (window.chrome && window.chrome.webview) {
             return;
         }
 
-        // 处理控制类消息（例如：鼠标经纬度开关、目标点选点模式）
+        // 处理控制类消息（例如：鼠标经纬度开关、目标点/航路点选点模式）
         if (receivedData.command === 'setMouseCoord') {
             setMouseCoordEnabled(!!receivedData.enabled);
             return;
         }
         if (receivedData.command === 'setMapPickTarget') {
             mapPickTargetEnabled = !!receivedData.enabled;
-            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
             return;
         }
         if (receivedData.command === 'setMapPickParachute') {
             mapPickParachuteEnabled = !!receivedData.enabled;
-            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
             return;
         }
         if (receivedData.command === 'setMapPickLaunch') {
             mapPickLaunchEnabled = !!receivedData.enabled;
-            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
+            return;
+        }
+        if (receivedData.command === 'setMapPickWaypoint') {
+            mapPickWaypointEnabled = !!receivedData.enabled;
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
             return;
         }
 
@@ -1204,19 +1211,19 @@ if (mapEl) {
         render();
     });
 
-    // 鼠标右键抬起：结束拖拽（若处于目标点/开伞点/发射点选点模式则恢复十字光标，否则恢复默认）
+    // 鼠标右键抬起：结束拖拽（若处于目标点/航路点/开伞点/发射点选点模式则恢复十字光标，否则恢复默认）
     document.addEventListener('mouseup', (e) => {
         if (e.button !== 2 || !dragging) return;
         dragging = false;
         if (mapEl) {
-            mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
         }
     });
 
-    // 目标点/开伞点/发射点选点：左键点击地图时，将点击处经纬度回传给 C++（按当前选点模式回传对应 command）
+    // 目标点/航路点/开伞点/发射点选点：左键点击地图时，将点击处经纬度回传给 C++（按当前选点模式回传对应 command）
     mapEl.addEventListener('click', (e) => {
         if (e.button !== 0) return;
-        const inAnyPickMode = mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled;
+        const inAnyPickMode = mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled;
         if (!inAnyPickMode) return;
         const rect = mapEl.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -1229,7 +1236,7 @@ if (mapEl) {
         if (mapPickTargetEnabled) {
             mapPickTargetEnabled = false;
             targetPickPoint = { lat: ll.lat, lng: ll.lng };
-            if (mapEl) mapEl.style.cursor = (mapPickParachuteEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            if (mapEl) mapEl.style.cursor = (mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
             if (window.chrome && window.chrome.webview)
                 window.chrome.webview.postMessage({ command: 'mapPickTargetResult', lat: ll.lat, lng: ll.lng });
             render();
@@ -1238,7 +1245,7 @@ if (mapEl) {
         if (mapPickParachuteEnabled) {
             mapPickParachuteEnabled = false;
             parachutePoint = { lat: ll.lat, lng: ll.lng };
-            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickLaunchEnabled) ? 'crosshair' : 'default';
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
             if (window.chrome && window.chrome.webview)
                 window.chrome.webview.postMessage({ command: 'mapPickParachuteResult', lat: ll.lat, lng: ll.lng });
             render();
@@ -1247,9 +1254,17 @@ if (mapEl) {
         if (mapPickLaunchEnabled) {
             mapPickLaunchEnabled = false;
             launchPickPoint = { lat: ll.lat, lng: ll.lng };
-            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled) ? 'crosshair' : 'default';
+            if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
             if (window.chrome && window.chrome.webview)
                 window.chrome.webview.postMessage({ command: 'mapPickLaunchResult', lat: ll.lat, lng: ll.lng });
+            render();
+            return;
+        }
+        // 航路点选点：每次点击都回传一次结果，不会自动关闭选点模式（由原生菜单再次点击关闭）
+        if (mapPickWaypointEnabled) {
+            if (window.chrome && window.chrome.webview)
+                window.chrome.webview.postMessage({ command: 'mapPickWaypointResult', lat: ll.lat, lng: ll.lng });
+            // 航路点为多次装订，保持十字光标与选点模式
             render();
         }
     });
