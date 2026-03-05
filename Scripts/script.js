@@ -135,6 +135,8 @@ let mapPickParachuteEnabled = false;
 let mapPickLaunchEnabled = false;
 // 航路点地图选点模式：为 true 时左键点击地图将把该点经纬度回传给 C++，填充 Page2 航路点列表
 let mapPickWaypointEnabled = false;
+// 航点连线显示开关：为 true 时在地图上按航点序号连线
+let waypointConnectEnabled = false;
 
 // 开伞点选点结果（用户地图单击后存储，用于在地图上绘制伞形图标）
 let parachutePoint = { lat: null, lng: null };
@@ -142,6 +144,8 @@ let parachutePoint = { lat: null, lng: null };
 let targetPickPoint = { lat: null, lng: null };
 // 发射点选点结果（用户地图单击后存储，用于在地图上绘制山字箭头图标）
 let launchPickPoint = { lat: null, lng: null };
+// 航路点选点结果列表（每次点击追加，用于在地图上绘制“数字+外空心圆”图标，序号即航点号）
+let waypointPickPoints = [];
 
 function setMouseCoordEnabled(enabled) {
     mouseCoordEnabled = !!enabled;
@@ -942,7 +946,10 @@ if (window.chrome && window.chrome.webview) {
                 drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
                 drawParachuteOnMap(parachutePoint.lat, parachutePoint.lng);
                 drawTargetPickOnMap(targetPickPoint.lat, targetPickPoint.lng);
-                drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);            }
+                drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);
+                drawWaypointPickOnMap();
+                drawWaypointConnectOnMap();
+            }
             drawAlarmPopups();
             return;
         }
@@ -969,7 +976,20 @@ if (window.chrome && window.chrome.webview) {
         }
         if (receivedData.command === 'setMapPickWaypoint') {
             mapPickWaypointEnabled = !!receivedData.enabled;
+            if (receivedData.enabled) waypointPickPoints = [];
             if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
+            return;
+        }
+        if (receivedData.command === 'setWaypointConnectVisible') {
+            waypointConnectEnabled = !!receivedData.enabled;
+            if (aircraftCanvas && aircraftCtx) {
+                drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+                drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
+                drawParachuteOnMap(parachutePoint.lat, parachutePoint.lng);
+                drawTargetPickOnMap(targetPickPoint.lat, targetPickPoint.lng);
+                drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);
+                drawWaypointPickOnMap();
+            }
             return;
         }
 
@@ -1091,6 +1111,8 @@ if (window.chrome && window.chrome.webview) {
             drawParachuteOnMap(parachutePoint.lat, parachutePoint.lng);
             drawTargetPickOnMap(targetPickPoint.lat, targetPickPoint.lng);
             drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);
+            drawWaypointPickOnMap();
+            drawWaypointConnectOnMap();
         }
     });
 }
@@ -1162,6 +1184,9 @@ function render() {
         if (aircraftCanvas && aircraftCtx) {
             if (aircraftData.latitude !== null && aircraftData.longitude !== null && aircraftData.course !== null) {
                 drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+            } else {
+                // 没有飞机数据时至少清空一次覆盖层
+                drawAircraftOnMap(null, null, null);
             }
             if (targetData.latitude !== null && targetData.longitude !== null && targetData.course !== null) {
                 drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
@@ -1169,6 +1194,8 @@ function render() {
             drawParachuteOnMap(parachutePoint.lat, parachutePoint.lng);
             drawTargetPickOnMap(targetPickPoint.lat, targetPickPoint.lng);
             drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);
+            drawWaypointPickOnMap();
+            drawWaypointConnectOnMap();
         }
     } catch (err) {
         console.error('Error in render:', err);
@@ -1260,11 +1287,11 @@ if (mapEl) {
             render();
             return;
         }
-        // 航路点选点：每次点击都回传一次结果，不会自动关闭选点模式（由原生菜单再次点击关闭）
+        // 航路点选点：每次点击都回传一次结果，并在本地记录用于绘制序号图标
         if (mapPickWaypointEnabled) {
+            waypointPickPoints.push({ lat: ll.lat, lng: ll.lng });
             if (window.chrome && window.chrome.webview)
                 window.chrome.webview.postMessage({ command: 'mapPickWaypointResult', lat: ll.lat, lng: ll.lng });
-            // 航路点为多次装订，保持十字光标与选点模式
             render();
         }
     });
@@ -1815,6 +1842,136 @@ function drawLaunchPickOnMap(lat, lng) {
     aircraftCtx.moveTo(0, arrowTipY);
     aircraftCtx.lineTo(arrowHeadW, arrowTipY + arrowHeadH);
     aircraftCtx.stroke();
+
+    aircraftCtx.restore();
+}
+
+// 航路点选点图标：数字 + 外空心圆（类似 Word 排列序号），黑色；尺寸参数可调
+const WAYPOINT_ICON_FONT_SIZE = 12;   // 航点序号数字字号（像素）
+const WAYPOINT_ICON_CIRCLE_R = 10;    // 外空心圆半径（像素）
+// 航路点连线中点箭头（指向高序号），可调
+const WAYPOINT_CONNECT_ARROW_LEN = 12;        // 箭头沿线方向的长度（像素）
+const WAYPOINT_CONNECT_ARROW_HALF_WIDTH = 5;  // 箭头底边半宽（像素）
+
+function drawWaypointPickOnMap() {
+    if (!aircraftCanvas || !aircraftCtx || !mapEl || !waypointPickPoints.length) return;
+
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+    const black = '#000000';
+
+    aircraftCtx.save();
+    aircraftCtx.strokeStyle = black;
+    aircraftCtx.fillStyle = black;
+    aircraftCtx.font = `${WAYPOINT_ICON_FONT_SIZE}px Consolas, sans-serif`;
+    aircraftCtx.textAlign = 'center';
+    aircraftCtx.textBaseline = 'middle';
+    aircraftCtx.lineWidth = 1.5;
+
+    for (let i = 0; i < waypointPickPoints.length; i++) {
+        const p = waypointPickPoints[i];
+        const pt = latLngToPoint(p.lat, p.lng, zoom);
+        const x = pt.x - topLeft.x;
+        const y = pt.y - topLeft.y;
+        if (x < -WAYPOINT_ICON_CIRCLE_R * 2 || x > width + WAYPOINT_ICON_CIRCLE_R * 2 ||
+            y < -WAYPOINT_ICON_CIRCLE_R * 2 || y > height + WAYPOINT_ICON_CIRCLE_R * 2) continue;
+
+        aircraftCtx.beginPath();
+        aircraftCtx.arc(x, y, WAYPOINT_ICON_CIRCLE_R, 0, Math.PI * 2);
+        aircraftCtx.stroke();
+
+        const num = (i + 1).toString();
+        aircraftCtx.fillText(num, x, y);
+    }
+
+    aircraftCtx.restore();
+}
+
+// 航路点连线：按航点序号顺序，将所有航点用黑色细线依次连起来，
+// 且连线在两端跳过航点空心圆的半径，只连接到圆的外缘
+function drawWaypointConnectOnMap() {
+    if (!aircraftCanvas || !aircraftCtx || !mapEl) return;
+    if (!waypointConnectEnabled || waypointPickPoints.length < 2) return;
+
+    const width = mapEl.clientWidth;
+    const height = mapEl.clientHeight;
+    const centerPoint = latLngToPoint(center.lat, center.lng, zoom);
+    const topLeft = { x: centerPoint.x - width / 2, y: centerPoint.y - height / 2 };
+
+    aircraftCtx.save();
+    aircraftCtx.strokeStyle = '#000000';
+    aircraftCtx.lineWidth = 1.5;
+    aircraftCtx.lineJoin = 'round';
+    aircraftCtx.lineCap = 'round';
+
+    // 逐段绘制：每一段单独 beginPath/moveTo/lineTo，
+    // 并在两端沿方向向量缩短一个 WAYPOINT_ICON_CIRCLE_R
+    for (let i = 0; i < waypointPickPoints.length - 1; i++) {
+        const p1 = waypointPickPoints[i];
+        const p2 = waypointPickPoints[i + 1];
+
+        const pt1 = latLngToPoint(p1.lat, p1.lng, zoom);
+        const pt2 = latLngToPoint(p2.lat, p2.lng, zoom);
+
+        let x1 = pt1.x - topLeft.x;
+        let y1 = pt1.y - topLeft.y;
+        let x2 = pt2.x - topLeft.x;
+        let y2 = pt2.y - topLeft.y;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (!len || len <= WAYPOINT_ICON_CIRCLE_R * 2) {
+            continue; // 两个航点太近，画了也会在圆内，直接跳过
+        }
+
+        const ux = dx / len;
+        const uy = dy / len;
+
+        // 起点从第一个圆外缘开始，终点在第二个圆外缘结束
+        const sx = x1 + ux * WAYPOINT_ICON_CIRCLE_R;
+        const sy = y1 + uy * WAYPOINT_ICON_CIRCLE_R;
+        const ex = x2 - ux * WAYPOINT_ICON_CIRCLE_R;
+        const ey = y2 - uy * WAYPOINT_ICON_CIRCLE_R;
+
+        // 如果整个线段都在视野之外，则可以简单跳过
+        const minX = Math.min(sx, ex);
+        const maxX = Math.max(sx, ex);
+        const minY = Math.min(sy, ey);
+        const maxY = Math.max(sy, ey);
+        if (maxX < -20 || minX > width + 20 || maxY < -20 || minY > height + 20) {
+            continue;
+        }
+
+        aircraftCtx.beginPath();
+        aircraftCtx.moveTo(sx, sy);
+        aircraftCtx.lineTo(ex, ey);
+        aircraftCtx.stroke();
+
+        // 中点画箭头，指向高序号（p2）一端
+        const mx = (sx + ex) / 2;
+        const my = (sy + ey) / 2;
+        const halfLen = WAYPOINT_CONNECT_ARROW_LEN / 2;
+        const tipX = mx + ux * halfLen;
+        const tipY = my + uy * halfLen;
+        const baseCx = mx - ux * halfLen;
+        const baseCy = my - uy * halfLen;
+        const px = -uy;
+        const py = ux;
+        const leftX = baseCx + px * WAYPOINT_CONNECT_ARROW_HALF_WIDTH;
+        const leftY = baseCy + py * WAYPOINT_CONNECT_ARROW_HALF_WIDTH;
+        const rightX = baseCx - px * WAYPOINT_CONNECT_ARROW_HALF_WIDTH;
+        const rightY = baseCy - py * WAYPOINT_CONNECT_ARROW_HALF_WIDTH;
+        aircraftCtx.beginPath();
+        aircraftCtx.moveTo(tipX, tipY);
+        aircraftCtx.lineTo(leftX, leftY);
+        aircraftCtx.lineTo(rightX, rightY);
+        aircraftCtx.closePath();
+        aircraftCtx.fillStyle = '#000000';
+        aircraftCtx.fill();
+    }
 
     aircraftCtx.restore();
 }

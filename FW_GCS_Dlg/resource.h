@@ -200,6 +200,7 @@
 #define ID_MENU_UDP_LINK                32790
 #define ID_MENU_SERIAL_LINK             32791
 #define ID_MENU_MAP_WAYPOINT_PICK       32792
+#define ID_MENU_MAP_WAYPOINT_PICK_CONNECT 32793
 
 // Next default values for new objects
 // 
