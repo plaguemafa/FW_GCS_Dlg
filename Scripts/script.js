@@ -236,21 +236,34 @@ function drawBackground(w, h, centerX, centerY, pitch, roll, colors) {
     hudCtx.fillStyle = colors.text;
     hudCtx.font = '10px Consolas, monospace';
     hudCtx.lineWidth = 1.5;
-    for (let deg = -30; deg <= 30; deg += 2) {
-        if (deg === 0) continue;
+    const pitchScaleRangeDeg = 30; // 仅显示当前俯仰±30°范围
+    const pitchMinorStep = 2;      // 2n 小刻度
+    const pitchMajorStep = 10;     // 10n 大刻度
+
+    // 动态刻度：以当前 pitch 为中心，绘制 [pitch-30, pitch+30]
+    const minDeg = Math.floor((pitch - pitchScaleRangeDeg) / pitchMinorStep) * pitchMinorStep;
+    const maxDeg = Math.ceil((pitch + pitchScaleRangeDeg) / pitchMinorStep) * pitchMinorStep;
+
+    for (let deg = minDeg; deg <= maxDeg; deg += pitchMinorStep) {
+        // if (deg === 0) continue; // 0°（地平线）当前版本不绘制
+
+        const isMajor = (Math.abs(deg) % pitchMajorStep === 0);
         const y = -deg * pitchPxPerDeg;
-        const len = (Math.abs(deg) % 10 === 0) ? 35 : 27;
+        const len = isMajor ? 35 : 27; // 长短参考当前版本
+
         hudCtx.beginPath();
         hudCtx.moveTo(-len, y);
         hudCtx.lineTo(-10, y);
         hudCtx.moveTo(10, y);
         hudCtx.lineTo(len, y);
         hudCtx.stroke();
-        if (Math.abs(deg) % 10 === 0) {
+
+        if (isMajor) {
+            const label = `${deg}`; // 负数自动带 '-'，符合“负刻度带符号”
             hudCtx.textAlign = 'right';
-            hudCtx.fillText(`${Math.abs(deg)}`, -len - 4, y + 3);
+            hudCtx.fillText(label, -len - 4, y + 3);
             hudCtx.textAlign = 'left';
-            hudCtx.fillText(`${Math.abs(deg)}`, len + 4, y + 3);
+            hudCtx.fillText(label, len + 4, y + 3);
         }
     }
 
@@ -534,7 +547,9 @@ function drawRollScale(cx, topY, radius, roll, colors) {
             
             const labelX = (r2 + 10) * Math.cos(rad);
             const labelY = (r2 + 10) * Math.sin(rad);
-            hudCtx.fillText(Math.abs(normalizedRoll).toString(), labelX, labelY + 4);
+            // 负值保留 '-' 号（不显示 '+')，避免出现 -0
+            const label = (Object.is(normalizedRoll, -0) || normalizedRoll === 0) ? '0' : normalizedRoll.toString();
+            hudCtx.fillText(label, labelX, labelY + 4);
         }
     }
 
