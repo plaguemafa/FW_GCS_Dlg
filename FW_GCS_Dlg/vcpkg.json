@@ -1,0 +1,8 @@
+{
+  "name": "fw-gcs-dlg",
+  "version": "1.0",
+  "description": "地面站装订 DEM 高程依赖",
+  "dependencies": [
+    "gdal"
+  ]
+}

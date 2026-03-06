@@ -13,6 +13,7 @@
 #include "afxdialogex.h"
 #include "Page1Dlg.h"
 #include "Page2Dlg.h"
+#include "DemReader.h"
 #include <objbase.h>
 #include <atlbase.h>  // 用于CRegKey注册表操作
 #include <string>
@@ -4946,13 +4947,20 @@ LRESULT CFWGCSDlgDlg::OnMapPickTargetResult(WPARAM wParam, LPARAM lParam)
 	if (m_pPage2Dlg && m_pPage2Dlg->GetSafeHwnd())
 	{
 		// 与发射点一致：界面显示为度数（如 117.158990），发送时 Page2 会按 度*1000000 组包
-		CString strLon, strLat;
+		CString strLon, strLat, strAlt;
 		strLon.Format(_T("%.6f"), pResult->lng);
 		strLat.Format(_T("%.6f"), pResult->lat);
+		double elevM = 0.0;
+		if (DemReaderGetElevation(pResult->lng, pResult->lat, &elevM))
+			strAlt.Format(_T("%d"), (int)(elevM + (elevM >= 0 ? 0.5 : -0.5)));
+		else
+			strAlt = _T("0");
 		CWnd* pLon = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData17);
 		CWnd* pLat = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData18);
+		CWnd* pAlt = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData19);
 		if (pLon) pLon->SetWindowText(strLon);
 		if (pLat) pLat->SetWindowText(strLat);
+		if (pAlt) pAlt->SetWindowText(strAlt);
 	}
 	delete pResult;
 	return 0;
@@ -5013,13 +5021,20 @@ LRESULT CFWGCSDlgDlg::OnMapPickParachuteResult(WPARAM wParam, LPARAM lParam)
 #endif
 	if (m_pPage2Dlg && m_pPage2Dlg->GetSafeHwnd())
 	{
-		CString strLon, strLat;
+		CString strLon, strLat, strAlt;
 		strLon.Format(_T("%.6f"), pResult->lng);
 		strLat.Format(_T("%.6f"), pResult->lat);
+		double elevM = 0.0;
+		if (DemReaderGetElevation(pResult->lng, pResult->lat, &elevM))
+			strAlt.Format(_T("%d"), (int)(elevM + (elevM >= 0 ? 0.5 : -0.5)));
+		else
+			strAlt = _T("0");
 		CWnd* pLon = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData23);
 		CWnd* pLat = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData24);
+		CWnd* pAlt = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData25);
 		if (pLon) pLon->SetWindowText(strLon);
 		if (pLat) pLat->SetWindowText(strLat);
+		if (pAlt) pAlt->SetWindowText(strAlt);
 	}
 	delete pResult;
 	return 0;
@@ -5080,13 +5095,20 @@ LRESULT CFWGCSDlgDlg::OnMapPickLaunchResult(WPARAM wParam, LPARAM lParam)
 #endif
 	if (m_pPage2Dlg && m_pPage2Dlg->GetSafeHwnd())
 	{
-		CString strLon, strLat;
+		CString strLon, strLat, strAlt;
 		strLon.Format(_T("%.6f"), pResult->lng);
 		strLat.Format(_T("%.6f"), pResult->lat);
+		double elevM = 0.0;
+		if (DemReaderGetElevation(pResult->lng, pResult->lat, &elevM))
+			strAlt.Format(_T("%d"), (int)(elevM + (elevM >= 0 ? 0.5 : -0.5)));
+		else
+			strAlt = _T("0");
 		CWnd* pLon = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData2);
 		CWnd* pLat = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData3);
+		CWnd* pAlt = m_pPage2Dlg->GetDlgItem(IDC_Display_EditData4);
 		if (pLon) pLon->SetWindowText(strLon);
 		if (pLat) pLat->SetWindowText(strLat);
+		if (pAlt) pAlt->SetWindowText(strAlt);
 	}
 	delete pResult;
 	return 0;

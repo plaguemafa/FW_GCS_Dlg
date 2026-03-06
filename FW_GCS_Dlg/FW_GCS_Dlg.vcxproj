@@ -74,6 +74,11 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgTriplet Condition="'$(Platform)'=='x64'">x64-windows</VcpkgTriplet>
+    <VcpkgTriplet Condition="'$(Platform)'=='Win32'">x86-windows</VcpkgTriplet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
@@ -188,6 +193,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="DemReader.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="FW_GCS_Dlg.h" />
     <ClInclude Include="FW_GCS_DlgDlg.h" />
@@ -204,6 +210,7 @@
     <ClInclude Include="UdpSettingsDlg.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DemReader.cpp" />
     <ClCompile Include="FW_GCS_Dlg.cpp" />
     <ClCompile Include="FW_GCS_DlgDlg.cpp" />
     <ClCompile Include="MbtilesReader.cpp" />

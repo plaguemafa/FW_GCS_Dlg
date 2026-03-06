@@ -1,0 +1,15 @@
+prefix=${pcfiledir}/../..
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+ccompiler=false #redacted#
+
+Name: netCDF
+Description: NetCDF Client Library for C
+URL: https://www.unidata.ucar.edu/netcdf
+Version: 4.9.3
+Libs: "-L${libdir}" -lnetcdf
+Libs.private:  
+Cflags: "-I${includedir}"
+Requires.private:  libcurl hdf5 hdf5_hl tinyxml2
+

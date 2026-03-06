@@ -11,6 +11,7 @@
 #include "FW_GCS_DlgDlg.h"
 #include "Page2Dlg.h"
 #include "UdpData.h"
+#include "DemReader.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -259,17 +260,24 @@ bool CPage2Dlg::ApplyWaypointFromMap(double lat, double lng)
 		}
 	}
 
-	// 将当前点击经纬度写入第 idx 个航路点（高度保持原值，若为新行则为0）
+	// 将当前点击经纬度写入第 idx 个航路点；高度从 DEM 读取，若无则保持原值或 0
 	if (idx < 0 || idx >= 100)
 		return (m_nNextWaypointIndexForMapPick >= 100);
 
 	double dLongitude = lng;
 	double dLatitude = lat;
 
-	CString strIndex, strLongitude, strLatitude;
+	// 从 DEM 读取该点高程（米），协议中航路点高度为 int16_t 米
+	int16_t altM = 0;
+	double elevM = 0.0;
+	if (DemReaderGetElevation(dLongitude, dLatitude, &elevM))
+		altM = static_cast<int16_t>(elevM + (elevM >= 0 ? 0.5 : -0.5));
+
+	CString strIndex, strLongitude, strLatitude, strAltitude;
 	strIndex.Format(_T("%d"), idx + 1);
 	strLongitude.Format(_T("%.6f"), dLongitude);
 	strLatitude.Format(_T("%.6f"), dLatitude);
+	strAltitude.Format(_T("%d"), altM);
 
 	// 更新列表控件显示
 	if (m_listWaypoints.GetItemCount() <= idx)
@@ -279,6 +287,7 @@ bool CPage2Dlg::ApplyWaypointFromMap(double lat, double lng)
 		{
 			m_listWaypoints.SetItemText(nItem, 1, strLongitude);
 			m_listWaypoints.SetItemText(nItem, 2, strLatitude);
+			m_listWaypoints.SetItemText(nItem, 3, strAltitude);
 		}
 	}
 	else
@@ -286,14 +295,16 @@ bool CPage2Dlg::ApplyWaypointFromMap(double lat, double lng)
 		m_listWaypoints.SetItemText(idx, 0, strIndex);
 		m_listWaypoints.SetItemText(idx, 1, strLongitude);
 		m_listWaypoints.SetItemText(idx, 2, strLatitude);
+		m_listWaypoints.SetItemText(idx, 3, strAltitude);
 	}
 
-	// 更新内存中的航路点数据（协议格式：度 * 1000000）
+	// 更新内存中的航路点数据（协议格式：度 * 1000000，高度为米）
 	m_currentWaypoints[idx].longitude = static_cast<int32_t>(dLongitude * 1000000.0);
 	m_currentWaypoints[idx].latitude = static_cast<int32_t>(dLatitude * 1000000.0);
+	m_currentWaypoints[idx].altitude = altM;
 
-	TRACE(_T("ApplyWaypointFromMap: 航路点 %d 设为 lon=%.6f, lat=%.6f\n"),
-		idx + 1, dLongitude, dLatitude);
+	TRACE(_T("ApplyWaypointFromMap: 航路点 %d 设为 lon=%.6f, lat=%.6f, alt=%d\n"),
+		idx + 1, dLongitude, dLatitude, (int)altM);
 
 	// 准备下一次点击 -> 下一个航路点
 	++m_nNextWaypointIndexForMapPick;
