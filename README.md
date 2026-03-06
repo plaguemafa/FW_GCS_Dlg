@@ -5,4 +5,4 @@
    WebView -Canvas（NuGet）  
    GDAL（vcpkg）
    地图库使用QGIS制作MBtiles瓦片库(调SQLite3.dll)
-   高程数据拟使用QGIS数据通过GDAL获取具体选点高程值
+   高程数据拟使用QGIS数据通过GDAL获取具体选点高程值（基于SRTM_DEM ARC3的虚拟栅格）
