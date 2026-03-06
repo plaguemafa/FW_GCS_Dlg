@@ -210,15 +210,24 @@ function drawBackground(w, h, centerX, centerY, pitch, roll, colors) {
     hudCtx.save();
     hudCtx.translate(centerX, centerY);
     hudCtx.rotate(roll * Math.PI / 180);
-    const pitchPxPerDeg = 3.5;               //刻度间距，单位：像素/度
+    const pitchPxPerDeg = 3.5;               // 刻度间距，单位：像素/度
     const pitchOffset = pitch * pitchPxPerDeg;
     hudCtx.translate(0, pitchOffset);
 
+    // 根据画布尺寸、滚转、俯仰计算背景半宽/半高，使旋转后仍完全覆盖画布（航向仅影响符号，不改变覆盖范围）
+    const rollRad = roll * Math.PI / 180;
+    const cr = Math.abs(Math.cos(rollRad));
+    const sr = Math.abs(Math.sin(rollRad));
+    const halfW = w / 2;
+    const halfH = h / 2;
+    const bgHalfW = halfW * cr + halfH * sr + 2;   // 水平半宽 + 2px 余量
+    const bgHalfH = halfW * sr + halfH * cr + Math.abs(pitchOffset) + 2; // 竖直半高 + 2px 余量
+
     // 填满整个HUD的天空和地面
     hudCtx.fillStyle = colors.sky;
-    hudCtx.fillRect(-w, -h, w * 2, h);
+    hudCtx.fillRect(-bgHalfW, -bgHalfH, bgHalfW * 2, bgHalfH);
     hudCtx.fillStyle = colors.ground;
-    hudCtx.fillRect(-w, 0, w * 2, h);
+    hudCtx.fillRect(-bgHalfW, 0, bgHalfW * 2, bgHalfH);
 
     // // 地平线：短绿线  不绘制地平线
     // hudCtx.strokeStyle = colors.horizon;
