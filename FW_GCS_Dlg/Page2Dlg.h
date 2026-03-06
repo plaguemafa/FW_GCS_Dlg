@@ -90,6 +90,10 @@ public:
 	bool ApplyWaypointFromMap(double lat, double lng);
 	// 重置航路点装订计数器（重新从1号点开始装订）
 	void ResetWaypointPickFromMap();
+	// 当前航路点数量（用于判断是否有历史选点数据）
+	int GetWaypointCount() const { return m_nCurrentWaypointCount; }
+	// 清空航路点列表（经度纬度高度全0）并重置选点计数器，用于“是：全部清除重新选点”
+	void ClearAllWaypointsAndResetPick();
 	
 	// 列表控件编辑相关
 	afx_msg void OnNMDblclkListWaypoints(NMHDR *pNMHDR, LRESULT *pResult);

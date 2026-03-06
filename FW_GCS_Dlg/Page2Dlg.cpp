@@ -209,6 +209,20 @@ void CPage2Dlg::ResetWaypointPickFromMap()
 	m_nNextWaypointIndexForMapPick = 0;
 }
 
+// 清空航路点列表（经度纬度高度全0）并重置选点计数器
+void CPage2Dlg::ClearAllWaypointsAndResetPick()
+{
+	if (m_listWaypoints.GetSafeHwnd() == NULL)
+		return;
+	if (m_nEditingItem >= 0)
+		EndEditCell(FALSE);
+	m_listWaypoints.DeleteAllItems();
+	memset(m_currentWaypoints, 0, sizeof(m_currentWaypoints));
+	m_nCurrentWaypointCount = 0;
+	m_nNextWaypointIndexForMapPick = 0;
+	TRACE(_T("ClearAllWaypointsAndResetPick: 航路点列表已清空，选点从1号开始\n"));
+}
+
 // 从地图选点结果写入第 n 个航路点（第1次点击->1号点，第2次->2号点，以此类推）
 bool CPage2Dlg::ApplyWaypointFromMap(double lat, double lng)
 {
@@ -391,11 +405,11 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	memset(&packet, 0, sizeof(packet));  // 清零，包括waypoints数组
 	packet.frameHeader = 0xF00F;  // 设置帧头（装订参数包）
 	
-	// 填充数据（根据数据类型转换）
-	// 发射点经纬度：界面为度数，协议为 int32_t = 度 * 1000000
+	// 装订数据类型转换
+	// 经纬度相关：单位 度，协议转换约定 int32_t = 度 * 1000000
 	packet.launchLongitude = static_cast<int32_t>(_ttof(strData[2]) * 1000000.0);
 	packet.launchLatitude = static_cast<int32_t>(_ttof(strData[3]) * 1000000.0);
-	packet.launchAltitude = static_cast<int16_t>(_ttoi(strData[4]));             // int16_t
+	packet.launchAltitude = static_cast<int16_t>(_ttoi(strData[4]));             // int16_t DEM数据本身为整形
 	packet.initPitch = static_cast<int16_t>(_ttoi(strData[5]));                  // int16_t
 	packet.initYaw = static_cast<int16_t>(_ttoi(strData[6]));                    // int16_t
 	packet.initRoll = static_cast<int16_t>(_ttoi(strData[7]));                   // int16_t
@@ -434,14 +448,14 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 		TRACE(_T("未勾选加载航路点：waypoints数组已清零（不发送航路点数据）\n"));
 	}
 	
-	// 目标点经纬度：界面为度数（如 117.158990），协议为 int32_t = 度 * 1000000
+	// 目标点经纬度
 	packet.targetLongitude = static_cast<int32_t>(_ttof(strData[17]) * 1000000.0);
 	packet.targetLatitude = static_cast<int32_t>(_ttof(strData[18]) * 1000000.0);
 	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]));           // int16_t
 	packet.launchLongitude2 = static_cast<int32_t>(_ttoi(strData[20]));         // int32_t
 	packet.launchLatitude2 = static_cast<int32_t>(_ttoi(strData[21]));          // int32_t
 	packet.launchAltitude2 = static_cast<int16_t>(_ttoi(strData[22]));          // int16_t
-	// 开伞点经纬度：界面为度数，协议为 int32_t = 度 * 1000000
+	// 开伞点经纬度
 	packet.parachuteLongitude = static_cast<int32_t>(_ttof(strData[23]) * 1000000.0);
 	packet.parachuteLatitude = static_cast<int32_t>(_ttof(strData[24]) * 1000000.0);
 	packet.parachuteAltitude = static_cast<int16_t>(_ttoi(strData[25]));        // int16_t
@@ -492,8 +506,7 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	
 	for (int i = 0; i < nSendCount; i++)
 	{
-		// 发送数据（非阻塞）
-		BOOL bResult = m_pMainDlg->SendUdpDataPublic(&packet, sizeof(packet));
+		BOOL bResult = m_pMainDlg->SendUdpDataPublic(&packet, sizeof(packet));		// 发送数据（非阻塞）
 		
 		if (bResult)
 		{

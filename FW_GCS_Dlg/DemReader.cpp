@@ -16,17 +16,18 @@ static int g_nXSize = 0, g_nYSize = 0;
 static int g_hasNoData = 0;
 static double g_noDataValue = 0.0;
 
+// 默认 DEM 路径：exe 所在文件夹下的 SRTM_DEM\terrain.vrt（Debug 即 x64\Debug\SRTM_DEM\terrain.vrt，Release 即 x64\Release\SRTM_DEM\terrain.vrt）
 static void getDefaultDemPath(char* out_path, size_t out_size)
 {
 	out_path[0] = '\0';
 	WCHAR wpath[MAX_PATH] = { 0 };
 	if (GetModuleFileNameW(NULL, wpath, MAX_PATH) == 0)
 		return;
-	// 去掉可执行文件名，得到目录
+	// 去掉可执行文件名，得到 exe 所在目录
 	WCHAR* pLast = wpath + wcslen(wpath);
 	while (pLast > wpath && *pLast != L'\\') --pLast;
 	if (pLast > wpath) *pLast = L'\0';
-	// 追加 \SRTM_DEM\terrain.vrt
+	// 相对路径：SRTM_DEM\terrain.vrt
 	wcscat_s(wpath, L"\\SRTM_DEM\\terrain.vrt");
 	// 转为 UTF-8
 	const int n = WideCharToMultiByte(CP_UTF8, 0, wpath, -1, out_path, (int)out_size, NULL, NULL);

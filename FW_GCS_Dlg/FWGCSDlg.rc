@@ -206,6 +206,18 @@ BEGIN
     EDITTEXT        IDC_Display_BAUD_RATE,89,57,48,15,ES_CENTER | ES_AUTOHSCROLL,WS_EX_CLIENTEDGE
 END
 
+IDD_WP_CLEAR_DIALOG DIALOGEX 0, 0, 175, 80
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "航点操作选择"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "是",ID_WP_Clear,32,54,50,14
+    PUSHBUTTON      "否",ID_WP_GoOn,94,54,50,14
+    LTEXT           "否：继承历史继续选点。",IDC_STATIC,40,37,86,9
+    LTEXT           "检测到存在历史航点数据！",IDC_STATIC,38,17,95,10
+    LTEXT           "是：清除并重新选点；",IDC_STATIC,40,27,84,10
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -292,6 +304,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 124
     END
+
+    IDD_WP_CLEAR_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 169
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 76
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -322,6 +342,11 @@ BEGIN
 END
 
 IDD_SERIAL_SETTINGS_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_WP_CLEAR_DIALOG AFX_DIALOG_LAYOUT
 BEGIN
     0
 END

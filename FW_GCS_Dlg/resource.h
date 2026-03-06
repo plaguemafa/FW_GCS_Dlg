@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ ?????????????
-// ?? FWGCSDlg.rc ???
+// Microsoft Visual C++ 生成的包含文件。
+// 供 FWGCSDlg.rc 使用
 //
 #define IDI_APPICON                     1
 #define IDD_FW_GCS_DLG_DIALOG           102
@@ -12,6 +12,7 @@
 #define IDD_SERIAL_SETTINGS_DIALOG      139
 #define IDR_CANVAS_HTML                 140
 #define IDR_SCRIPT_JS                   141
+#define IDD_WP_CLEAR_DIALOG             145
 #define IDC_UDPlink                     1000
 #define IDC_SerialLink                  1001
 #define IDC_Display                     1017
@@ -178,6 +179,9 @@
 #define IDC_Display_romoteCOM           1166
 #define IDC_Display_                    1166
 #define IDC_Display_BAUD_RATE           1166
+#define ID_WP_Clear                     1167
+#define ID_WP_GoOn                      1168
+#define ID_WP_Gn                        1168
 #define ID_MENU_OP_PLACEHOLDER          32771
 #define ID_MENU_UDP_SETTINGS            32772
 #define ID_MENU_SERIAL_SETTINGS         32773
@@ -206,9 +210,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        145
+#define _APS_NEXT_RESOURCE_VALUE        147
 #define _APS_NEXT_COMMAND_VALUE         32793
-#define _APS_NEXT_CONTROL_VALUE         1167
+#define _APS_NEXT_CONTROL_VALUE         1169
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

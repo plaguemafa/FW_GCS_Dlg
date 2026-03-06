@@ -976,7 +976,9 @@ if (window.chrome && window.chrome.webview) {
         }
         if (receivedData.command === 'setMapPickWaypoint') {
             mapPickWaypointEnabled = !!receivedData.enabled;
-            if (receivedData.enabled) waypointPickPoints = [];
+            // enabled=true 时，默认清空本地航点标识；但若 keepExisting=true（例如“否：继承历史继续选点”），则保留现有航点标识与编号
+            const keepExisting = !!receivedData.keepExisting;
+            if (receivedData.enabled && !keepExisting) waypointPickPoints = [];
             if (mapEl) mapEl.style.cursor = (mapPickTargetEnabled || mapPickParachuteEnabled || mapPickLaunchEnabled || mapPickWaypointEnabled) ? 'crosshair' : 'default';
             return;
         }

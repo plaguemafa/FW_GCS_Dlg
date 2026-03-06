@@ -4830,6 +4830,31 @@ void CFWGCSDlgDlg::OnUpdateMenuMapWaypointPickConnect(CCmdUI* pCmdUI)
 #endif
 }
 
+// 航点操作选择对话框的回调（是=全部清除重新选点，否=继承历史继续选点）
+static INT_PTR CALLBACK WPClearDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam);
+	switch (msg)
+	{
+	case WM_COMMAND:
+		if (LOWORD(wParam) == ID_WP_Clear)
+		{
+			EndDialog(hDlg, ID_WP_Clear);
+			return TRUE;
+		}
+		if (LOWORD(wParam) == ID_WP_GoOn)
+		{
+			EndDialog(hDlg, ID_WP_GoOn);
+			return TRUE;
+		}
+		break;
+	case WM_CLOSE:
+		EndDialog(hDlg, IDCANCEL);
+		return TRUE;
+	}
+	return FALSE;
+}
+
 // 航路点：地图选点（再次点击关闭），多次点击依次装订1~100号航路点
 void CFWGCSDlgDlg::OnMenuMapWaypointPick()
 {
@@ -4845,17 +4870,35 @@ void CFWGCSDlgDlg::OnMenuMapWaypointPick()
 
 	if (m_mapPickWaypointMode)
 	{
-		// 开启航路点选点：关闭其它选点模式，并重置 Page2 的航路点装订计数器
+		bool keepExistingWaypointsOnMap = false;
+
+		// 若已有历史地图选点数据，弹出“航点操作选择”对话框
+		if (m_pPage2Dlg && m_pPage2Dlg->GetSafeHwnd() && m_pPage2Dlg->GetWaypointCount() > 0)
+		{
+			INT_PTR nResult = DialogBox(AfxGetInstanceHandle(),
+				MAKEINTRESOURCE(IDD_WP_CLEAR_DIALOG), m_hWnd, WPClearDlgProc);
+			if (nResult == ID_WP_Clear)
+				m_pPage2Dlg->ClearAllWaypointsAndResetPick();
+			else if (nResult == ID_WP_GoOn)
+				keepExistingWaypointsOnMap = true;
+			else
+			{
+				// 用户取消（关闭窗口）或异常，不进入选点模式
+				m_mapPickWaypointMode = false;
+				return;
+			}
+			// ID_WP_GoOn：不清空、不重置计数器，从上次序号继续（如下次点击为87号）
+		}
+		else if (m_pPage2Dlg && m_pPage2Dlg->GetSafeHwnd())
+			m_pPage2Dlg->ResetWaypointPickFromMap();  // 首次使用或无历史数据，从1号开始
+
 		m_mapPickTargetMode = false;
 		m_mapPickParachuteMode = false;
 		m_mapPickLaunchMode = false;
 
-		if (m_pPage2Dlg && m_pPage2Dlg->GetSafeHwnd())
-		{
-			m_pPage2Dlg->ResetWaypointPickFromMap();
-		}
-
-		jsonA.Format(R"({"command":"setMapPickWaypoint","enabled":true})");
+		// keepExistingWaypointsOnMap=true 时，前端不会清除已有航点标识，新增标识编号将按历史继续
+		jsonA.Format(R"({"command":"setMapPickWaypoint","enabled":true,"keepExisting":%s})",
+			keepExistingWaypointsOnMap ? "true" : "false");
 		jsonW = CA2W(jsonA.GetString());
 		m_webView->PostWebMessageAsJson(jsonW.c_str());
 
