@@ -445,9 +445,15 @@ void CPage2Dlg::OnBnClickedButtonLoadData2GUI()
 	LoadPage2DataToMap();
 }
 
-// 保留给后续“保存到 xml”功能，当前无任何处理
+// 保存当前数据至 xml 文件：将本页编辑框与航路点列表写入可执行文件目录下的 waypoints.xml
 void CPage2Dlg::OnBnClickedButtonSaveData2xml()
 {
+	if (m_nEditingItem >= 0)
+		EndEditCell(FALSE);
+	if (SavePage2DataToXml())
+		MessageBox(_T("已保存到 waypoints.xml"), _T("保存成功"), MB_OK | MB_ICONINFORMATION);
+	else
+		MessageBox(_T("保存失败，请检查文件路径或权限。"), _T("保存失败"), MB_OK | MB_ICONWARNING);
 }
 
 //UDP发送装订参数数据
@@ -945,6 +951,162 @@ BOOL CPage2Dlg::LoadSendDataFromXml()
 	}
 	if (bNeedUninit) CoUninitialize();
 	TRACE(_T("LoadSendDataFromXml: 装订参数已从 waypoints.xml 的 sendData 加载到界面\n"));
+	return bOk;
+}
+
+// 将本页编辑框与航路点列表保存到可执行文件目录下的 waypoints.xml（格式与 Load 一致）
+BOOL CPage2Dlg::SavePage2DataToXml()
+{
+	TCHAR szModulePath[MAX_PATH];
+	GetModuleFileName(NULL, szModulePath, MAX_PATH);
+	CString strExePath = szModulePath;
+	int nLastSlash = strExePath.ReverseFind(_T('\\'));
+	if (nLastSlash >= 0)
+		strExePath = strExePath.Left(nLastSlash + 1);
+	CString strFilePath = strExePath + _T("waypoints.xml");
+
+	CString strData[29];
+	if (m_editSendData2.GetSafeHwnd())  m_editSendData2.GetWindowText(strData[2]);
+	if (m_editSendData3.GetSafeHwnd())  m_editSendData3.GetWindowText(strData[3]);
+	if (m_editSendData4.GetSafeHwnd())  m_editSendData4.GetWindowText(strData[4]);
+	if (m_editSendData5.GetSafeHwnd())  m_editSendData5.GetWindowText(strData[5]);
+	if (m_editSendData6.GetSafeHwnd())  m_editSendData6.GetWindowText(strData[6]);
+	if (m_editSendData7.GetSafeHwnd())  m_editSendData7.GetWindowText(strData[7]);
+	if (m_editSendData8.GetSafeHwnd())  m_editSendData8.GetWindowText(strData[8]);
+	if (m_editSendData9.GetSafeHwnd())  m_editSendData9.GetWindowText(strData[9]);
+	if (m_editSendData10.GetSafeHwnd()) m_editSendData10.GetWindowText(strData[10]);
+	if (m_editSendData11.GetSafeHwnd()) m_editSendData11.GetWindowText(strData[11]);
+	if (m_editSendData12.GetSafeHwnd()) m_editSendData12.GetWindowText(strData[12]);
+	if (m_editSendData13.GetSafeHwnd()) m_editSendData13.GetWindowText(strData[13]);
+	if (m_editSendData14.GetSafeHwnd()) m_editSendData14.GetWindowText(strData[14]);
+	if (m_editSendData15.GetSafeHwnd()) m_editSendData15.GetWindowText(strData[15]);
+	if (m_editSendData16.GetSafeHwnd()) m_editSendData16.GetWindowText(strData[16]);
+	if (m_editSendData17.GetSafeHwnd()) m_editSendData17.GetWindowText(strData[17]);
+	if (m_editSendData18.GetSafeHwnd()) m_editSendData18.GetWindowText(strData[18]);
+	if (m_editSendData19.GetSafeHwnd()) m_editSendData19.GetWindowText(strData[19]);
+	if (m_editSendData20.GetSafeHwnd()) m_editSendData20.GetWindowText(strData[20]);
+	if (m_editSendData21.GetSafeHwnd()) m_editSendData21.GetWindowText(strData[21]);
+	if (m_editSendData22.GetSafeHwnd()) m_editSendData22.GetWindowText(strData[22]);
+	if (m_editSendData23.GetSafeHwnd()) m_editSendData23.GetWindowText(strData[23]);
+	if (m_editSendData24.GetSafeHwnd()) m_editSendData24.GetWindowText(strData[24]);
+	if (m_editSendData25.GetSafeHwnd()) m_editSendData25.GetWindowText(strData[25]);
+	if (m_editSendData26.GetSafeHwnd()) m_editSendData26.GetWindowText(strData[26]);
+	if (m_editSendData27.GetSafeHwnd()) m_editSendData27.GetWindowText(strData[27]);
+	if (m_editSendData28.GetSafeHwnd()) m_editSendData28.GetWindowText(strData[28]);
+
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	BOOL bNeedUninit = SUCCEEDED(hr);
+	if (FAILED(hr) && hr != RPC_E_CHANGED_MODE)
+		return FALSE;
+
+	BOOL bOk = FALSE;
+	{
+		CComPtr<IXMLDOMDocument> spDoc;
+		hr = spDoc.CoCreateInstance(__uuidof(DOMDocument60));
+		if (FAILED(hr))
+		{
+			if (bNeedUninit) CoUninitialize();
+			return FALSE;
+		}
+		spDoc->put_async(VARIANT_FALSE);
+
+		CComPtr<IXMLDOMElement> spRoot;
+		hr = spDoc->createElement(CComBSTR(L"waypoints"), &spRoot);
+		if (FAILED(hr) || spRoot == NULL)
+		{
+			if (bNeedUninit) CoUninitialize();
+			return FALSE;
+		}
+		CComPtr<IXMLDOMNode> spRootNode;
+		hr = spDoc->appendChild(spRoot, &spRootNode);
+		if (FAILED(hr))
+		{
+			if (bNeedUninit) CoUninitialize();
+			return FALSE;
+		}
+
+		// 航路点节点：与 LoadWaypointsFromXml 格式一致（longitude/latitude 度浮点，altitude 米）
+		for (int i = 0; i < m_nCurrentWaypointCount && i < 100; i++)
+		{
+			CComPtr<IXMLDOMElement> spWp;
+			hr = spDoc->createElement(CComBSTR(L"waypoint"), &spWp);
+			if (FAILED(hr) || spWp == NULL) continue;
+			double lon = m_currentWaypoints[i].longitude / 1000000.0;
+			double lat = m_currentWaypoints[i].latitude / 1000000.0;
+			CString strLon, strLat, strAlt;
+			strLon.Format(_T("%.6f"), lon);
+			strLat.Format(_T("%.6f"), lat);
+			strAlt.Format(_T("%d"), (int)m_currentWaypoints[i].altitude);
+			CComPtr<IXMLDOMText> spText;
+			CComPtr<IXMLDOMElement> spChild;
+			hr = spDoc->createElement(CComBSTR(L"longitude"), &spChild);
+			if (SUCCEEDED(hr) && spChild)
+			{
+				hr = spDoc->createTextNode(CComBSTR(strLon), &spText);
+				if (SUCCEEDED(hr) && spText) spChild->appendChild(spText, NULL);
+				spWp->appendChild(spChild, NULL);
+			}
+			spChild.Release();
+			spText.Release();
+			hr = spDoc->createElement(CComBSTR(L"latitude"), &spChild);
+			if (SUCCEEDED(hr) && spChild)
+			{
+				hr = spDoc->createTextNode(CComBSTR(strLat), &spText);
+				if (SUCCEEDED(hr) && spText) spChild->appendChild(spText, NULL);
+				spWp->appendChild(spChild, NULL);
+			}
+			spChild.Release();
+			spText.Release();
+			hr = spDoc->createElement(CComBSTR(L"altitude"), &spChild);
+			if (SUCCEEDED(hr) && spChild)
+			{
+				hr = spDoc->createTextNode(CComBSTR(strAlt), &spText);
+				if (SUCCEEDED(hr) && spText) spChild->appendChild(spText, NULL);
+				spWp->appendChild(spChild, NULL);
+			}
+			spRoot->appendChild(spWp, NULL);
+		}
+
+		// sendData 节点：与 LoadSendDataFromXml 子节点名一致
+		struct _SendDataItem { LPCTSTR name; CString& value; };
+		_SendDataItem sendItems[] = {
+			{ _T("launchLongitude"),    strData[2] },  { _T("launchLatitude"),    strData[3] },  { _T("launchAltitude"),    strData[4] },
+			{ _T("initPitch"),          strData[5] },  { _T("initYaw"),            strData[6] },  { _T("initRoll"),           strData[7] },
+			{ _T("initPitchRate"),      strData[8] },  { _T("initYawRate"),        strData[9] },  { _T("initRollRate"),       strData[10] },
+			{ _T("initNorthVelocity"),  strData[11] }, { _T("initEastVelocity"),   strData[12] }, { _T("initVerticalVelocity"), strData[13] },
+			{ _T("initNorthAccel"),     strData[14] }, { _T("initEastAccel"),      strData[15] }, { _T("initVerticalAccel"),  strData[16] },
+			{ _T("targetLongitude"),    strData[17] }, { _T("targetLatitude"),     strData[18] }, { _T("targetAltitude"),     strData[19] },
+			{ _T("launchLongitude2"),   strData[20] }, { _T("launchLatitude2"),    strData[21] }, { _T("launchAltitude2"),    strData[22] },
+			{ _T("parachuteLongitude"), strData[23] }, { _T("parachuteLatitude"),  strData[24] }, { _T("parachuteAltitude"),  strData[25] },
+			{ _T("elevatorCmd"),        strData[26] }, { _T("aileronCmd"),         strData[27] }, { _T("airspeedSet"),        strData[28] }
+		};
+		CComPtr<IXMLDOMElement> spSendData;
+		hr = spDoc->createElement(CComBSTR(L"sendData"), &spSendData);
+		if (SUCCEEDED(hr) && spSendData)
+		{
+			for (int k = 0; k < _countof(sendItems); k++)
+			{
+				CComPtr<IXMLDOMElement> spEl;
+				hr = spDoc->createElement(CComBSTR(sendItems[k].name), &spEl);
+				if (SUCCEEDED(hr) && spEl)
+				{
+					CString& v = sendItems[k].value;
+					if (v.IsEmpty()) v = _T("0");
+					CComPtr<IXMLDOMText> spText;
+					hr = spDoc->createTextNode(CComBSTR(v), &spText);
+					if (SUCCEEDED(hr) && spText) spEl->appendChild(spText, NULL);
+					spSendData->appendChild(spEl, NULL);
+				}
+			}
+			spRoot->appendChild(spSendData, NULL);
+		}
+
+		CComVariant varPath(strFilePath);
+		hr = spDoc->save(varPath);
+		bOk = SUCCEEDED(hr);
+	}
+	if (bNeedUninit) CoUninitialize();
+	TRACE(_T("SavePage2DataToXml: %s\n"), bOk ? _T("保存成功") : _T("保存失败"));
 	return bOk;
 }
 

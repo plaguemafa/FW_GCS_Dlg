@@ -79,6 +79,8 @@ public:
 	BOOL LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount);
 	// 从 waypoints.xml 的 sendData 节点加载装订参数到 EditData2~28 控件（不涉及航路点列表）
 	BOOL LoadSendDataFromXml();
+	// 将本页编辑框与航路点列表保存到可执行文件目录下的 waypoints.xml
+	BOOL SavePage2DataToXml();
 
 	// 显示航路点数据到列表控件
 	void DisplayWaypoints(const Waypoint waypoints[100], int nCount);
@@ -103,8 +105,7 @@ public:
 	// 将 PAGE2 编辑框/航路点列表数据按当前绘图逻辑加载到地图（由“加载当前数据至主GUI”按钮调用）
 	void LoadPage2DataToMap();
 	afx_msg void OnBnClickedButtonLoadData2GUI();  // 加载当前数据至主GUI：将本页数据加载到地图绘图
-	// 保留给后续“保存到 xml”功能，当前无任何处理
-	afx_msg void OnBnClickedButtonSaveData2xml();
+	afx_msg void OnBnClickedButtonSaveData2xml();  // 保存当前数据至 xml 文件
 
 private:
 	CFWGCSDlgDlg* m_pMainDlg;  // 主对话框指针
