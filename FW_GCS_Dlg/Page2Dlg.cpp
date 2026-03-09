@@ -47,6 +47,8 @@ void CPage2Dlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CPage2Dlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_SendData, &CPage2Dlg::OnBnClickedButtonSendData)
+	ON_BN_CLICKED(IDC_BUTTON_LoadData2GUI, &CPage2Dlg::OnBnClickedButtonLoadData2GUI)
+	ON_BN_CLICKED(IDC_BUTTON_SaveData2xml, &CPage2Dlg::OnBnClickedButtonSaveData2xml)
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_Waypoints, &CPage2Dlg::OnNMDblclkListWaypoints)
 	ON_NOTIFY(NM_CLICK, IDC_LIST_Waypoints, &CPage2Dlg::OnNMClickListWaypoints)
 	ON_EN_KILLFOCUS(1001, &CPage2Dlg::OnEnKillfocusEditInline)
@@ -363,6 +365,89 @@ void CPage2Dlg::UpdateDisplay(const UdpRecvDataPacket* pPacket)
 	// Page2对话框当前不显示接收数据，此函数保留为空实现
 	// 如果将来需要在Page2显示接收数据，可以在此添加相应控件和更新逻辑
 	(void)pPacket;  // 避免未使用参数警告
+}
+
+// 辅助：判断经纬高三个值是否均为 0（空或 "0" 视为 0）
+static bool IsGroupAllZero(double lon, double lat, double alt)
+{
+	return (lon == 0.0 && lat == 0.0 && alt == 0.0);
+}
+
+// 将 PAGE2 编辑框/航路点列表数据按当前绘图逻辑加载到地图；经纬高全 0 的组跳过，已有绘制的也跳过
+void CPage2Dlg::LoadPage2DataToMap()
+{
+	if (!m_pMainDlg) return;
+
+	CString strData[26];
+	if (m_editSendData2.GetSafeHwnd())  m_editSendData2.GetWindowText(strData[2]);
+	if (m_editSendData3.GetSafeHwnd())  m_editSendData3.GetWindowText(strData[3]);
+	if (m_editSendData4.GetSafeHwnd())  m_editSendData4.GetWindowText(strData[4]);
+	if (m_editSendData17.GetSafeHwnd()) m_editSendData17.GetWindowText(strData[17]);
+	if (m_editSendData18.GetSafeHwnd()) m_editSendData18.GetWindowText(strData[18]);
+	if (m_editSendData19.GetSafeHwnd()) m_editSendData19.GetWindowText(strData[19]);
+	if (m_editSendData23.GetSafeHwnd()) m_editSendData23.GetWindowText(strData[23]);
+	if (m_editSendData24.GetSafeHwnd()) m_editSendData24.GetWindowText(strData[24]);
+	if (m_editSendData25.GetSafeHwnd()) m_editSendData25.GetWindowText(strData[25]);
+
+	double launchLon = _ttof(strData[2]),  launchLat = _ttof(strData[3]),  launchAlt = _ttof(strData[4]);
+	double targetLon = _ttof(strData[17]), targetLat = _ttof(strData[18]), targetAlt = _ttof(strData[19]);
+	double paraLon   = _ttof(strData[23]), paraLat   = _ttof(strData[24]), paraAlt   = _ttof(strData[25]);
+
+	CStringA jsonA;
+	jsonA = "{\"command\":\"loadPage2PointsToMap\"";
+
+	if (!IsGroupAllZero(launchLon, launchLat, launchAlt))
+	{
+		CStringA part;
+		part.Format(",\"launch\":{\"lat\":%.6f,\"lng\":%.6f}", launchLat, launchLon);
+		jsonA += part;
+	}
+	if (!IsGroupAllZero(targetLon, targetLat, targetAlt))
+	{
+		CStringA part;
+		part.Format(",\"target\":{\"lat\":%.6f,\"lng\":%.6f}", targetLat, targetLon);
+		jsonA += part;
+	}
+	if (!IsGroupAllZero(paraLon, paraLat, paraAlt))
+	{
+		CStringA part;
+		part.Format(",\"parachute\":{\"lat\":%.6f,\"lng\":%.6f}", paraLat, paraLon);
+		jsonA += part;
+	}
+
+	// 航路点：从 m_currentWaypoints 取，经纬高全 0 的跳过
+	CStringA waypointsJson;
+	for (int i = 0; i < m_nCurrentWaypointCount && i < 100; i++)
+	{
+		const Waypoint& w = m_currentWaypoints[i];
+		double lon = w.longitude / 1000000.0;
+		double lat = w.latitude / 1000000.0;
+		double alt = static_cast<double>(w.altitude);
+		if (IsGroupAllZero(lon, lat, alt)) continue;
+		if (!waypointsJson.IsEmpty()) waypointsJson += ",";
+		CStringA item;
+		item.Format("{\"lat\":%.6f,\"lng\":%.6f}", lat, lon);
+		waypointsJson += item;
+	}
+	if (!waypointsJson.IsEmpty())
+		jsonA += ",\"waypoints\":[" + waypointsJson + "]";
+
+	jsonA += "}";
+	m_pMainDlg->PostMapMessageFromPage2(jsonA);
+}
+
+// 加载当前数据至主GUI：将本页数据加载到地图绘图
+void CPage2Dlg::OnBnClickedButtonLoadData2GUI()
+{
+	// 若列表正在内联编辑，先结束编辑并写回数据，避免直接点加载时未提交导致绘制错误
+	if (m_nEditingItem >= 0)
+		EndEditCell(FALSE);
+	LoadPage2DataToMap();
+}
+
+// 保留给后续“保存到 xml”功能，当前无任何处理
+void CPage2Dlg::OnBnClickedButtonSaveData2xml()
+{
 }
 
 //UDP发送装订参数数据

@@ -1018,6 +1018,31 @@ if (window.chrome && window.chrome.webview) {
             }
             return;
         }
+        // PAGE2 装订数据加载到地图：每次均按报文覆盖（支持用户在 Page2 编辑后再次点击菜单应用更改）；经纬高全 0 的组 C++ 不发送，对应项清空
+        if (receivedData.command === 'loadPage2PointsToMap') {
+            launchPickPoint = (receivedData.launch != null)
+                ? { lat: receivedData.launch.lat, lng: receivedData.launch.lng }
+                : { lat: null, lng: null };
+            targetPickPoint = (receivedData.target != null)
+                ? { lat: receivedData.target.lat, lng: receivedData.target.lng }
+                : { lat: null, lng: null };
+            parachutePoint = (receivedData.parachute != null)
+                ? { lat: receivedData.parachute.lat, lng: receivedData.parachute.lng }
+                : { lat: null, lng: null };
+            waypointPickPoints = (receivedData.waypoints != null && Array.isArray(receivedData.waypoints))
+                ? receivedData.waypoints.slice()
+                : [];
+            if (aircraftCanvas && aircraftCtx) {
+                drawAircraftOnMap(aircraftData.latitude, aircraftData.longitude, aircraftData.course);
+                drawTargetOnMap(targetData.latitude, targetData.longitude, targetData.course);
+                drawParachuteOnMap(parachutePoint.lat, parachutePoint.lng);
+                drawTargetPickOnMap(targetPickPoint.lat, targetPickPoint.lng);
+                drawLaunchPickOnMap(launchPickPoint.lat, launchPickPoint.lng);
+                drawWaypointPickOnMap();
+                drawWaypointConnectOnMap();
+            }
+            return;
+        }
 
         // 其余视为 HUD / 地图数据
         hudState = receivedData;

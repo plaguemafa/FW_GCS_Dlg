@@ -477,7 +477,6 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_TARGET_PICK, _T("目标点：地图选点"));
 			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_PARACHUTE_PICK, _T("开伞点：地图选点"));
 			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_LAUNCH_PICK, _T("发射点：地图选点"));
-			menu4.AppendMenu(MF_STRING | MF_GRAYED, ID_MENU_OP_PLACEHOLDER, _T("加载数据文件至主GUI"));
 			menu4.AppendMenu(MF_STRING, ID_MENU_SHOW_PAGE2, _T("装订数据"));
 			
 			menu5.AppendMenu(MF_STRING, ID_MENU_UDP_SETTINGS, _T("UDP通信设置"));
@@ -5155,6 +5154,18 @@ LRESULT CFWGCSDlgDlg::OnMapPickLaunchResult(WPARAM wParam, LPARAM lParam)
 	}
 	delete pResult;
 	return 0;
+}
+
+// 供 Page2 将装订数据加载到地图：向 WebView2 发送 JSON 消息
+void CFWGCSDlgDlg::PostMapMessageFromPage2(const CStringA& jsonA)
+{
+#if FW_GCS_WITH_WEBVIEW2
+	if (m_webView && !jsonA.IsEmpty())
+	{
+		std::wstring jsonW(CA2W(jsonA.GetString()));
+		m_webView->PostWebMessageAsJson(jsonW.c_str());
+	}
+#endif
 }
 
 // 航路点选点结果：将经纬度按1~100顺序写入 Page2 的航路点列表（IDC_LIST_Waypoints）

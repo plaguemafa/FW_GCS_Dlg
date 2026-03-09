@@ -330,6 +330,8 @@ public:
 public:
 	// 提供给子对话框安全调用的UDP发送封装
 	BOOL SendUdpDataPublic(const void* pData, int nSize) { return SendUdpData(pData, nSize); }
+	// 供 Page2 将装订数据加载到地图：向 WebView2 发送 JSON 消息
+	void PostMapMessageFromPage2(const CStringA& jsonA);
 
 private:
 	// 离线地图（MBTiles + WebView2）

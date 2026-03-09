@@ -100,7 +100,12 @@ public:
 	afx_msg void OnNMClickListWaypoints(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnEnKillfocusEditInline();
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam) override;
-	
+	// 将 PAGE2 编辑框/航路点列表数据按当前绘图逻辑加载到地图（由“加载当前数据至主GUI”按钮调用）
+	void LoadPage2DataToMap();
+	afx_msg void OnBnClickedButtonLoadData2GUI();  // 加载当前数据至主GUI：将本页数据加载到地图绘图
+	// 保留给后续“保存到 xml”功能，当前无任何处理
+	afx_msg void OnBnClickedButtonSaveData2xml();
+
 private:
 	CFWGCSDlgDlg* m_pMainDlg;  // 主对话框指针
 	CEdit m_editInline;         // 内联编辑控件
