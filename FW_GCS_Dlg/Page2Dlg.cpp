@@ -314,9 +314,9 @@ bool CPage2Dlg::ApplyWaypointFromMap(double lat, double lng)
 		m_listWaypoints.SetItemText(idx, 3, strAltitude);
 	}
 
-	// 更新内存中的航路点数据（协议格式：度 * 1000000，高度为米）
-	m_currentWaypoints[idx].longitude = static_cast<int32_t>(dLongitude * 1000000.0);
-	m_currentWaypoints[idx].latitude = static_cast<int32_t>(dLatitude * 1000000.0);
+	// 更新内存中的航路点数据（协议格式：度 * 10000000，高度为米）
+	m_currentWaypoints[idx].longitude = static_cast<int32_t>(dLongitude * 10000000.0);
+	m_currentWaypoints[idx].latitude = static_cast<int32_t>(dLatitude * 10000000.0);
 	m_currentWaypoints[idx].altitude = altM;
 
 	TRACE(_T("ApplyWaypointFromMap: 航路点 %d 设为 lon=%.6f, lat=%.6f, alt=%d\n"),
@@ -420,8 +420,8 @@ void CPage2Dlg::LoadPage2DataToMap()
 	for (int i = 0; i < m_nCurrentWaypointCount && i < 100; i++)
 	{
 		const Waypoint& w = m_currentWaypoints[i];
-		double lon = w.longitude / 1000000.0;
-		double lat = w.latitude / 1000000.0;
+		double lon = w.longitude / 10000000.0;
+		double lat = w.latitude / 10000000.0;
 		double alt = static_cast<double>(w.altitude);
 		if (IsGroupAllZero(lon, lat, alt)) continue;
 		if (!waypointsJson.IsEmpty()) waypointsJson += ",";
@@ -497,22 +497,21 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.frameHeader = 0xF00F;  // 设置帧头（装订参数包）
 	
 	// 装订数据类型转换
-	// 经纬度相关：单位 度，协议转换约定 int32_t = 度 * 1000000
-	packet.launchLongitude = static_cast<int32_t>(_ttof(strData[2]) * 1000000.0);
-	packet.launchLatitude = static_cast<int32_t>(_ttof(strData[3]) * 1000000.0);
-	packet.launchAltitude = static_cast<int16_t>(_ttoi(strData[4]));             // int16_t DEM数据本身为整形
-	packet.initPitch = static_cast<int16_t>(_ttoi(strData[5]));                  // int16_t
-	packet.initYaw = static_cast<int16_t>(_ttoi(strData[6]));                    // int16_t
-	packet.initRoll = static_cast<int16_t>(_ttoi(strData[7]));                   // int16_t
-	packet.initPitchRate = static_cast<int16_t>(_ttoi(strData[8]));              // int16_t
-	packet.initYawRate = static_cast<int16_t>(_ttoi(strData[9]));                // int16_t
-	packet.initRollRate = static_cast<int16_t>(_ttoi(strData[10]));              // int16_t
-	packet.initNorthVelocity = static_cast<int16_t>(_ttoi(strData[11]));         // int16_t
-	packet.initEastVelocity = static_cast<int16_t>(_ttoi(strData[12]));          // int16_t
-	packet.initVerticalVelocity = static_cast<int16_t>(_ttoi(strData[13]));      // int16_t
-	packet.initNorthAccel = static_cast<int16_t>(_ttoi(strData[14]));            // int16_t
-	packet.initEastAccel = static_cast<int16_t>(_ttoi(strData[15]));             // int16_t
-	packet.initVerticalAccel = static_cast<int16_t>(_ttoi(strData[16]));         // int16_t
+	packet.launchLongitude = static_cast<int32_t>(_ttof(strData[2]) * 10000000.0); //发射点经纬度
+	packet.launchLatitude = static_cast<int32_t>(_ttof(strData[3]) * 10000000.0);
+	packet.launchAltitude = static_cast<int16_t>(_ttoi(strData[4]) * 10.0);
+	packet.initPitch = static_cast<int16_t>(_ttoi(strData[5]) * 10.0);
+	packet.initYaw = static_cast<int16_t>(_ttoi(strData[6]) * 10.0);
+	packet.initRoll = static_cast<int16_t>(_ttoi(strData[7]) * 10.0);
+	packet.initPitchRate = static_cast<int16_t>(_ttoi(strData[8]) * 10.0);
+	packet.initYawRate = static_cast<int16_t>(_ttoi(strData[9]) * 10.0);
+	packet.initRollRate = static_cast<int16_t>(_ttoi(strData[10]) * 10.0);
+	packet.initNorthVelocity = static_cast<int16_t>(_ttoi(strData[11]) * 10.0);
+	packet.initEastVelocity = static_cast<int16_t>(_ttoi(strData[12]) * 10.0);
+	packet.initVerticalVelocity = static_cast<int16_t>(_ttoi(strData[13]) * 10.0);
+	packet.initNorthAccel = static_cast<int16_t>(_ttoi(strData[14]) * 10.0);
+	packet.initEastAccel = static_cast<int16_t>(_ttoi(strData[15]) * 10.0);
+	packet.initVerticalAccel = static_cast<int16_t>(_ttoi(strData[16]) * 10.0);
 	
 	// ============================================================
 	// 根据复选框状态决定是否在发送数据包中包含航路点数据
@@ -540,16 +539,16 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	}
 	
 	// 目标点经纬度
-	packet.targetLongitude = static_cast<int32_t>(_ttof(strData[17]) * 1000000.0);
-	packet.targetLatitude = static_cast<int32_t>(_ttof(strData[18]) * 1000000.0);
-	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]));           // int16_t
-	packet.launchLongitude2 = static_cast<int32_t>(_ttoi(strData[20]));         // int32_t
-	packet.launchLatitude2 = static_cast<int32_t>(_ttoi(strData[21]));          // int32_t
-	packet.launchAltitude2 = static_cast<int16_t>(_ttoi(strData[22]));          // int16_t
+	packet.targetLongitude = static_cast<int32_t>(_ttof(strData[17]) * 10000000.0);
+	packet.targetLatitude = static_cast<int32_t>(_ttof(strData[18]) * 10000000.0);
+	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]) * 10.0);           // int16_t
+	packet.launchLongitude2 = static_cast<int32_t>(_ttof(strData[20]) * 10000000.0);         // int32_t
+	packet.launchLatitude2 = static_cast<int32_t>(_ttof(strData[21]) * 10000000.0);          // int32_t
+	packet.launchAltitude2 = static_cast<int16_t>(_ttoi(strData[22]) * 10.0);          // int16_t
 	// 开伞点经纬度
-	packet.parachuteLongitude = static_cast<int32_t>(_ttof(strData[23]) * 1000000.0);
-	packet.parachuteLatitude = static_cast<int32_t>(_ttof(strData[24]) * 1000000.0);
-	packet.parachuteAltitude = static_cast<int16_t>(_ttoi(strData[25]));        // int16_t
+	packet.parachuteLongitude = static_cast<int32_t>(_ttof(strData[23]) * 10000000.0);
+	packet.parachuteLatitude = static_cast<int32_t>(_ttof(strData[24]) * 10000000.0);
+	packet.parachuteAltitude = static_cast<int16_t>(_ttoi(strData[25]) * 10.0);        // int16_t
 	packet.elevatorCmd = static_cast<int8_t>(_ttoi(strData[26]));               // int8_t
 	packet.aileronCmd = static_cast<int8_t>(_ttoi(strData[27]));                // int8_t
 	packet.airspeedSet = static_cast<uint8_t>(_ttoi(strData[28]));              // uint8_t
@@ -778,9 +777,9 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 				spLongitudeNode->get_text(&bstrText);
 				if (bstrText.Length() > 0)
 				{
-					// 读取浮点数并转换为int32_t（度 * 1000000）
+					// 读取浮点数并转换为int32_t（度 * 10000000）
 					double dLongitude = _tstof(CString(bstrText));
-					waypoints[i].longitude = static_cast<int32_t>(dLongitude * 1000000.0);
+					waypoints[i].longitude = static_cast<int32_t>(dLongitude * 10000000.0);
 					// TRACE(_T("航路点 %d: longitude=%.6f度 -> %d\n"), i + 1, dLongitude, waypoints[i].longitude);
 				}
 			}
@@ -794,9 +793,9 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 				spLatitudeNode->get_text(&bstrText);
 				if (bstrText.Length() > 0)
 				{
-					// 读取浮点数并转换为int32_t（度 * 1000000）
+					// 读取浮点数并转换为int32_t（度 * 10000000）
 					double dLatitude = _tstof(CString(bstrText));
-					waypoints[i].latitude = static_cast<int32_t>(dLatitude * 1000000.0);
+					waypoints[i].latitude = static_cast<int32_t>(dLatitude * 10000000.0);
 					// TRACE(_T("航路点 %d: latitude=%.6f度 -> %d\n"), i + 1, dLatitude, waypoints[i].latitude);
 				}
 			}
@@ -812,7 +811,7 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 				{
 					// 读取浮点数并转换为int16_t（米）
 					double dAltitude = _tstof(CString(bstrText));
-					waypoints[i].altitude = static_cast<int16_t>(dAltitude);
+					waypoints[i].altitude = static_cast<int16_t>(dAltitude * 10.0);
 					// TRACE(_T("航路点 %d: altitude=%.2f米 -> %d\n"), i + 1, dAltitude, waypoints[i].altitude);
 				}
 			}
@@ -1031,11 +1030,11 @@ BOOL CPage2Dlg::SavePage2DataToXml()
 			CComPtr<IXMLDOMElement> spWp;
 			hr = spDoc->createElement(CComBSTR(L"waypoint"), &spWp);
 			if (FAILED(hr) || spWp == NULL) continue;
-			double lon = m_currentWaypoints[i].longitude / 1000000.0;
-			double lat = m_currentWaypoints[i].latitude / 1000000.0;
+			double lon = m_currentWaypoints[i].longitude / 10000000.0;
+			double lat = m_currentWaypoints[i].latitude / 10000000.0;
 			CString strLon, strLat, strAlt;
-			strLon.Format(_T("%.6f"), lon);
-			strLat.Format(_T("%.6f"), lat);
+			strLon.Format(_T("%.7f"), lon);
+			strLat.Format(_T("%.7f"), lat);
 			strAlt.Format(_T("%d"), (int)m_currentWaypoints[i].altitude);
 			CComPtr<IXMLDOMText> spText;
 			CComPtr<IXMLDOMElement> spChild;
@@ -1139,16 +1138,16 @@ void CPage2Dlg::DisplayWaypoints(const Waypoint waypoints[100], int nCount)
 	{
 		// 将协议格式转换为显示格式
 		// 经度/纬度：从 int32_t（度 * 1000000）转换为浮点数（度）
-		double dLongitude = waypoints[i].longitude / 1000000.0;
-		double dLatitude = waypoints[i].latitude / 1000000.0;
+		double dLongitude = waypoints[i].longitude / 10000000.0;
+		double dLatitude = waypoints[i].latitude / 10000000.0;
 		// 高度：int16_t（米）直接显示
 		int nAltitude = waypoints[i].altitude;
 		
 		// 格式化字符串
 		CString strIndex, strLongitude, strLatitude, strAltitude;
 		strIndex.Format(_T("%d"), i + 1);
-		strLongitude.Format(_T("%.6f"), dLongitude);
-		strLatitude.Format(_T("%.6f"), dLatitude);
+		strLongitude.Format(_T("%.7f"), dLongitude);
+		strLatitude.Format(_T("%.7f"), dLatitude);
 		strAltitude.Format(_T("%d"), nAltitude);
 		
 		// 插入行
@@ -1283,18 +1282,18 @@ void CPage2Dlg::EndEditCell(BOOL bCancel)
 			switch (m_nEditingSubItem)
 			{
 			case 1:  // 经度
-				m_currentWaypoints[m_nEditingItem].longitude = static_cast<int32_t>(dValue * 1000000.0);
-				TRACE(_T("航路点 %d 经度更新为: %.6f度 (%d)\n"), 
+				m_currentWaypoints[m_nEditingItem].longitude = static_cast<int32_t>(dValue * 10000000.0);
+				TRACE(_T("航路点 %d 经度更新为: %.7f度 (%d)\n"), 
 					m_nEditingItem + 1, dValue, m_currentWaypoints[m_nEditingItem].longitude);
 				break;
 			case 2:  // 纬度
-				m_currentWaypoints[m_nEditingItem].latitude = static_cast<int32_t>(dValue * 1000000.0);
-				TRACE(_T("航路点 %d 纬度更新为: %.6f度 (%d)\n"), 
+				m_currentWaypoints[m_nEditingItem].latitude = static_cast<int32_t>(dValue * 10000000.0);
+				TRACE(_T("航路点 %d 纬度更新为: %.7f度 (%d)\n"), 
 					m_nEditingItem + 1, dValue, m_currentWaypoints[m_nEditingItem].latitude);
 				break;
 			case 3:  // 高度
 				m_currentWaypoints[m_nEditingItem].altitude = static_cast<int16_t>(dValue);
-				TRACE(_T("航路点 %d 高度更新为: %.2f米 (%d)\n"), 
+				TRACE(_T("航路点 %d 高度更新为: %.1f米 (%d)\n"), 
 					m_nEditingItem + 1, dValue, m_currentWaypoints[m_nEditingItem].altitude);
 				break;
 			}

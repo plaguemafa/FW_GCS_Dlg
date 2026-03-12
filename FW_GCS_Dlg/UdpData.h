@@ -8,11 +8,7 @@
 // UDP通信协议数据结构
 #pragma pack(push, 1)             // 紧密打包，避免字节对齐填充
 typedef struct {
-    // 帧头 
-    uint16_t frameHeader;  // 固定值0xAA55
-    // uint16_t dataLength;   // 整个数据帧长度(含帧头和校验和) 
-    
-    // 飞机状态数据
+    uint16_t frameHeader;          // 帧头  固定值0xAA55
     uint8_t  aircraftID;           // 飞机编号 
     int16_t  pitchAngle;           // 俯仰角                 deg x10         Canvas组1 协议(1)
     int16_t  rollAngle;            // 滚转角                 deg x10         Canvas组1 协议(2)
@@ -35,17 +31,17 @@ typedef struct {
     int16_t  pitchAcceleration;    // 俯仰角加速度       deg/s^2 x10
     int16_t  rollAcceleration;     // 滚转角加速度       deg/s^2 x10
     int16_t  yawAcceleration;      // 航向角加速度       deg/s^2 x10
-    int16_t  longitudinalOverload; // 纵向过载                 / x10         Canvas组1 协议(4-2)
-    int16_t  lateralOverload;      // 横向过载                 / x10         Canvas组1 协议(4-3)
+    int16_t  longitudinalOverload; // 纵向过载                 / x10        Canvas组1 协议(4-2)
+    int16_t  lateralOverload;      // 横向过载                 / x10        Canvas组1 协议(4-3)
     int16_t  engineTemp;           // 发动机缸温               C x1         Canvas组2 协议(2-2)
     int16_t  engineRPM;            // 发动机转速             rpm x1         Canvas组1 协议(7)
     uint8_t  fuelRemaining;        // 剩余油量                 L x1         Canvas组2 协议(2-1)
-    int16_t  gpsAltitude;          // 卫星高度                 m x10         绘图层 地图飞机标识高度1
+    int16_t  gpsAltitude;          // 卫星高度                 m x10            绘图层 地图飞机标识高度1
     uint8_t  gpsStatus;            // 卫星定位状态             / x1         Canvas组2 协议(3-2)
     uint8_t  satelitesNum;         // 卫星收星数               / x1         Canvas组2 协议(3-1)
-    int16_t  gpsCourse;            // 卫星地速航向           deg x10         绘图层 地图飞机标识方向1
-    int16_t  gpsGroundSpeed;       // 卫星地速               m/s x10         绘图层 主界面底部信息栏 1-1
-    uint8_t  gpsVerticalSpeed;     // 卫星垂直速度           m/s x10         绘图层 主界面底部信息栏 1-2
+    int16_t  gpsCourse;            // 卫星地速航向           deg x10             绘图层 地图飞机标识方向1
+    int16_t  gpsGroundSpeed;       // 卫星地速               m/s x10            绘图层 主界面底部信息栏 1-1
+    uint8_t  gpsVerticalSpeed;     // 卫星垂直速度           m/s x10             绘图层 主界面底部信息栏 1-2
     int32_t  longitude;            // 卫星经度                度 x10000000       绘图层 地图飞机标识位置1
     int32_t  latitude;             // 卫星纬度                度 x10000000       绘图层 地图飞机标识位置2
     int16_t  eastVelocity;         // 东向速度               m/s x10
@@ -56,8 +52,8 @@ typedef struct {
     int16_t  baroAirspeed;         // 气压空速               m/s x10
     int16_t  indicatedAirspeed;    // 表速                   m/s x10         Canvas组1 协议(9)
     uint8_t  machNumber;           // 马赫数                   / x100         Canvas组1 协议(10)
-    uint16_t radioAltitude;        // 无线电高度               / x10         Canvas组1 协议(11)
-    uint8_t  navStatus;            // 导航状态                 / x1         Canvas组2 协议(4-1)
+    uint16_t radioAltitude;        // 无线电高度               / x10          Canvas组1 协议(11)
+    uint8_t  navStatus;            // 导航状态                 / x1           Canvas组2 协议(4-1)
     uint8_t  gpsHour;              // GPS时                    h x1         绘图层 主界面底部信息栏 1-3.1
     uint8_t  gpsMinute;            // GPS分                  min x1         绘图层 主界面底部信息栏 1-3.2
     uint8_t  gpsSecond;            // GPS秒                    s x1         绘图层 主界面底部信息栏 1-3.3
@@ -91,7 +87,7 @@ typedef struct {
     uint8_t  alarmStatus_B4;       // 空速异常报警标志           / x1         顶层图层中央横幅报警5
     uint8_t  alarmStatus_B5;       // GPS定位精度低报警标志      / x1         顶层图层中央横幅报警6
     uint8_t  switchStatus_B0;      // 发动机并网状态             / x1         Canvas组3 协议(3-1)
-    uint8_t  switchStatus_B1;      // 发动机启动状态            / x1         Canvas组3 协议(1-1)
+    uint8_t  switchStatus_B1;      // 发动机启动状态             / x1         Canvas组3 协议(1-1)
     uint8_t  switchStatus_B2;      // 盘旋状态                  / x1         Canvas组3 协议(2-1)      
     uint8_t  switchStatus_B3;      // 归航状态                  / x1         Canvas组3 协议(2-2)
     uint8_t  switchStatus_B4;      // 关车状态                  / x1         Canvas组3 协议(1-2)
@@ -100,9 +96,9 @@ typedef struct {
     uint8_t  switchStatus_B7;      // 夜航灯开关状态             / x1         Canvas组3 协议(4-2)
     int32_t   targetLongitude;     // 目标经度               deg x10000000       绘图层 地图目标标识位置1
     int32_t   targetLatitude;      // 目标纬度               deg x10000000       绘图层 地图目标标识位置2
-    int16_t   targetAltitude;      // 目标高度                 m x10         绘图层 地图目标标识位置3
-    int8_t    targetSpeed;         // 目标速度               m/s x10         绘图层 地图目标标识速度
-    int16_t   targetCourse;        // 目标航向               deg x10         绘图层 地图目标标识方向
+    int16_t   targetAltitude;      // 目标高度                 m x10             绘图层 地图目标标识位置3
+    int8_t    targetSpeed;         // 目标速度               m/s x10             绘图层 地图目标标识速度
+    int16_t   targetCourse;        // 目标航向               deg x10             绘图层 地图目标标识方向
 
     // int32_t  reserved1;           // 预留1             
     // int32_t  reserved2;           // 预留2
@@ -121,9 +117,9 @@ typedef struct {
 // 航路点结构体定义
 struct Waypoint
 {
-    int32_t longitude;  // 经度
-    int32_t latitude;   // 纬度
-    int16_t altitude;   // 高度
+    int32_t longitude;  // 经度  x1E7
+    int32_t latitude;   // 纬度  x1E7
+    int16_t altitude;   // 高度  x1（注意使用高程值，无小数部分）
 };
 
 // 地面站发送数据包结构    地面站帧头作为隐形msg_id使用
