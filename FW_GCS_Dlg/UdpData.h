@@ -113,15 +113,6 @@ typedef struct {
 
 // 地面站发送数据包结构（需要1字节对齐，避免结构体填充）
 #pragma pack(push, 1)  // 紧密打包，避免字节对齐填充
-
-// 航路点结构体定义
-struct Waypoint
-{
-    int32_t longitude;  // 经度  x1E7
-    int32_t latitude;   // 纬度  x1E7
-    int16_t altitude;   // 高度  x1（注意使用高程值，无小数部分）
-};
-
 // 地面站发送数据包结构    地面站帧头作为隐形msg_id使用
 struct UdpSendDataPacket_Cmd{
     uint16_t frameHeader;                            // 固定值0xFF00
@@ -134,6 +125,13 @@ struct UdpSendDataPacket_Cmd{
     uint8_t missionCommand_B5;                  // 置1，激活              置0，未激活                    发射指令
     uint8_t controlMode_B0;                     // 置2，全自主    置1，半自主     置0，手动遥控            控制模式                    
     uint8_t checksum;                           // 校验和 
+};
+
+struct Waypoint  // 航路点结构体定义
+{
+    int32_t longitude;  // 经度  x1E7
+    int32_t latitude;   // 纬度  x1E7
+    int16_t altitude;   // 高度  x1（注意使用高程值，无小数部分）
 };
 
 struct UdpSendDataPacket_Data{
