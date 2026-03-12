@@ -1613,7 +1613,7 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-// 将UDP接收的数据推送至webview前端引擎，用于JS绘制图层
+// C++端至webview前端引擎的数据推送
 void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 {
 #if FW_GCS_WITH_WEBVIEW2
@@ -1635,8 +1635,8 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 	const float g     = pPacket->normalOverload / 10.0f;
 	const float rpm   = pPacket->engineRPM / 10.0f;
     //地图飞机标识部分
-	const float longitude = pPacket->longitude / 1000000.0f; 
-    const float latitude = pPacket->latitude / 1000000.0f;
+	const float longitude = pPacket->longitude / 10000000.0f; 
+    const float latitude = pPacket->latitude / 10000000.0f;
 	//底部信息栏部分
     const float gpsCourse = pPacket->gpsCourse / 10.0f;
 	const float gpsGroundSpeed = pPacket->gpsGroundSpeed / 10.0f;
@@ -1645,8 +1645,8 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
     const uint8_t gpsMinute = pPacket->gpsMinute;
     const uint8_t gpsSecond = pPacket->gpsSecond;
     //地图目标机标识部分
-    const float targetLongitude = pPacket->targetLongitude / 1000000.0f;
-    const float targetLatitude = pPacket->targetLatitude / 1000000.0f;
+    const float targetLongitude = pPacket->targetLongitude / 10000000.0f;
+    const float targetLatitude = pPacket->targetLatitude / 10000000.0f;
     const float targetCourse = pPacket->targetCourse / 10.0f;
     
     // HUD组2数据 - 第一批：添加第一行数据 (1-1, 1-2, 2-1, 2-2)
