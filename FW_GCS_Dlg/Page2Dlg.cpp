@@ -283,17 +283,17 @@ bool CPage2Dlg::ApplyWaypointFromMap(double lat, double lng)
 	double dLongitude = lng;
 	double dLatitude = lat;
 
-	// 从 DEM 读取该点高程（米），协议中航路点高度为 int16_t 米
-	int16_t altM = 0;
+	// 从 DEM 读取该点高程（米），协议中航路点高度为 int16_t 米×10
 	double elevM = 0.0;
+	int16_t altX10 = 0;
 	if (DemReaderGetElevation(dLongitude, dLatitude, &elevM))
-		altM = static_cast<int16_t>(elevM + (elevM >= 0 ? 0.5 : -0.5));
+		altX10 = static_cast<int16_t>(elevM * 10.0 + (elevM >= 0 ? 0.5 : -0.5));
 
 	CString strIndex, strLongitude, strLatitude, strAltitude;
 	strIndex.Format(_T("%d"), idx + 1);
 	strLongitude.Format(_T("%.6f"), dLongitude);
 	strLatitude.Format(_T("%.6f"), dLatitude);
-	strAltitude.Format(_T("%d"), altM);
+	strAltitude.Format(_T("%.1f"), altX10 / 10.0);
 
 	// 更新列表控件显示
 	if (m_listWaypoints.GetItemCount() <= idx)
@@ -314,13 +314,13 @@ bool CPage2Dlg::ApplyWaypointFromMap(double lat, double lng)
 		m_listWaypoints.SetItemText(idx, 3, strAltitude);
 	}
 
-	// 更新内存中的航路点数据（协议格式：度 * 10000000，高度为米）
+	// 更新内存中的航路点数据（协议格式：度×1e7，高度米×10）
 	m_currentWaypoints[idx].longitude = static_cast<int32_t>(dLongitude * 10000000.0);
 	m_currentWaypoints[idx].latitude = static_cast<int32_t>(dLatitude * 10000000.0);
-	m_currentWaypoints[idx].altitude = altM;
+	m_currentWaypoints[idx].altitude = altX10;
 
-	TRACE(_T("ApplyWaypointFromMap: 航路点 %d 设为 lon=%.6f, lat=%.6f, alt=%d\n"),
-		idx + 1, dLongitude, dLatitude, (int)altM);
+	TRACE(_T("ApplyWaypointFromMap: 航路点 %d 设为 lon=%.6f, lat=%.6f, alt=%d(×10)\n"),
+		idx + 1, dLongitude, dLatitude, (int)altX10);
 
 	// 准备下一次点击 -> 下一个航路点
 	++m_nNextWaypointIndexForMapPick;
@@ -553,7 +553,7 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.aileronCmd = static_cast<int8_t>(_ttoi(strData[27]));                // int8_t
 	packet.airspeedSet = static_cast<uint8_t>(_ttoi(strData[28]));              // uint8_t
 
-	// 计算校验和：先将checksum字段设为0，再计算整个结构体的校验和
+	// 计算整个结构体的校验和
 	packet.checksum = 0;
 	size_t checksumSize = sizeof(packet) - sizeof(packet.checksum);
 	packet.checksum = calculateChecksum(&packet, checksumSize);
@@ -800,7 +800,7 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 				}
 			}
 			
-			// 获取altitude子节点（XML中为浮点数，转换为int16_t：米）
+			// 获取altitude子节点（XML中为米，协议存储为米×10）
 			CComPtr<IXMLDOMNode> spAltitudeNode;
 			hr = spNode->selectSingleNode(CComBSTR(_T("altitude")), &spAltitudeNode);
 			if (SUCCEEDED(hr) && spAltitudeNode != NULL)
@@ -809,9 +809,8 @@ BOOL CPage2Dlg::LoadWaypointsFromXml(Waypoint waypoints[100], int& nLoadedCount)
 				spAltitudeNode->get_text(&bstrText);
 				if (bstrText.Length() > 0)
 				{
-					// 读取浮点数并转换为int16_t（米）
 					double dAltitude = _tstof(CString(bstrText));
-					waypoints[i].altitude = static_cast<int16_t>(dAltitude * 10.0);
+					waypoints[i].altitude = static_cast<int16_t>(dAltitude * 10.0 + (dAltitude >= 0 ? 0.5 : -0.5));
 					// TRACE(_T("航路点 %d: altitude=%.2f米 -> %d\n"), i + 1, dAltitude, waypoints[i].altitude);
 				}
 			}
@@ -1035,7 +1034,7 @@ BOOL CPage2Dlg::SavePage2DataToXml()
 			CString strLon, strLat, strAlt;
 			strLon.Format(_T("%.7f"), lon);
 			strLat.Format(_T("%.7f"), lat);
-			strAlt.Format(_T("%d"), (int)m_currentWaypoints[i].altitude);
+			strAlt.Format(_T("%.1f"), m_currentWaypoints[i].altitude / 10.0);
 			CComPtr<IXMLDOMText> spText;
 			CComPtr<IXMLDOMElement> spChild;
 			hr = spDoc->createElement(CComBSTR(L"longitude"), &spChild);
@@ -1137,18 +1136,18 @@ void CPage2Dlg::DisplayWaypoints(const Waypoint waypoints[100], int nCount)
 	for (int i = 0; i < nCount; i++)
 	{
 		// 将协议格式转换为显示格式
-		// 经度/纬度：从 int32_t（度 * 1000000）转换为浮点数（度）
+		// 经度/纬度：从 int32_t（度×1e7）转换为浮点数（度）
 		double dLongitude = waypoints[i].longitude / 10000000.0;
 		double dLatitude = waypoints[i].latitude / 10000000.0;
-		// 高度：int16_t（米）直接显示
-		int nAltitude = waypoints[i].altitude;
+		// 高度：协议为米×10，显示为米
+		double dAltitudeM = waypoints[i].altitude / 10.0;
 		
 		// 格式化字符串
 		CString strIndex, strLongitude, strLatitude, strAltitude;
 		strIndex.Format(_T("%d"), i + 1);
 		strLongitude.Format(_T("%.7f"), dLongitude);
 		strLatitude.Format(_T("%.7f"), dLatitude);
-		strAltitude.Format(_T("%d"), nAltitude);
+		strAltitude.Format(_T("%.1f"), dAltitudeM);
 		
 		// 插入行
 		int nItem = m_listWaypoints.InsertItem(i, strIndex);
@@ -1176,6 +1175,8 @@ void CPage2Dlg::DisplayWaypoints(const Waypoint waypoints[100], int nCount)
 	// 保存当前显示的航路点数据（用于编辑）
 	memcpy(m_currentWaypoints, waypoints, sizeof(Waypoint) * nCount);
 	m_nCurrentWaypointCount = nCount;
+	// 保证后续“继承历史继续选点”时，从当前最后一个航点之后开始装订
+	m_nNextWaypointIndexForMapPick = m_nCurrentWaypointCount;
 }
 
 // 从列表控件获取航路点数据（用于编辑后保存）
@@ -1291,9 +1292,9 @@ void CPage2Dlg::EndEditCell(BOOL bCancel)
 				TRACE(_T("航路点 %d 纬度更新为: %.7f度 (%d)\n"), 
 					m_nEditingItem + 1, dValue, m_currentWaypoints[m_nEditingItem].latitude);
 				break;
-			case 3:  // 高度
-				m_currentWaypoints[m_nEditingItem].altitude = static_cast<int16_t>(dValue);
-				TRACE(_T("航路点 %d 高度更新为: %.1f米 (%d)\n"), 
+			case 3:  // 高度（界面为米，协议存储为米×10）
+				m_currentWaypoints[m_nEditingItem].altitude = static_cast<int16_t>(dValue * 10.0 + (dValue >= 0 ? 0.5 : -0.5));
+				TRACE(_T("航路点 %d 高度更新为: %.1f米 (%d×10)\n"), 
 					m_nEditingItem + 1, dValue, m_currentWaypoints[m_nEditingItem].altitude);
 				break;
 			}

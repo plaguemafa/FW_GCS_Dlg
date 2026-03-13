@@ -31,6 +31,7 @@ public:
 	afx_msg void OnBnClickedOk();
 
 	// 获取设置值
+
 	CString GetLocalIP() const { return m_strLocalIP; }
 	int GetLocalPort() const { return m_nLocalPort; }
 	CString GetRemoteIP() const { return m_strRemoteIP; }

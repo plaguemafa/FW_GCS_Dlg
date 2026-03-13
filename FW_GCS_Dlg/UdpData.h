@@ -131,7 +131,7 @@ struct Waypoint  // 航路点结构体定义
 {
     int32_t longitude;  // 经度  x1E7
     int32_t latitude;   // 纬度  x1E7
-    int16_t altitude;   // 高度  x1（注意使用高程值，无小数部分）
+    int16_t altitude;   // 高度  x10
 };
 
 struct UdpSendDataPacket_Data{
@@ -172,7 +172,6 @@ struct UdpSendDataPacket_Data{
     int16_t launchAltitude2;                   // 发射点(重复?) 高度            m x10          IDC_Display_EditData22
 
     int32_t parachuteLongitude;                 // 开伞点 经度               deg x10000000    IDC_Display_EditData23
-    // 开伞点      // IDC_Display_EditData23
     int32_t parachuteLatitude;                  // 开伞点 纬度                deg x10000000    IDC_Display_EditData24
     int16_t parachuteAltitude;                  // 开伞点 高度                  m x10          IDC_Display_EditData25
     
