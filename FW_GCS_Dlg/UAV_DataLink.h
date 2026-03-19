@@ -147,8 +147,8 @@ struct CmdSendPacket_s{                   // 地面站发送数据包结构    �
     uint8_t missionCommand_D7;                  // 0xAA 为激活            0x00 为未激活                                 IMU精度检查指令
     uint8_t missionCommand_D8;                  // 0xAA 为激活            0x00 为未激活                                卫星收星检查指令
     uint8_t missionCommand_D9;                  // 0xAA 为激活            0x00 为未激活                                卫星定位精度检查指令
-    int8_t elevatorCmd;                          // 控制指令 俯仰舵偏指令        / 待定          IDC_Display_EditData26
-    int8_t aileronCmd;                           // 控制指令 滚转舵偏指令        / 待定          IDC_Display_EditData27
+    int8_t elevatorCmd;                         // 控制指令 俯仰舵偏指令        / 待定          IDC_Display_EditData26
+    int8_t aileronCmd;                          // 控制指令 滚转舵偏指令        / 待定          IDC_Display_EditData27
     uint8_t checksum;                           // 校验和 
 };
 #pragma pack(pop)  // 恢复默认字节对齐

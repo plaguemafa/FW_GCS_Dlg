@@ -98,22 +98,12 @@ BOOL CPage2Dlg::OnInitDialog()
 	if (pWnd != NULL) m_editSendData18.SubclassWindow(pWnd->GetSafeHwnd());
 	pWnd = GetDlgItem(IDC_Display_EditData19);
 	if (pWnd != NULL) m_editSendData19.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display_EditData20);
-	if (pWnd != NULL) m_editSendData20.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display_EditData21);
-	if (pWnd != NULL) m_editSendData21.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display_EditData22);
-	if (pWnd != NULL) m_editSendData22.SubclassWindow(pWnd->GetSafeHwnd());
 	pWnd = GetDlgItem(IDC_Display_EditData23);
 	if (pWnd != NULL) m_editSendData23.SubclassWindow(pWnd->GetSafeHwnd());
 	pWnd = GetDlgItem(IDC_Display_EditData24);
 	if (pWnd != NULL) m_editSendData24.SubclassWindow(pWnd->GetSafeHwnd());
 	pWnd = GetDlgItem(IDC_Display_EditData25);
 	if (pWnd != NULL) m_editSendData25.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display_EditData26);
-	if (pWnd != NULL) m_editSendData26.SubclassWindow(pWnd->GetSafeHwnd());
-	pWnd = GetDlgItem(IDC_Display_EditData27);
-	if (pWnd != NULL) m_editSendData27.SubclassWindow(pWnd->GetSafeHwnd());
 	pWnd = GetDlgItem(IDC_Display_EditData28);
 	if (pWnd != NULL) m_editSendData28.SubclassWindow(pWnd->GetSafeHwnd());
 
@@ -136,14 +126,9 @@ BOOL CPage2Dlg::OnInitDialog()
 	if (m_editSendData17.GetSafeHwnd() != NULL) m_editSendData17.SetWindowText(_T("0"));    // int32_t
 	if (m_editSendData18.GetSafeHwnd() != NULL) m_editSendData18.SetWindowText(_T("0"));    // int32_t
 	if (m_editSendData19.GetSafeHwnd() != NULL) m_editSendData19.SetWindowText(_T("0"));    // int16_t
-	if (m_editSendData20.GetSafeHwnd() != NULL) m_editSendData20.SetWindowText(_T("0"));    // int32_t
-	if (m_editSendData21.GetSafeHwnd() != NULL) m_editSendData21.SetWindowText(_T("0"));    // int32_t
-	if (m_editSendData22.GetSafeHwnd() != NULL) m_editSendData22.SetWindowText(_T("0"));    // int16_t
 	if (m_editSendData23.GetSafeHwnd() != NULL) m_editSendData23.SetWindowText(_T("0"));    // int32_t
 	if (m_editSendData24.GetSafeHwnd() != NULL) m_editSendData24.SetWindowText(_T("0"));    // int32_t
 	if (m_editSendData25.GetSafeHwnd() != NULL) m_editSendData25.SetWindowText(_T("0"));    // int16_t
-	if (m_editSendData26.GetSafeHwnd() != NULL) m_editSendData26.SetWindowText(_T("0"));    // int8_t
-	if (m_editSendData27.GetSafeHwnd() != NULL) m_editSendData27.SetWindowText(_T("0"));    // int8_t
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.SetWindowText(_T("0"));    // uint8_t
 
 	// 绑定航路点相关控件
@@ -349,14 +334,9 @@ void CPage2Dlg::ClearAllEditDataToZero()
 	if (m_editSendData17.GetSafeHwnd() != NULL) m_editSendData17.SetWindowText(_T("0"));
 	if (m_editSendData18.GetSafeHwnd() != NULL) m_editSendData18.SetWindowText(_T("0"));
 	if (m_editSendData19.GetSafeHwnd() != NULL) m_editSendData19.SetWindowText(_T("0"));
-	if (m_editSendData20.GetSafeHwnd() != NULL) m_editSendData20.SetWindowText(_T("0"));
-	if (m_editSendData21.GetSafeHwnd() != NULL) m_editSendData21.SetWindowText(_T("0"));
-	if (m_editSendData22.GetSafeHwnd() != NULL) m_editSendData22.SetWindowText(_T("0"));
 	if (m_editSendData23.GetSafeHwnd() != NULL) m_editSendData23.SetWindowText(_T("0"));
 	if (m_editSendData24.GetSafeHwnd() != NULL) m_editSendData24.SetWindowText(_T("0"));
 	if (m_editSendData25.GetSafeHwnd() != NULL) m_editSendData25.SetWindowText(_T("0"));
-	if (m_editSendData26.GetSafeHwnd() != NULL) m_editSendData26.SetWindowText(_T("0"));
-	if (m_editSendData27.GetSafeHwnd() != NULL) m_editSendData27.SetWindowText(_T("0"));
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.SetWindowText(_T("0"));
 }
 
@@ -481,14 +461,9 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	if (m_editSendData17.GetSafeHwnd() != NULL) m_editSendData17.GetWindowText(strData[17]);
 	if (m_editSendData18.GetSafeHwnd() != NULL) m_editSendData18.GetWindowText(strData[18]);
 	if (m_editSendData19.GetSafeHwnd() != NULL) m_editSendData19.GetWindowText(strData[19]);
-	if (m_editSendData20.GetSafeHwnd() != NULL) m_editSendData20.GetWindowText(strData[20]);
-	if (m_editSendData21.GetSafeHwnd() != NULL) m_editSendData21.GetWindowText(strData[21]);
-	if (m_editSendData22.GetSafeHwnd() != NULL) m_editSendData22.GetWindowText(strData[22]);
 	if (m_editSendData23.GetSafeHwnd() != NULL) m_editSendData23.GetWindowText(strData[23]);
 	if (m_editSendData24.GetSafeHwnd() != NULL) m_editSendData24.GetWindowText(strData[24]);
 	if (m_editSendData25.GetSafeHwnd() != NULL) m_editSendData25.GetWindowText(strData[25]);
-	if (m_editSendData26.GetSafeHwnd() != NULL) m_editSendData26.GetWindowText(strData[26]);
-	if (m_editSendData27.GetSafeHwnd() != NULL) m_editSendData27.GetWindowText(strData[27]);
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.GetWindowText(strData[28]);
 
 	// 初始化数据包结构体
@@ -542,12 +517,12 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.targetLongitude = static_cast<int32_t>(_ttof(strData[17]) * 10000000.0);
 	packet.targetLatitude = static_cast<int32_t>(_ttof(strData[18]) * 10000000.0);
 	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]) * 10.0);           // int16_t
-	// UAV_DataLink.h 的 DataSendPacket_s 不包含 launchLongitude2/launchLatitude2/launchAltitude2（弃用）
+	// UAV_DataLink.h 的 DataSendPacket_s 不包含 launchLongitude2/launchLatitude2/launchAltitude2（已移除）
 	// 开伞点经纬度
 	packet.parachuteLongitude = static_cast<int32_t>(_ttof(strData[23]) * 10000000.0);
 	packet.parachuteLatitude = static_cast<int32_t>(_ttof(strData[24]) * 10000000.0);
 	packet.parachuteAltitude = static_cast<int16_t>(_ttoi(strData[25]) * 10.0);        // int16_t
-	// UAV_DataLink.h 的 DataSendPacket_s 不包含 elevatorCmd/aileronCmd（弃用）
+	// UAV_DataLink.h 的 DataSendPacket_s 不包含 elevatorCmd/aileronCmd（已移除）
 	packet.airspeedSet = static_cast<uint8_t>(_ttoi(strData[28]));              // uint8_t
 
 	// 计算整个结构体的校验和
@@ -930,14 +905,9 @@ BOOL CPage2Dlg::LoadSendDataFromXml()
 			else if (strName == _T("targetLongitude"))   pEdit = &m_editSendData17;
 			else if (strName == _T("targetLatitude"))   pEdit = &m_editSendData18;
 			else if (strName == _T("targetAltitude"))   pEdit = &m_editSendData19;
-			else if (strName == _T("launchLongitude2"))  pEdit = &m_editSendData20;
-			else if (strName == _T("launchLatitude2"))   pEdit = &m_editSendData21;
-			else if (strName == _T("launchAltitude2"))   pEdit = &m_editSendData22;
 			else if (strName == _T("parachuteLongitude")) pEdit = &m_editSendData23;
 			else if (strName == _T("parachuteLatitude"))  pEdit = &m_editSendData24;
 			else if (strName == _T("parachuteAltitude"))  pEdit = &m_editSendData25;
-			else if (strName == _T("elevatorCmd"))       pEdit = &m_editSendData26;
-			else if (strName == _T("aileronCmd"))        pEdit = &m_editSendData27;
 			else if (strName == _T("airspeedSet"))       pEdit = &m_editSendData28;
 			if (pEdit != NULL && pEdit->GetSafeHwnd() != NULL)
 				pEdit->SetWindowText(strValue);
@@ -979,14 +949,9 @@ BOOL CPage2Dlg::SavePage2DataToXml()
 	if (m_editSendData17.GetSafeHwnd()) m_editSendData17.GetWindowText(strData[17]);
 	if (m_editSendData18.GetSafeHwnd()) m_editSendData18.GetWindowText(strData[18]);
 	if (m_editSendData19.GetSafeHwnd()) m_editSendData19.GetWindowText(strData[19]);
-	if (m_editSendData20.GetSafeHwnd()) m_editSendData20.GetWindowText(strData[20]);
-	if (m_editSendData21.GetSafeHwnd()) m_editSendData21.GetWindowText(strData[21]);
-	if (m_editSendData22.GetSafeHwnd()) m_editSendData22.GetWindowText(strData[22]);
 	if (m_editSendData23.GetSafeHwnd()) m_editSendData23.GetWindowText(strData[23]);
 	if (m_editSendData24.GetSafeHwnd()) m_editSendData24.GetWindowText(strData[24]);
 	if (m_editSendData25.GetSafeHwnd()) m_editSendData25.GetWindowText(strData[25]);
-	if (m_editSendData26.GetSafeHwnd()) m_editSendData26.GetWindowText(strData[26]);
-	if (m_editSendData27.GetSafeHwnd()) m_editSendData27.GetWindowText(strData[27]);
 	if (m_editSendData28.GetSafeHwnd()) m_editSendData28.GetWindowText(strData[28]);
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
@@ -1071,9 +1036,8 @@ BOOL CPage2Dlg::SavePage2DataToXml()
 			{ _T("initNorthVelocity"),  strData[11] }, { _T("initEastVelocity"),   strData[12] }, { _T("initVerticalVelocity"), strData[13] },
 			{ _T("initNorthAccel"),     strData[14] }, { _T("initEastAccel"),      strData[15] }, { _T("initVerticalAccel"),  strData[16] },
 			{ _T("targetLongitude"),    strData[17] }, { _T("targetLatitude"),     strData[18] }, { _T("targetAltitude"),     strData[19] },
-			{ _T("launchLongitude2"),   strData[20] }, { _T("launchLatitude2"),    strData[21] }, { _T("launchAltitude2"),    strData[22] },
 			{ _T("parachuteLongitude"), strData[23] }, { _T("parachuteLatitude"),  strData[24] }, { _T("parachuteAltitude"),  strData[25] },
-			{ _T("elevatorCmd"),        strData[26] }, { _T("aileronCmd"),         strData[27] }, { _T("airspeedSet"),        strData[28] }
+			{ _T("airspeedSet"),        strData[28] }
 		};
 		CComPtr<IXMLDOMElement> spSendData;
 		hr = spDoc->createElement(CComBSTR(L"sendData"), &spSendData);

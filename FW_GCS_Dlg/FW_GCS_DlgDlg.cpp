@@ -128,13 +128,13 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_nSerialBaudRate   = SERIAL_BAUD_RATE;           // 默认波特率
 	
 	// 控制指令状态初始化（默认：地面测试流程，手动遥控模式）
-	m_missionCommand_B0 = 0;  // 0=地面测试流程
-	m_missionCommand_B1 = 0;   // 自检指令（未激活）
-	m_missionCommand_B2 = 0;   // 参数装订指令（未激活）
-	m_missionCommand_B3 = 0;   // 舵面检查指令（未激活）
-	m_missionCommand_B4 = 0;   // 发动机检查指令（未激活）
-	m_missionCommand_B5 = 0;   // 发射指令（未激活）
-	m_controlMode_B0 = 0;      // 0=手动遥控
+	m_missionCommand_B0 = 0x00;  // 0x00=地面测试流程，0xAA=发射流程
+	m_missionCommand_B1 = 0x00;  // 自检指令（未激活）
+	m_missionCommand_B2 = 0x00;  // 参数装订指令（未激活）
+	m_missionCommand_B3 = 0x00;  // 舵面检查指令（未激活）
+	m_missionCommand_B4 = 0x00;  // 发动机检查指令（未激活）
+	m_missionCommand_B5 = 0x00;  // 发射指令（未激活）
+	m_controlMode_B0 = 0x00;     // 0x00=手动遥控，0xFF=半自主，0xAA=全自主
 	
 	// 串口初始化
 	m_hSerialPort = INVALID_HANDLE_VALUE;       // 串口句柄初始化为无效值
@@ -3170,55 +3170,58 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const DataLinkRecvDataPacket_s* pPa
 	// ============================================================
 	// 步骤4：更新扩展协议 Radio Button 控件（指示灯显示）
 	// ============================================================
+	static constexpr uint8_t PROTO_ON = 0xAA;
+	static constexpr uint8_t PROTO_OFF = 0x00;
+
 	// 视窗组4-5：控制指令标志
 	if (m_radioFlag1.GetSafeHwnd() != NULL)
-		m_radioFlag1.SetCheck(pPacket->controlCommand_D0 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag1.SetCheck((pPacket->controlCommand_D0 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag2.GetSafeHwnd() != NULL)
-		m_radioFlag2.SetCheck(pPacket->controlCommand_D1 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag2.SetCheck((pPacket->controlCommand_D1 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag3.GetSafeHwnd() != NULL)
-		m_radioFlag3.SetCheck(pPacket->controlCommand_D2 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag3.SetCheck((pPacket->controlCommand_D2 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	
 	// 视窗组8-4：工作流程标志（特殊处理：workflowStatus_D0 根据值激活不同的 Radio Button）
 	if (m_radioFlag4.GetSafeHwnd() != NULL)
-		m_radioFlag4.SetCheck(!pPacket->workflowStatus_D0 ? BST_CHECKED : BST_UNCHECKED);  // 0时激活
+		m_radioFlag4.SetCheck((pPacket->workflowStatus_D0 == PROTO_OFF) ? BST_CHECKED : BST_UNCHECKED);  // 0x00 时激活
 	if (m_radioFlag5.GetSafeHwnd() != NULL)
-		m_radioFlag5.SetCheck(pPacket->workflowStatus_D0 ? BST_CHECKED : BST_UNCHECKED);   // 1时激活
+		m_radioFlag5.SetCheck((pPacket->workflowStatus_D0 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);   // 0xAA 时激活
 	if (m_radioFlag6.GetSafeHwnd() != NULL)
-		m_radioFlag6.SetCheck(pPacket->workflowStatus_D1 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag6.SetCheck((pPacket->workflowStatus_D1 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	
 	// 视窗组8-5：报警状态标志
 	if (m_radioFlag7.GetSafeHwnd() != NULL)
-		m_radioFlag7.SetCheck(pPacket->alarmStatus_D0 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag7.SetCheck((pPacket->alarmStatus_D0 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag8.GetSafeHwnd() != NULL)
-		m_radioFlag8.SetCheck(pPacket->alarmStatus_D1 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag8.SetCheck((pPacket->alarmStatus_D1 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag9.GetSafeHwnd() != NULL)
-		m_radioFlag9.SetCheck(pPacket->alarmStatus_D2 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag9.SetCheck((pPacket->alarmStatus_D2 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag10.GetSafeHwnd() != NULL)
-		m_radioFlag10.SetCheck(pPacket->alarmStatus_D3 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag10.SetCheck((pPacket->alarmStatus_D3 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag11.GetSafeHwnd() != NULL)
-		m_radioFlag11.SetCheck(pPacket->alarmStatus_D4 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag11.SetCheck((pPacket->alarmStatus_D4 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag12.GetSafeHwnd() != NULL)
-		m_radioFlag12.SetCheck(pPacket->alarmStatus_D5 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag12.SetCheck((pPacket->alarmStatus_D5 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	
 	// 视窗组8-6：开关量状态标志（特殊处理：switchStatus_D5 根据值激活不同的 Radio Button）
 	if (m_radioFlag13.GetSafeHwnd() != NULL)
-		m_radioFlag13.SetCheck(pPacket->switchStatus_D0 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag13.SetCheck((pPacket->switchStatus_D0 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag14.GetSafeHwnd() != NULL)
-		m_radioFlag14.SetCheck(pPacket->switchStatus_D1 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag14.SetCheck((pPacket->switchStatus_D1 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag15.GetSafeHwnd() != NULL)
-		m_radioFlag15.SetCheck(pPacket->switchStatus_D2 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag15.SetCheck((pPacket->switchStatus_D2 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag16.GetSafeHwnd() != NULL)
-		m_radioFlag16.SetCheck(pPacket->switchStatus_D3 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag16.SetCheck((pPacket->switchStatus_D3 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag17.GetSafeHwnd() != NULL)
-		m_radioFlag17.SetCheck(pPacket->switchStatus_D4 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag17.SetCheck((pPacket->switchStatus_D4 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag18.GetSafeHwnd() != NULL)
-		m_radioFlag18.SetCheck(!pPacket->switchStatus_D5 ? BST_CHECKED : BST_UNCHECKED);  // 0时激活
+		m_radioFlag18.SetCheck((pPacket->switchStatus_D5 == PROTO_OFF) ? BST_CHECKED : BST_UNCHECKED);  // 0x00 时激活
 	if (m_radioFlag19.GetSafeHwnd() != NULL)
-		m_radioFlag19.SetCheck(pPacket->switchStatus_D5 ? BST_CHECKED : BST_UNCHECKED);   // 1时激活
+		m_radioFlag19.SetCheck((pPacket->switchStatus_D5 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);   // 0xAA 时激活
 	if (m_radioFlag20.GetSafeHwnd() != NULL)
-		m_radioFlag20.SetCheck(pPacket->switchStatus_D6 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag20.SetCheck((pPacket->switchStatus_D6 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag21.GetSafeHwnd() != NULL)
-		m_radioFlag21.SetCheck(pPacket->switchStatus_D7 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag21.SetCheck((pPacket->switchStatus_D7 == PROTO_ON) ? BST_CHECKED : BST_UNCHECKED);
 	
 	// 更新子对话框显示（优先使用子对话框）
 	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
@@ -3600,16 +3603,16 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		{
 			// 子菜单项：检查是否需要显示深蓝色（选中/连接状态）
 			BOOL bShouldHighlight = FALSE;
-			if (nMenuID == ID_MENU_CTRL_MODE_MANUAL && m_controlMode_B0 == 0) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CTRL_MODE_SEMI && m_controlMode_B0 == 1) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CTRL_MODE_FULL && m_controlMode_B0 == 2) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_TEST && m_missionCommand_B0 == 0) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_LAUNCH_PROC && m_missionCommand_B0 == 1) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_BIND_PARAM && m_missionCommand_B2 == 1) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_LAUNCH_CMD && m_missionCommand_B5 == 1) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CHECK_SELF && m_missionCommand_B1 == 1) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CHECK_SURFACE && m_missionCommand_B3 == 1) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CHECK_ENGINE && m_missionCommand_B4 == 1) bShouldHighlight = TRUE;
+			if (nMenuID == ID_MENU_CTRL_MODE_MANUAL && m_controlMode_B0 == 0x00) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CTRL_MODE_SEMI && m_controlMode_B0 == 0xFF) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CTRL_MODE_FULL && m_controlMode_B0 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_TEST && m_missionCommand_B0 == 0x00) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_LAUNCH_PROC && m_missionCommand_B0 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_BIND_PARAM && m_missionCommand_B2 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_LAUNCH_CMD && m_missionCommand_B5 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_SELF && m_missionCommand_B1 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_SURFACE && m_missionCommand_B3 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_ENGINE && m_missionCommand_B4 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD && m_mouseCoordEnabled) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_WAYPOINT_PICK_CONNECT && m_waypointConnectVisible) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_WAYPOINT_PICK && m_mapPickWaypointMode) bShouldHighlight = TRUE;
@@ -4617,19 +4620,19 @@ void CFWGCSDlgDlg::OnMenuSerialSettings()
 // ============================================================
 void CFWGCSDlgDlg::OnMenuCtrlModeManual()
 {
-	m_controlMode_B0 = 0;  // 手动遥控模式
+	m_controlMode_B0 = 0x00;  // 手动遥控模式（协议：0x00）
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuCtrlModeSemi()
 {
-	m_controlMode_B0 = 1;  // 半自主模式
+	m_controlMode_B0 = 0xFF;  // 半自主模式（协议：0xFF）
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuCtrlModeFull()
 {
-	m_controlMode_B0 = 2;  // 全自主模式
+	m_controlMode_B0 = 0xAA;  // 全自主模式（协议：0xAA）
 	SendControlCommand();
 }
 
@@ -4638,27 +4641,27 @@ void CFWGCSDlgDlg::OnMenuCtrlModeFull()
 // ============================================================
 void CFWGCSDlgDlg::OnMenuMissionTest()
 {
-	m_missionCommand_B0 = 0;  // 地面测试流程
+	m_missionCommand_B0 = 0x00;  // 地面测试流程（协议：0x00）
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuMissionLaunchProc()
 {
-	m_missionCommand_B0 = 1;  // 发射流程
+	m_missionCommand_B0 = 0xAA;  // 发射流程（协议：0xAA）
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuMissionBindParam()
 {
 	// 参数装订指令（切换状态）
-	m_missionCommand_B2 = (m_missionCommand_B2 == 0) ? 1 : 0;
+	m_missionCommand_B2 = (m_missionCommand_B2 == 0x00) ? 0xAA : 0x00;
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuMissionLaunchCmd()
 {
 	// 发射指令（切换状态）
-	m_missionCommand_B5 = (m_missionCommand_B5 == 0) ? 1 : 0;
+	m_missionCommand_B5 = (m_missionCommand_B5 == 0x00) ? 0xAA : 0x00;
 	SendControlCommand();
 }
 
@@ -4669,15 +4672,15 @@ void CFWGCSDlgDlg::OnMenuCheckSelf()
 {
 	// 自检指令：如果当前已激活（B1=1），则取消激活（B1=0）
 	// 如果当前未激活（B1=0），则激活（B1=1）并互斥其他项（B3=0, B4=0）
-	if (m_missionCommand_B1 == 1)
+	if (m_missionCommand_B1 == 0xAA)
 	{
-		m_missionCommand_B1 = 0;  // 取消激活
+		m_missionCommand_B1 = 0x00;  // 取消激活
 	}
 	else
 	{
-		m_missionCommand_B1 = 1;  // 激活
-		m_missionCommand_B3 = 0;  // 互斥：取消其他项
-		m_missionCommand_B4 = 0;  // 互斥：取消其他项
+		m_missionCommand_B1 = 0xAA;  // 激活
+		m_missionCommand_B3 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_B4 = 0x00;  // 互斥：取消其他项
 	}
 	SendControlCommand();
 }
@@ -4686,15 +4689,15 @@ void CFWGCSDlgDlg::OnMenuCheckSurface()
 {
 	// 舵面检查指令：如果当前已激活（B3=1），则取消激活（B3=0）
 	// 如果当前未激活（B3=0），则激活（B3=1）并互斥其他项（B1=0, B4=0）
-	if (m_missionCommand_B3 == 1)
+	if (m_missionCommand_B3 == 0xAA)
 	{
-		m_missionCommand_B3 = 0;  // 取消激活
+		m_missionCommand_B3 = 0x00;  // 取消激活
 	}
 	else
 	{
-		m_missionCommand_B3 = 1;  // 激活
-		m_missionCommand_B1 = 0;  // 互斥：取消其他项
-		m_missionCommand_B4 = 0;  // 互斥：取消其他项
+		m_missionCommand_B3 = 0xAA;  // 激活
+		m_missionCommand_B1 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_B4 = 0x00;  // 互斥：取消其他项
 	}
 	SendControlCommand();
 }
@@ -4703,15 +4706,15 @@ void CFWGCSDlgDlg::OnMenuCheckEngine()
 {
 	// 发动机检查指令：如果当前已激活（B4=1），则取消激活（B4=0）
 	// 如果当前未激活（B4=0），则激活（B4=1）并互斥其他项（B1=0, B3=0）
-	if (m_missionCommand_B4 == 1)
+	if (m_missionCommand_B4 == 0xAA)
 	{
-		m_missionCommand_B4 = 0;  // 取消激活
+		m_missionCommand_B4 = 0x00;  // 取消激活
 	}
 	else
 	{
-		m_missionCommand_B4 = 1;  // 激活
-		m_missionCommand_B1 = 0;  // 互斥：取消其他项
-		m_missionCommand_B3 = 0;  // 互斥：取消其他项
+		m_missionCommand_B4 = 0xAA;  // 激活
+		m_missionCommand_B1 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_B3 = 0x00;  // 互斥：取消其他项
 	}
 	SendControlCommand();
 }
@@ -4761,52 +4764,52 @@ void CFWGCSDlgDlg::OnMenuMapWaypointPickConnect()
 // ============================================================
 void CFWGCSDlgDlg::OnUpdateMenuCtrlModeManual(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_controlMode_B0 == 0);
+	pCmdUI->SetCheck(m_controlMode_B0 == 0x00);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCtrlModeSemi(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_controlMode_B0 == 1);
+	pCmdUI->SetCheck(m_controlMode_B0 == 0xFF);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCtrlModeFull(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_controlMode_B0 == 2);
+	pCmdUI->SetCheck(m_controlMode_B0 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionTest(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B0 == 0);
+	pCmdUI->SetCheck(m_missionCommand_B0 == 0x00);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionLaunchProc(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B0 == 1);
+	pCmdUI->SetCheck(m_missionCommand_B0 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionBindParam(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B2 == 1);
+	pCmdUI->SetCheck(m_missionCommand_B2 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionLaunchCmd(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B5 == 1);
+	pCmdUI->SetCheck(m_missionCommand_B5 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCheckSelf(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B1 == 1);
+	pCmdUI->SetCheck(m_missionCommand_B1 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCheckSurface(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B3 == 1);
+	pCmdUI->SetCheck(m_missionCommand_B3 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCheckEngine(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B4 == 1);
+	pCmdUI->SetCheck(m_missionCommand_B4 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMapMouseCoord(CCmdUI* pCmdUI)

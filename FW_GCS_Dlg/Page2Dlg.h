@@ -49,14 +49,9 @@ public:
 	CEdit m_editSendData17; // IDC_Display_EditData17 - targetLongitude (int32_t)
 	CEdit m_editSendData18; // IDC_Display_EditData18 - targetLatitude (int32_t)
 	CEdit m_editSendData19; // IDC_Display_EditData19 - targetAltitude (int16_t)
-	CEdit m_editSendData20; // IDC_Display_EditData20 - launchLongitude2 (int32_t)
-	CEdit m_editSendData21; // IDC_Display_EditData21 - launchLatitude2 (int32_t)
-	CEdit m_editSendData22; // IDC_Display_EditData22 - launchAltitude2 (int16_t)
 	CEdit m_editSendData23; // IDC_Display_EditData23 - parachuteLongitude (int32_t)
 	CEdit m_editSendData24; // IDC_Display_EditData24 - parachuteLatitude (int32_t)
 	CEdit m_editSendData25; // IDC_Display_EditData25 - parachuteAltitude (int16_t)
-	CEdit m_editSendData26; // IDC_Display_EditData26 - elevatorCmd (int8_t)
-	CEdit m_editSendData27; // IDC_Display_EditData27 - aileronCmd (int8_t)
 	CEdit m_editSendData28; // IDC_Display_EditData28 - airspeedSet (uint8_t)
 
 	// 航路点相关控件

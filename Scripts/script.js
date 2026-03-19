@@ -881,7 +881,7 @@ function drawHudGroup3() {
                 const x = startX + col * cellWidth;
                 const y = startY + row * cellHeight;
                 const value = hudGroup3Data[field] !== undefined ? hudGroup3Data[field] : 0;
-                const isActive = value === 1;
+                const isActive = value === 0xAA;
                 
                 // 按钮背景（激活时亮色，未激活时浅灰色）
                 hudGroup3Ctx.fillStyle = isActive ? 'rgba(100, 200, 100, 0.8)' : 'rgba(150, 150, 150, 0.6)';
@@ -1107,7 +1107,7 @@ if (window.chrome && window.chrome.webview) {
         const now = Date.now();
         for (let i = 0; i < alarmFields.length; i++) {
             const fieldName = alarmFields[i];
-            if (receivedData[fieldName] === 1) {
+            if (receivedData[fieldName] === 0xAA) {
                 const existing = activeAlarms.find(a => a.index === i);
                 if (existing) {
                     // 弹出期间始终收到1，刷新倒计时
