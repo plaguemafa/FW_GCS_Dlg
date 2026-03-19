@@ -117,7 +117,12 @@ typedef struct {
     int8_t   targetSpeed;         // 目标速度               m/s x10             绘图层 地图目标标识速度
     int16_t  targetCourse;        // 目标航向               deg x10             绘图层 地图目标标识方向
 
-    uint8_t   FCS_Report_Flag;         // 飞控状态回报字段  待约定
+    uint8_t   FCS_Report_Flag;         // 飞控状态回报字段
+        //正常工作状态：0xA0 上电准备阶段（等待任务设置参数） 0xA1 上电自检状态 0xA2 等待装订参数  0xA3 等待装订指令 0xA4 飞控运行异常 0xA5 飞控运行结束
+        //             0xE1 发动机测试状态  0xE2 舵面测试状态 0xE3 传感器自检状态
+        //             0xD1 
+        //异常工作状态：0xF6 飞控启动超时 0xF7 自检失败终止状态 0xF8 飞控运行异常中止 0xF9 飞控运行结束中止
+
     uint8_t   DataLint_CmdResult;      // 数据链指令接收结果         // 0xAA 确认接收解析        0x00为无回报
     uint8_t   DataLint_DataResult;     // 数据链数据接收结果         // 0xAA 确认接收解析        0x00为无回报
 

@@ -69,12 +69,12 @@ protected:
 	CBrush m_menuBrush;				   // 菜单背景刷
 	
 	// 控制指令状态跟踪（默认：地面测试流程，手动遥控模式）
-	uint8_t m_missionCommand_B0;            // 0=地面测试流程, 1=发射流程
-	uint8_t m_missionCommand_B1;            // 自检指令
-	uint8_t m_missionCommand_B2;            // 参数装订指令
-	uint8_t m_missionCommand_B3;            // 舵面检查指令
-	uint8_t m_missionCommand_B4;            // 发动机检查指令
-	uint8_t m_missionCommand_B5;            // 发射指令
+	uint8_t m_missionCommand_D0;            // 0=地面测试流程, 1=发射流程
+	uint8_t m_missionCommand_D1;            // 自检指令
+	uint8_t m_missionCommand_D2;            // 参数装订指令
+	uint8_t m_missionCommand_D3;            // 舵面检查指令
+	uint8_t m_missionCommand_D4;            // 发动机检查指令
+	uint8_t m_missionCommand_D5;            // 发射指令
 	uint8_t m_controlMode_B0;               // 0=手动遥控, 1=半自主, 2=全自主
 
 	// UDP通信相关成员变量

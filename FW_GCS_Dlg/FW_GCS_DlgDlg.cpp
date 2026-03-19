@@ -128,12 +128,12 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_nSerialBaudRate   = SERIAL_BAUD_RATE;           // 默认波特率
 	
 	// 控制指令状态初始化（默认：地面测试流程，手动遥控模式）
-	m_missionCommand_B0 = 0x00;  // 0x00=地面测试流程，0xAA=发射流程
-	m_missionCommand_B1 = 0x00;  // 自检指令（未激活）
-	m_missionCommand_B2 = 0x00;  // 参数装订指令（未激活）
-	m_missionCommand_B3 = 0x00;  // 舵面检查指令（未激活）
-	m_missionCommand_B4 = 0x00;  // 发动机检查指令（未激活）
-	m_missionCommand_B5 = 0x00;  // 发射指令（未激活）
+	m_missionCommand_D0 = 0x00;  // 0x00=地面测试流程，0xAA=发射流程
+	m_missionCommand_D1 = 0x00;  // 自检指令（未激活）
+	m_missionCommand_D2 = 0x00;  // 参数装订指令（未激活）
+	m_missionCommand_D3 = 0x00;  // 舵面检查指令（未激活）
+	m_missionCommand_D4 = 0x00;  // 发动机检查指令（未激活）
+	m_missionCommand_D5 = 0x00;  // 发射指令（未激活）
 	m_controlMode_B0 = 0x00;     // 0x00=手动遥控，0xFF=半自主，0xAA=全自主
 	
 	// 串口初始化
@@ -3606,13 +3606,13 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			if (nMenuID == ID_MENU_CTRL_MODE_MANUAL && m_controlMode_B0 == 0x00) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CTRL_MODE_SEMI && m_controlMode_B0 == 0xFF) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CTRL_MODE_FULL && m_controlMode_B0 == 0xAA) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_TEST && m_missionCommand_B0 == 0x00) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_LAUNCH_PROC && m_missionCommand_B0 == 0xAA) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_BIND_PARAM && m_missionCommand_B2 == 0xAA) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_LAUNCH_CMD && m_missionCommand_B5 == 0xAA) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CHECK_SELF && m_missionCommand_B1 == 0xAA) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CHECK_SURFACE && m_missionCommand_B3 == 0xAA) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CHECK_ENGINE && m_missionCommand_B4 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_TEST && m_missionCommand_D0 == 0x00) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_LAUNCH_PROC && m_missionCommand_D0 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_BIND_PARAM && m_missionCommand_D2 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_MISSION_LAUNCH_CMD && m_missionCommand_D5 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_SELF && m_missionCommand_D1 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_SURFACE && m_missionCommand_D3 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_ENGINE && m_missionCommand_D4 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD && m_mouseCoordEnabled) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_WAYPOINT_PICK_CONNECT && m_waypointConnectVisible) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_WAYPOINT_PICK && m_mapPickWaypointMode) bShouldHighlight = TRUE;
@@ -4641,27 +4641,27 @@ void CFWGCSDlgDlg::OnMenuCtrlModeFull()
 // ============================================================
 void CFWGCSDlgDlg::OnMenuMissionTest()
 {
-	m_missionCommand_B0 = 0x00;  // 地面测试流程（协议：0x00）
+	m_missionCommand_D0 = 0x00;  // 地面测试流程（协议：0x00）
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuMissionLaunchProc()
 {
-	m_missionCommand_B0 = 0xAA;  // 发射流程（协议：0xAA）
+	m_missionCommand_D0 = 0xAA;  // 发射流程（协议：0xAA）
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuMissionBindParam()
 {
 	// 参数装订指令（切换状态）
-	m_missionCommand_B2 = (m_missionCommand_B2 == 0x00) ? 0xAA : 0x00;
+	m_missionCommand_D2 = (m_missionCommand_D2 == 0x00) ? 0xAA : 0x00;
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuMissionLaunchCmd()
 {
 	// 发射指令（切换状态）
-	m_missionCommand_B5 = (m_missionCommand_B5 == 0x00) ? 0xAA : 0x00;
+	m_missionCommand_D5 = (m_missionCommand_D5 == 0x00) ? 0xAA : 0x00;
 	SendControlCommand();
 }
 
@@ -4672,15 +4672,15 @@ void CFWGCSDlgDlg::OnMenuCheckSelf()
 {
 	// 自检指令：如果当前已激活（B1=1），则取消激活（B1=0）
 	// 如果当前未激活（B1=0），则激活（B1=1）并互斥其他项（B3=0, B4=0）
-	if (m_missionCommand_B1 == 0xAA)
+	if (m_missionCommand_D1 == 0xAA)
 	{
-		m_missionCommand_B1 = 0x00;  // 取消激活
+		m_missionCommand_D1 = 0x00;  // 取消激活
 	}
 	else
 	{
-		m_missionCommand_B1 = 0xAA;  // 激活
-		m_missionCommand_B3 = 0x00;  // 互斥：取消其他项
-		m_missionCommand_B4 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D1 = 0xAA;  // 激活
+		m_missionCommand_D3 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D4 = 0x00;  // 互斥：取消其他项
 	}
 	SendControlCommand();
 }
@@ -4689,15 +4689,15 @@ void CFWGCSDlgDlg::OnMenuCheckSurface()
 {
 	// 舵面检查指令：如果当前已激活（B3=1），则取消激活（B3=0）
 	// 如果当前未激活（B3=0），则激活（B3=1）并互斥其他项（B1=0, B4=0）
-	if (m_missionCommand_B3 == 0xAA)
+	if (m_missionCommand_D3 == 0xAA)
 	{
-		m_missionCommand_B3 = 0x00;  // 取消激活
+		m_missionCommand_D3 = 0x00;  // 取消激活
 	}
 	else
 	{
-		m_missionCommand_B3 = 0xAA;  // 激活
-		m_missionCommand_B1 = 0x00;  // 互斥：取消其他项
-		m_missionCommand_B4 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D3 = 0xAA;  // 激活
+		m_missionCommand_D1 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D4 = 0x00;  // 互斥：取消其他项
 	}
 	SendControlCommand();
 }
@@ -4706,15 +4706,15 @@ void CFWGCSDlgDlg::OnMenuCheckEngine()
 {
 	// 发动机检查指令：如果当前已激活（B4=1），则取消激活（B4=0）
 	// 如果当前未激活（B4=0），则激活（B4=1）并互斥其他项（B1=0, B3=0）
-	if (m_missionCommand_B4 == 0xAA)
+	if (m_missionCommand_D4 == 0xAA)
 	{
-		m_missionCommand_B4 = 0x00;  // 取消激活
+		m_missionCommand_D4 = 0x00;  // 取消激活
 	}
 	else
 	{
-		m_missionCommand_B4 = 0xAA;  // 激活
-		m_missionCommand_B1 = 0x00;  // 互斥：取消其他项
-		m_missionCommand_B3 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D4 = 0xAA;  // 激活
+		m_missionCommand_D1 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D3 = 0x00;  // 互斥：取消其他项
 	}
 	SendControlCommand();
 }
@@ -4779,37 +4779,37 @@ void CFWGCSDlgDlg::OnUpdateMenuCtrlModeFull(CCmdUI* pCmdUI)
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionTest(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B0 == 0x00);
+	pCmdUI->SetCheck(m_missionCommand_D0 == 0x00);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionLaunchProc(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B0 == 0xAA);
+	pCmdUI->SetCheck(m_missionCommand_D0 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionBindParam(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B2 == 0xAA);
+	pCmdUI->SetCheck(m_missionCommand_D2 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionLaunchCmd(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B5 == 0xAA);
+	pCmdUI->SetCheck(m_missionCommand_D5 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCheckSelf(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B1 == 0xAA);
+	pCmdUI->SetCheck(m_missionCommand_D1 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCheckSurface(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B3 == 0xAA);
+	pCmdUI->SetCheck(m_missionCommand_D3 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCheckEngine(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_B4 == 0xAA);
+	pCmdUI->SetCheck(m_missionCommand_D4 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMapMouseCoord(CCmdUI* pCmdUI)
@@ -5224,12 +5224,12 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	packet.frameHeader = 0xAAAA;  // 设置帧头（控制指令包）
 
 	// 填充控制指令数据
-	packet.missionCommand_D0 = m_missionCommand_B0;
-	packet.missionCommand_D1 = m_missionCommand_B1;
-	packet.missionCommand_D2 = m_missionCommand_B2;
-	packet.missionCommand_D3 = m_missionCommand_B3;
-	packet.missionCommand_D4 = m_missionCommand_B4;
-	packet.missionCommand_D5 = m_missionCommand_B5;
+	packet.missionCommand_D0 = m_missionCommand_D0;
+	packet.missionCommand_D1 = m_missionCommand_D1;
+	packet.missionCommand_D2 = m_missionCommand_D2;
+	packet.missionCommand_D3 = m_missionCommand_D3;
+	packet.missionCommand_D4 = m_missionCommand_D4;
+	packet.missionCommand_D5 = m_missionCommand_D5;
 	packet.missionCommand_D6 = m_controlMode_B0;
 	packet.missionCommand_D7 = 0;
 	packet.missionCommand_D8 = 0;
