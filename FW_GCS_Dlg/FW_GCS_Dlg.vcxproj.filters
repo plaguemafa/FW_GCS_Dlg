@@ -33,9 +33,6 @@
     <ClInclude Include="pch.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="UdpData.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Page1Dlg.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -55,6 +52,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="UdpConfig.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="DemReader.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="UAV_DataLink.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -81,6 +84,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="UdpSettingsDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="DemReader.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

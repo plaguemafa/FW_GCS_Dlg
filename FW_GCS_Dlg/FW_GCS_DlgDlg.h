@@ -7,7 +7,7 @@
 #include <afxwin.h>      // MFC基础类型
 #include <afxmt.h>       // MFC同步对象（CCriticalSection, CSingleLock）
 #include <afxdialogex.h> // CDialogEx
-#include "UdpData.h"
+#include "UAV_DataLink.h"
 #include "UdpConfig.h"
 #include "SerialConfig.h"
 #include <winsock2.h>
@@ -237,8 +237,8 @@ protected:
 	void DisconnectUdp();                  // 断开UDP连接
 	BOOL SendUdpData(const void* pData, int nSize);  // 发送UDP数据
 	BOOL SendHandshake();                  // 发送握手数据包
-	BOOL SendControlCommand();             // 发送控制指令（UdpSendDataPacket_Cmd）
-	void ProcessReceivedData(const UdpRecvDataPacket* pPacket);  // 处理接收到的数据包
+	BOOL SendControlCommand();             // 发送控制指令（CmdSendPacket_s）
+	void ProcessReceivedData(const DataLinkRecvDataPacket_s* pPacket);  // 处理接收到的数据包
 	static UINT UdpRecvThread(LPVOID pParam);  // UDP接收线程函数（静态）
 	void UpdateControlText(UINT nID, const CString& strText);  // 辅助函数：更新控件文本（优先在子对话框中查找）
 	void ClearAllDisplayData();  // 断开UDP后清除所有显示控件及JS端数据为0
@@ -251,7 +251,7 @@ protected:
 	BOOL OpenSerialPort();                 // 打开串口
 	void CloseSerialPort();                // 关闭串口
 	BOOL SendSerialData(const void* pData, int nSize);  // 发送串口数据
-	void ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket);  // 处理串口接收到的数据包
+	void ProcessSerialReceivedData(const DataLinkRecvDataPacket_s* pPacket);  // 处理串口接收到的数据包
 	static UINT SerialRecvThread(LPVOID pParam);  // 串口接收线程函数（静态）
 
 	// 生成的消息映射函数
@@ -377,5 +377,5 @@ private:
 	void LoadLocalMaps();  // 加载LocalMaps文件夹内的所有.mbtiles文件
 	bool GetTileFromLocalMaps(int zoom, int x, int y, std::vector<unsigned char>& outData, CString& outMimeType, bool& outIsGzip);  // 从局部地图获取瓦片
 	static bool TileToLngLat(int zoom, int x, int y, double& lng, double& lat);  // 瓦片坐标转经纬度（瓦片中心点）
-	void SendHudMessage(const UdpRecvDataPacket* pPacket);  // 向 WebView2 推送 HUD 数据
+	void SendHudMessage(const DataLinkRecvDataPacket_s* pPacket);  // 向 WebView2 推送 HUD 数据
 };

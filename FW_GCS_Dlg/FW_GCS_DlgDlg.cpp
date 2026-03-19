@@ -6,7 +6,7 @@
 #include "framework.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>  // 用于 inet_pton()
-#include "UdpData.h"   // 必须在其他头文件之前包含，确保类型定义完整
+#include "UAV_DataLink.h"   // 必须在其他头文件之前包含，确保类型定义完整
 #include "FW_GCS_Dlg.h"
 #include "FW_GCS_DlgDlg.h"
 #include "resource.h"
@@ -1420,7 +1420,7 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			if (fromAddr.sin_addr.s_addr == pDlg->m_udpRemoteAddr.sin_addr.s_addr &&
 				fromAddr.sin_port == pDlg->m_udpRemoteAddr.sin_port)
 			{
-				//TRACE(_T("UDP接收线程: 数据包来自配置的远程地址\n"));
+				TRACE(_T("UDP接收线程: 数据包来自配置的远程地址\n"));
 			}
 			else
 			{
@@ -1434,11 +1434,11 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			//TRACE(_T("UDP接收: 数据包大小检查 - 期望=%d字节, 实际收到=%d字节\n"), 
 				//sizeof(UdpRecvDataPacket), nReceived);
 			
-			if (nReceived == sizeof(UdpRecvDataPacket))
+			if (nReceived == sizeof(DataLinkRecvDataPacket_s))
 			{
 				// 动态分配内存保存数据包，注意堆栈释放
-				UdpRecvDataPacket* pPacket = new UdpRecvDataPacket;
-				memcpy(pPacket, buffer, sizeof(UdpRecvDataPacket));
+				DataLinkRecvDataPacket_s* pPacket = new DataLinkRecvDataPacket_s;
+				memcpy(pPacket, buffer, sizeof(DataLinkRecvDataPacket_s));
 				
 				// 字节序转换（UDP网络数据通常是大端字节序，需要转换）
 				// Windows是小端系统，如果发送端也是小端，则不需要转换
@@ -1514,8 +1514,8 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			}
 			else
 			{
-				//TRACE(_T("UDP接收: 数据包大小不匹配！期望 %d 字节，实际收到 %d 字节\n"), 
-					//sizeof(UdpRecvDataPacket), nReceived);
+				TRACE(_T("UDP接收: 数据包大小不匹配！期望 %d 字节，实际收到 %d 字节\n"), 
+					sizeof(DataLinkRecvDataPacket_s), nReceived);
 			}
 		}
 		else if (nReceived == SOCKET_ERROR)
@@ -1557,7 +1557,7 @@ void CFWGCSDlgDlg::OnTimer(UINT_PTR nIDEvent)
 // 处理接收到的UDP数据消息
 LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 {
-	UdpRecvDataPacket* pPacket = (UdpRecvDataPacket*)wParam;
+	DataLinkRecvDataPacket_s* pPacket = (DataLinkRecvDataPacket_s*)wParam;
 	if (pPacket != NULL)
 	{
 		// ============================================================
@@ -1573,7 +1573,7 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 			// 当前消息（wParam）的数据包不要在这里删除，后面还要使用
 			if (msg.wParam != NULL && msg.wParam != wParam)
 			{
-				UdpRecvDataPacket* pOldPacket = (UdpRecvDataPacket*)msg.wParam;
+				DataLinkRecvDataPacket_s* pOldPacket = (DataLinkRecvDataPacket_s*)msg.wParam;
 				delete pOldPacket;  // 释放旧数据包内存
 			}
 		}
@@ -1614,7 +1614,7 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 }
 
 // C++端至webview前端引擎的数据推送
-void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
+void CFWGCSDlgDlg::SendHudMessage(const DataLinkRecvDataPacket_s* pPacket)
 {
 #if FW_GCS_WITH_WEBVIEW2
 	if (!pPacket || !m_webView)
@@ -1673,14 +1673,14 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
     const uint8_t selfTestResult = pPacket->selfTestResult;        // (9-2) 自检结果
     
     // HUD组3数据（开关状态显示区域）
-    const uint8_t switchStatus_B1 = pPacket->switchStatus_B1;      // (1-1) 发动机启动状态
-    const uint8_t switchStatus_B4 = pPacket->switchStatus_B4;      // (1-2) 关车状态
-    const uint8_t switchStatus_B2 = pPacket->switchStatus_B2;      // (2-1) 盘旋状态
-    const uint8_t switchStatus_B3 = pPacket->switchStatus_B3;      // (2-2) 归航状态
-    const uint8_t switchStatus_B0 = pPacket->switchStatus_B0;      // (3-1) 发动机并网状态
-    const uint8_t switchStatus_B6 = pPacket->switchStatus_B6;      // (3-2) 开伞状态
-    const uint8_t switchStatus_B5 = pPacket->switchStatus_B5;      // (4-1) 起落架收放状态
-    const uint8_t switchStatus_B7 = pPacket->switchStatus_B7;      // (4-2) 夜航灯开关状态
+    const uint8_t switchStatus_D1 = pPacket->switchStatus_D1;      // (1-1) 发动机启动状态
+    const uint8_t switchStatus_D4 = pPacket->switchStatus_D4;      // (1-2) 关车状态
+    const uint8_t switchStatus_D2 = pPacket->switchStatus_D2;      // (2-1) 盘旋状态
+    const uint8_t switchStatus_D3 = pPacket->switchStatus_D3;      // (2-2) 归航状态
+    const uint8_t switchStatus_D0 = pPacket->switchStatus_D0;      // (3-1) 发动机并网状态
+    const uint8_t switchStatus_D6 = pPacket->switchStatus_D6;      // (3-2) 开伞状态
+    const uint8_t switchStatus_D5 = pPacket->switchStatus_D5;      // (4-1) 起落架收放状态
+    const uint8_t switchStatus_D7 = pPacket->switchStatus_D7;      // (4-2) 夜航灯开关状态
     
     // 调试输出：显示经纬度原始值和转换后的值（用于诊断）
     // TRACE(_T("SendHudMessage[经纬度调试]: longitude原始=%d, 转换后=%.6f度; latitude原始=%d, 转换后=%.6f度; gpsCourse原始=%d, 转换后=%.2f度\n"),
@@ -1691,17 +1691,17 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 
  // 将数据添加到JSON格式字符串中
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_B0":%u,"alarmStatus_B1":%u,"alarmStatus_B2":%u,"alarmStatus_B3":%u,"alarmStatus_B4":%u,"alarmStatus_B5":%u,"throttle":%u,"batteryVoltage":%u,"fuelRemaining":%u,"engineTemp":%.1f,"satelitesNum":%u,"gpsStatus":%u,"navStatus":%u,"targetWaypoint":%u,"distanceToGo":%.1f,"crossTrackError":%.1f,"commandHeading":%u,"courseDeviation":%.1f,"commandSpeed":%.1f,"commandAltitude":%.1f,"commandTime":%u,"payloadType":%u,"ammoRemaining":%u,"selfTestResult":%u,"switchStatus_B1":%u,"switchStatus_B4":%u,"switchStatus_B2":%u,"switchStatus_B3":%u,"switchStatus_B0":%u,"switchStatus_B6":%u,"switchStatus_B5":%u,"switchStatus_B7":%u})",
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_D0":%u,"alarmStatus_D1":%u,"alarmStatus_D2":%u,"alarmStatus_D3":%u,"alarmStatus_D4":%u,"alarmStatus_D5":%u,"throttle":%u,"batteryVoltage":%u,"fuelRemaining":%u,"engineTemp":%.1f,"satelitesNum":%u,"gpsStatus":%u,"navStatus":%u,"targetWaypoint":%u,"distanceToGo":%.1f,"crossTrackError":%.1f,"commandHeading":%u,"courseDeviation":%.1f,"commandSpeed":%.1f,"commandAltitude":%.1f,"commandTime":%u,"payloadType":%u,"ammoRemaining":%u,"selfTestResult":%u,"switchStatus_D1":%u,"switchStatus_D4":%u,"switchStatus_D2":%u,"switchStatus_D3":%u,"switchStatus_D0":%u,"switchStatus_D6":%u,"switchStatus_D5":%u,"switchStatus_D7":%u})",
 		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse, 
 		gpsGroundSpeed, gpsVerticalSpeed, gpsHour, gpsMinute, gpsSecond,
 		targetLongitude, targetLatitude, targetCourse,
-		pPacket->alarmStatus_B0, pPacket->alarmStatus_B1, pPacket->alarmStatus_B2,
-		pPacket->alarmStatus_B3, pPacket->alarmStatus_B4, pPacket->alarmStatus_B5,
+		pPacket->alarmStatus_D0, pPacket->alarmStatus_D1, pPacket->alarmStatus_D2,
+		pPacket->alarmStatus_D3, pPacket->alarmStatus_D4, pPacket->alarmStatus_D5,
 		throttle, batteryVoltage, fuelRemaining, engineTemp, satelitesNum, gpsStatus, navStatus, targetWaypoint,
 		distanceToGo, crossTrackError, commandHeading, courseDeviation,
 		commandSpeed, commandAltitude, commandTime, payloadType, ammoRemaining, selfTestResult,
-		switchStatus_B1, switchStatus_B4, switchStatus_B2, switchStatus_B3, switchStatus_B0,
-		switchStatus_B6, switchStatus_B5, switchStatus_B7);
+		switchStatus_D1, switchStatus_D4, switchStatus_D2, switchStatus_D3, switchStatus_D0,
+		switchStatus_D6, switchStatus_D5, switchStatus_D7);
 
 	std::wstring jsonW(CA2W(json.GetString()));
 	m_webView->PostWebMessageAsJson(jsonW.c_str());
@@ -1709,7 +1709,7 @@ void CFWGCSDlgDlg::SendHudMessage(const UdpRecvDataPacket* pPacket)
 }
 
 // 处理接收到的数据包
-void CFWGCSDlgDlg::ProcessReceivedData(const UdpRecvDataPacket* pPacket)
+void CFWGCSDlgDlg::ProcessReceivedData(const DataLinkRecvDataPacket_s* pPacket)
 {
 	if (pPacket == NULL)
 	{
@@ -2038,7 +2038,7 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 	CFWGCSDlgDlg* pDlg = (CFWGCSDlgDlg*)pParam;  // 获取对话框指针
 	BYTE buffer[1024];                            // 临时接收缓冲区（每次ReadFile的最大读取量）
 	DWORD dwBytesRead;                            // 实际读取的字节数
-	const int nPacketSize = sizeof(UdpRecvDataPacket);  // 完整数据帧长度（按结构体大小计算）
+	const int nPacketSize = sizeof(DataLinkRecvDataPacket_s);  // 完整数据帧长度（按结构体大小计算）
 	const uint16_t FRAME_HEADER = 0xAA55;               // 帧头固定值
 	
 	TRACE(_T("串口接收线程启动，数据包大小: %d 字节\n"), nPacketSize);
@@ -2133,7 +2133,7 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 				// ============================================================
 				if (nLastFrameOffset >= 0)
 				{
-					UdpRecvDataPacket* pPacket = new UdpRecvDataPacket;
+					DataLinkRecvDataPacket_s* pPacket = new DataLinkRecvDataPacket_s;
 					memcpy(pPacket, pDlg->m_serialBuffer + nLastFrameOffset, nPacketSize);
 
 					// 字节序转换（如果串口数据是大端字节序，需要转换）
@@ -2221,7 +2221,7 @@ UINT CFWGCSDlgDlg::SerialRecvThread(LPVOID pParam)
 // ============================================================================
 LRESULT CFWGCSDlgDlg::OnSerialDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 {
-	UdpRecvDataPacket* pPacket = (UdpRecvDataPacket*)wParam;
+	DataLinkRecvDataPacket_s* pPacket = (DataLinkRecvDataPacket_s*)wParam;
 	if (pPacket != NULL)
 	{
 		// ============================================================
@@ -2238,7 +2238,7 @@ LRESULT CFWGCSDlgDlg::OnSerialDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 			// 注意：当前消息（wParam）的数据包不要在这里删除，后面还要使用
 			if (msg.wParam != NULL && msg.wParam != wParam)
 			{
-				UdpRecvDataPacket* pOldPacket = (UdpRecvDataPacket*)msg.wParam;
+				DataLinkRecvDataPacket_s* pOldPacket = (DataLinkRecvDataPacket_s*)msg.wParam;
 				delete pOldPacket;  // 释放旧数据包内存
 			}
 		}
@@ -2305,7 +2305,7 @@ void CFWGCSDlgDlg::UpdateControlText(UINT nID, const CString& strText)
 //   - 使用双重检查：先检查控件句柄，失败则使用GetDlgItem
 //   - 优先在子对话框中查找控件，如果找不到再在主对话框中查找
 // ============================================================================
-void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
+void CFWGCSDlgDlg::ProcessSerialReceivedData(const DataLinkRecvDataPacket_s* pPacket)
 {
 	// ========================================================================
 	// 步骤1：验证数据包指针有效性
@@ -3178,47 +3178,47 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const UdpRecvDataPacket* pPacket)
 	if (m_radioFlag3.GetSafeHwnd() != NULL)
 		m_radioFlag3.SetCheck(pPacket->controlCommand_D2 ? BST_CHECKED : BST_UNCHECKED);
 	
-	// 视窗组8-4：工作流程标志（特殊处理：workflowStatus_B0 根据值激活不同的 Radio Button）
+	// 视窗组8-4：工作流程标志（特殊处理：workflowStatus_D0 根据值激活不同的 Radio Button）
 	if (m_radioFlag4.GetSafeHwnd() != NULL)
-		m_radioFlag4.SetCheck(!pPacket->workflowStatus_B0 ? BST_CHECKED : BST_UNCHECKED);  // 0时激活
+		m_radioFlag4.SetCheck(!pPacket->workflowStatus_D0 ? BST_CHECKED : BST_UNCHECKED);  // 0时激活
 	if (m_radioFlag5.GetSafeHwnd() != NULL)
-		m_radioFlag5.SetCheck(pPacket->workflowStatus_B0 ? BST_CHECKED : BST_UNCHECKED);   // 1时激活
+		m_radioFlag5.SetCheck(pPacket->workflowStatus_D0 ? BST_CHECKED : BST_UNCHECKED);   // 1时激活
 	if (m_radioFlag6.GetSafeHwnd() != NULL)
-		m_radioFlag6.SetCheck(pPacket->workflowStatus_B1 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag6.SetCheck(pPacket->workflowStatus_D1 ? BST_CHECKED : BST_UNCHECKED);
 	
 	// 视窗组8-5：报警状态标志
 	if (m_radioFlag7.GetSafeHwnd() != NULL)
-		m_radioFlag7.SetCheck(pPacket->alarmStatus_B0 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag7.SetCheck(pPacket->alarmStatus_D0 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag8.GetSafeHwnd() != NULL)
-		m_radioFlag8.SetCheck(pPacket->alarmStatus_B1 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag8.SetCheck(pPacket->alarmStatus_D1 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag9.GetSafeHwnd() != NULL)
-		m_radioFlag9.SetCheck(pPacket->alarmStatus_B2 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag9.SetCheck(pPacket->alarmStatus_D2 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag10.GetSafeHwnd() != NULL)
-		m_radioFlag10.SetCheck(pPacket->alarmStatus_B3 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag10.SetCheck(pPacket->alarmStatus_D3 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag11.GetSafeHwnd() != NULL)
-		m_radioFlag11.SetCheck(pPacket->alarmStatus_B4 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag11.SetCheck(pPacket->alarmStatus_D4 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag12.GetSafeHwnd() != NULL)
-		m_radioFlag12.SetCheck(pPacket->alarmStatus_B5 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag12.SetCheck(pPacket->alarmStatus_D5 ? BST_CHECKED : BST_UNCHECKED);
 	
-	// 视窗组8-6：开关量状态标志（特殊处理：switchStatus_B5 根据值激活不同的 Radio Button）
+	// 视窗组8-6：开关量状态标志（特殊处理：switchStatus_D5 根据值激活不同的 Radio Button）
 	if (m_radioFlag13.GetSafeHwnd() != NULL)
-		m_radioFlag13.SetCheck(pPacket->switchStatus_B0 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag13.SetCheck(pPacket->switchStatus_D0 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag14.GetSafeHwnd() != NULL)
-		m_radioFlag14.SetCheck(pPacket->switchStatus_B1 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag14.SetCheck(pPacket->switchStatus_D1 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag15.GetSafeHwnd() != NULL)
-		m_radioFlag15.SetCheck(pPacket->switchStatus_B2 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag15.SetCheck(pPacket->switchStatus_D2 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag16.GetSafeHwnd() != NULL)
-		m_radioFlag16.SetCheck(pPacket->switchStatus_B3 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag16.SetCheck(pPacket->switchStatus_D3 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag17.GetSafeHwnd() != NULL)
-		m_radioFlag17.SetCheck(pPacket->switchStatus_B4 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag17.SetCheck(pPacket->switchStatus_D4 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag18.GetSafeHwnd() != NULL)
-		m_radioFlag18.SetCheck(!pPacket->switchStatus_B5 ? BST_CHECKED : BST_UNCHECKED);  // 0时激活
+		m_radioFlag18.SetCheck(!pPacket->switchStatus_D5 ? BST_CHECKED : BST_UNCHECKED);  // 0时激活
 	if (m_radioFlag19.GetSafeHwnd() != NULL)
-		m_radioFlag19.SetCheck(pPacket->switchStatus_B5 ? BST_CHECKED : BST_UNCHECKED);   // 1时激活
+		m_radioFlag19.SetCheck(pPacket->switchStatus_D5 ? BST_CHECKED : BST_UNCHECKED);   // 1时激活
 	if (m_radioFlag20.GetSafeHwnd() != NULL)
-		m_radioFlag20.SetCheck(pPacket->switchStatus_B6 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag20.SetCheck(pPacket->switchStatus_D6 ? BST_CHECKED : BST_UNCHECKED);
 	if (m_radioFlag21.GetSafeHwnd() != NULL)
-		m_radioFlag21.SetCheck(pPacket->switchStatus_B7 ? BST_CHECKED : BST_UNCHECKED);
+		m_radioFlag21.SetCheck(pPacket->switchStatus_D7 ? BST_CHECKED : BST_UNCHECKED);
 	
 	// 更新子对话框显示（优先使用子对话框）
 	if (m_pPage1Dlg != NULL && m_pPage1Dlg->GetSafeHwnd() != NULL)
@@ -5216,18 +5216,23 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	}
 
 	// 初始化控制指令数据包
-	UdpSendDataPacket_Cmd packet{};
+	CmdSendPacket_s packet{};
 	memset(&packet, 0, sizeof(packet));
-	packet.frameHeader = 0xFF00;  // 设置帧头（控制指令包）
+	packet.frameHeader = 0xAAAA;  // 设置帧头（控制指令包）
 
 	// 填充控制指令数据
-	packet.missionCommand_B0 = m_missionCommand_B0;
-	packet.missionCommand_B1 = m_missionCommand_B1;
-	packet.missionCommand_B2 = m_missionCommand_B2;
-	packet.missionCommand_B3 = m_missionCommand_B3;
-	packet.missionCommand_B4 = m_missionCommand_B4;
-	packet.missionCommand_B5 = m_missionCommand_B5;
-	packet.controlMode_B0 = m_controlMode_B0;
+	packet.missionCommand_D0 = m_missionCommand_B0;
+	packet.missionCommand_D1 = m_missionCommand_B1;
+	packet.missionCommand_D2 = m_missionCommand_B2;
+	packet.missionCommand_D3 = m_missionCommand_B3;
+	packet.missionCommand_D4 = m_missionCommand_B4;
+	packet.missionCommand_D5 = m_missionCommand_B5;
+	packet.missionCommand_D6 = m_controlMode_B0;
+	packet.missionCommand_D7 = 0;
+	packet.missionCommand_D8 = 0;
+	packet.missionCommand_D9 = 0;
+	packet.elevatorCmd = 0;
+	packet.aileronCmd = 0;
 
 	// 计算整个结构体的校验和
 	packet.checksum = 0;
@@ -5237,9 +5242,9 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	// 调试输出
 	TRACE(_T("开始发送控制指令: frameHeader=0x%04X, missionCommand_B0~B5=%u,%u,%u,%u,%u,%u, controlMode_B0=%u, checksum=0x%02X\n"),
 		packet.frameHeader,
-		packet.missionCommand_B0, packet.missionCommand_B1, packet.missionCommand_B2,
-		packet.missionCommand_B3, packet.missionCommand_B4, packet.missionCommand_B5,
-		packet.controlMode_B0, packet.checksum);
+		packet.missionCommand_D0, packet.missionCommand_D1, packet.missionCommand_D2,
+		packet.missionCommand_D3, packet.missionCommand_D4, packet.missionCommand_D5,
+		packet.missionCommand_D6, packet.checksum);
 
 	// 发送数据（连续发送2-3次以应对丢包）
 	const int nSendCount = 1;  //当前不启用多次发送

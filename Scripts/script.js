@@ -36,12 +36,12 @@ let hudGroup3Ctx = null;
 
 // 顶层图层中央横幅报警数据（根据 UdpData.h 中的协议定义）
 const alarmNames = [
-    '\u7535\u6c60\u7535\u538b\u4f4e\u62a5\u8b66',      // 电池电压低报警 (alarmStatus_B0)
-    '\u9ad8\u5ea6\u62a5\u8b66',                        // 高度报警 (alarmStatus_B1)
-    '\u6cb9\u91cf\u4f4e\u62a5\u8b66',                  // 油量低报警 (alarmStatus_B2)
-    '\u8f6c\u901f\u5f02\u5e38\u62a5\u8b66',            // 转速异常报警 (alarmStatus_B3)
-    '\u7a7a\u901f\u5f02\u5e38\u62a5\u8b66',            // 空速异常报警 (alarmStatus_B4)
-    'GPS\u5b9a\u4f4d\u7cbe\u5ea6\u4f4e\u62a5\u8b66'    // GPS定位精度低报警 (alarmStatus_B5)
+    '\u7535\u6c60\u7535\u538b\u4f4e\u62a5\u8b66',      // 电池电压低报警 (alarmStatus_D0)
+    '\u9ad8\u5ea6\u62a5\u8b66',                        // 高度报警 (alarmStatus_D1)
+    '\u6cb9\u91cf\u4f4e\u62a5\u8b66',                  // 油量低报警 (alarmStatus_D2)
+    '\u8f6c\u901f\u5f02\u5e38\u62a5\u8b66',            // 转速异常报警 (alarmStatus_D3)
+    '\u7a7a\u901f\u5f02\u5e38\u62a5\u8b66',            // 空速异常报警 (alarmStatus_D4)
+    'GPS\u5b9a\u4f4d\u7cbe\u5ea6\u4f4e\u62a5\u8b66'    // GPS定位精度低报警 (alarmStatus_D5)
 ];
 // activeAlarms: [{ index: number, lastSeen: number }]
 let activeAlarms = [];
@@ -91,14 +91,14 @@ let hudGroup2Data = {
 
 // HUD组3数据（根据 UdpData.h 中的协议定义）
 let hudGroup3Data = {
-    switchStatus_B1: 0,       //  发动机启动状态
-    switchStatus_B4: 0,       //  关车状态
-    switchStatus_B2: 0,       //  盘旋状态
-    switchStatus_B3: 0,       //  归航状态
-    switchStatus_B0: 0,       //  发动机并网状态
-    switchStatus_B6: 0,       //  开伞状态
-    switchStatus_B5: 0,       //  起落架收放状态
-    switchStatus_B7: 0        //  夜航灯开关状态
+    switchStatus_D1: 0,       //  发动机启动状态
+    switchStatus_D4: 0,       //  关车状态
+    switchStatus_D2: 0,       //  盘旋状态
+    switchStatus_D3: 0,       //  归航状态
+    switchStatus_D0: 0,       //  发动机并网状态
+    switchStatus_D6: 0,       //  开伞状态
+    switchStatus_D5: 0,       //  起落架收放状态
+    switchStatus_D7: 0        //  夜航灯开关状态
 };
 
 // 飞机位置和航向数据（从UDP协议接收）
@@ -848,23 +848,23 @@ function drawHudGroup3() {
     const dataFields = [
         // 第1行
         [
-            ['\u53d1\u52a8\u673a\u542f\u52a8', 'switchStatus_B1'],  // (1-1) 发动机启动状态
-            ['\u5173\u8f66', 'switchStatus_B4']                     // (1-2) 关车状态
+            ['\u53d1\u52a8\u673a\u542f\u52a8', 'switchStatus_D1'],  // (1-1) 发动机启动状态
+            ['\u5173\u8f66', 'switchStatus_D4']                     // (1-2) 关车状态
         ],
         // 第2行
         [
-            ['\u76f8\u65cb', 'switchStatus_B2'],                    // (2-1) 盘旋状态
-            ['\u5f52\u822a', 'switchStatus_B3']                     // (2-2) 归航状态
+            ['\u76f8\u65cb', 'switchStatus_D2'],                    // (2-1) 盘旋状态
+            ['\u5f52\u822a', 'switchStatus_D3']                     // (2-2) 归航状态
         ],
         // 第3行
         [
-            ['\u53d1\u52a8\u673a\u5e76\u7f51', 'switchStatus_B0'],  // (3-1) 发动机并网状态
-            ['\u5f00\u4f1e', 'switchStatus_B6']                     // (3-2) 开伞状态
+            ['\u53d1\u52a8\u673a\u5e76\u7f51', 'switchStatus_D0'],  // (3-1) 发动机并网状态
+            ['\u5f00\u4f1e', 'switchStatus_D6']                     // (3-2) 开伞状态
         ],
         // 第4行
         [
-            ['\u8d77\u843d\u67b6', 'switchStatus_B5'],              // (4-1) 起落架收放状态
-            ['\u591c\u822a\u706f', 'switchStatus_B7']               // (4-2) 夜航灯开关状态
+            ['\u8d77\u843d\u67b6', 'switchStatus_D5'],              // (4-1) 起落架收放状态
+            ['\u591c\u822a\u706f', 'switchStatus_D7']               // (4-2) 夜航灯开关状态
         ]
     ];
     //HUD组3的字体大小配置
@@ -952,7 +952,7 @@ if (window.chrome && window.chrome.webview) {
             hudState = { pitch: 0, roll: 0, yaw: 0, ias: 0, tas: 0, alt: 0, mach: 0, aoa: 0, g: 1.0, rpm: 0 };
             hudBottomInfoData = { gpsGroundSpeed: 0, gpsVerticalSpeed: 0, gpsHour: 0, gpsMinute: 0, gpsSecond: 0 };
             hudGroup2Data = { throttle: 0, batteryVoltage: 0, fuelRemaining: 0, engineTemp: 0, satelitesNum: 0, gpsStatus: 0, navStatus: 0, targetWaypoint: 0, distanceToGo: 0, crossTrackError: 0, commandHeading: 0, courseDeviation: 0, commandSpeed: 0, commandAltitude: 0, commandTime: 0, payloadType: 0, ammoRemaining: 0, selfTestResult: 0 };
-            hudGroup3Data = { switchStatus_B1: 0, switchStatus_B4: 0, switchStatus_B2: 0, switchStatus_B3: 0, switchStatus_B0: 0, switchStatus_B6: 0, switchStatus_B5: 0, switchStatus_B7: 0 };
+            hudGroup3Data = { switchStatus_D1: 0, switchStatus_D4: 0, switchStatus_D2: 0, switchStatus_D3: 0, switchStatus_D0: 0, switchStatus_D6: 0, switchStatus_D5: 0, switchStatus_D7: 0 };
             aircraftData = { longitude: null, latitude: null, course: null };
             targetData = { longitude: null, latitude: null, course: null };
             aircraftTrail = [];
@@ -1085,23 +1085,23 @@ if (window.chrome && window.chrome.webview) {
         if (receivedData.selfTestResult !== undefined) hudGroup2Data.selfTestResult = receivedData.selfTestResult;
 
         // 更新HUD组3数据（根据UdpData.h协议）
-        if (receivedData.switchStatus_B1 !== undefined) hudGroup3Data.switchStatus_B1 = receivedData.switchStatus_B1;
-        if (receivedData.switchStatus_B4 !== undefined) hudGroup3Data.switchStatus_B4 = receivedData.switchStatus_B4;
-        if (receivedData.switchStatus_B2 !== undefined) hudGroup3Data.switchStatus_B2 = receivedData.switchStatus_B2;
-        if (receivedData.switchStatus_B3 !== undefined) hudGroup3Data.switchStatus_B3 = receivedData.switchStatus_B3;
-        if (receivedData.switchStatus_B0 !== undefined) hudGroup3Data.switchStatus_B0 = receivedData.switchStatus_B0;
-        if (receivedData.switchStatus_B6 !== undefined) hudGroup3Data.switchStatus_B6 = receivedData.switchStatus_B6;
-        if (receivedData.switchStatus_B5 !== undefined) hudGroup3Data.switchStatus_B5 = receivedData.switchStatus_B5;
-        if (receivedData.switchStatus_B7 !== undefined) hudGroup3Data.switchStatus_B7 = receivedData.switchStatus_B7;
+        if (receivedData.switchStatus_D1 !== undefined) hudGroup3Data.switchStatus_D1 = receivedData.switchStatus_D1;
+        if (receivedData.switchStatus_D4 !== undefined) hudGroup3Data.switchStatus_D4 = receivedData.switchStatus_D4;
+        if (receivedData.switchStatus_D2 !== undefined) hudGroup3Data.switchStatus_D2 = receivedData.switchStatus_D2;
+        if (receivedData.switchStatus_D3 !== undefined) hudGroup3Data.switchStatus_D3 = receivedData.switchStatus_D3;
+        if (receivedData.switchStatus_D0 !== undefined) hudGroup3Data.switchStatus_D0 = receivedData.switchStatus_D0;
+        if (receivedData.switchStatus_D6 !== undefined) hudGroup3Data.switchStatus_D6 = receivedData.switchStatus_D6;
+        if (receivedData.switchStatus_D5 !== undefined) hudGroup3Data.switchStatus_D5 = receivedData.switchStatus_D5;
+        if (receivedData.switchStatus_D7 !== undefined) hudGroup3Data.switchStatus_D7 = receivedData.switchStatus_D7;
 
         // 处理报警数据（顶层图层中央横幅报警）
         const alarmFields = [
-            'alarmStatus_B0',
-            'alarmStatus_B1',
-            'alarmStatus_B2',
-            'alarmStatus_B3',
-            'alarmStatus_B4',
-            'alarmStatus_B5'
+            'alarmStatus_D0',
+            'alarmStatus_D1',
+            'alarmStatus_D2',
+            'alarmStatus_D3',
+            'alarmStatus_D4',
+            'alarmStatus_D5'
         ];
 
         const now = Date.now();

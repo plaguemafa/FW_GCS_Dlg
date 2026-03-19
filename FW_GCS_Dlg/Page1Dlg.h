@@ -1,10 +1,10 @@
-﻿// Page1Dlg.h: 第一页子对话框头文件
+// Page1Dlg.h: 第一页子对话框头文件
 //
 
 #pragma once
 
 #include <afxdialogex.h>
-#include "UdpData.h"
+#include "UAV_DataLink.h"
 
 // CPage1Dlg 对话框
 class CPage1Dlg : public CDialogEx
@@ -39,6 +39,6 @@ public:
 	CEdit m_editDisplay73;   // SBUS自检结果（IDC_Display73）
 	
 	// 更新数据显示
-	void UpdateDisplay(const UdpRecvDataPacket* pPacket);
+	void UpdateDisplay(const DataLinkRecvDataPacket_s* pPacket);
 };
 

@@ -1,11 +1,11 @@
-﻿// Page1Dlg.cpp: 第一页子对话框实现文件
+// Page1Dlg.cpp: 第一页子对话框实现文件
 //
 
 #include "pch.h"
 #include "framework.h"
 #include "FW_GCS_Dlg.h"
 #include "Page1Dlg.h"
-#include "UdpData.h"
+#include "UAV_DataLink.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -90,7 +90,7 @@ BOOL CPage1Dlg::OnInitDialog()
 }
 
 // 更新数据显示
-void CPage1Dlg::UpdateDisplay(const UdpRecvDataPacket* pPacket)
+void CPage1Dlg::UpdateDisplay(const DataLinkRecvDataPacket_s* pPacket)
 {
 	if (pPacket == NULL)
 		return;

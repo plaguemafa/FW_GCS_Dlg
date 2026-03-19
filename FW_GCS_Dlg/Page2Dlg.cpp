@@ -10,7 +10,7 @@
 #include "FW_GCS_Dlg.h"
 #include "FW_GCS_DlgDlg.h"
 #include "Page2Dlg.h"
-#include "UdpData.h"
+#include "UAV_DataLink.h"
 #include "DemReader.h"
 
 #ifdef _DEBUG
@@ -360,7 +360,7 @@ void CPage2Dlg::ClearAllEditDataToZero()
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.SetWindowText(_T("0"));
 }
 
-void CPage2Dlg::UpdateDisplay(const UdpRecvDataPacket* pPacket)
+void CPage2Dlg::UpdateDisplay(const DataLinkRecvDataPacket_s* pPacket)
 {
 	// Page2对话框当前不显示接收数据，此函数保留为空实现
 	// 如果将来需要在Page2显示接收数据，可以在此添加相应控件和更新逻辑
@@ -492,7 +492,7 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	if (m_editSendData28.GetSafeHwnd() != NULL) m_editSendData28.GetWindowText(strData[28]);
 
 	// 初始化数据包结构体
-	UdpSendDataPacket_Data packet{};
+	DataSendPacket_s packet{};
 	memset(&packet, 0, sizeof(packet));  // 清零，包括waypoints数组
 	packet.frameHeader = 0xF00F;  // 设置帧头（装订参数包）
 	
@@ -542,15 +542,12 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	packet.targetLongitude = static_cast<int32_t>(_ttof(strData[17]) * 10000000.0);
 	packet.targetLatitude = static_cast<int32_t>(_ttof(strData[18]) * 10000000.0);
 	packet.targetAltitude = static_cast<int16_t>(_ttoi(strData[19]) * 10.0);           // int16_t
-	packet.launchLongitude2 = static_cast<int32_t>(_ttof(strData[20]) * 10000000.0);         // int32_t
-	packet.launchLatitude2 = static_cast<int32_t>(_ttof(strData[21]) * 10000000.0);          // int32_t
-	packet.launchAltitude2 = static_cast<int16_t>(_ttoi(strData[22]) * 10.0);          // int16_t
+	// UAV_DataLink.h 的 DataSendPacket_s 不包含 launchLongitude2/launchLatitude2/launchAltitude2（弃用）
 	// 开伞点经纬度
 	packet.parachuteLongitude = static_cast<int32_t>(_ttof(strData[23]) * 10000000.0);
 	packet.parachuteLatitude = static_cast<int32_t>(_ttof(strData[24]) * 10000000.0);
 	packet.parachuteAltitude = static_cast<int16_t>(_ttoi(strData[25]) * 10.0);        // int16_t
-	packet.elevatorCmd = static_cast<int8_t>(_ttoi(strData[26]));               // int8_t
-	packet.aileronCmd = static_cast<int8_t>(_ttoi(strData[27]));                // int8_t
+	// UAV_DataLink.h 的 DataSendPacket_s 不包含 elevatorCmd/aileronCmd（弃用）
 	packet.airspeedSet = static_cast<uint8_t>(_ttoi(strData[28]));              // uint8_t
 
 	// 计算整个结构体的校验和
@@ -561,12 +558,12 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 	// 调试输出：检查发送的数据和结构体大小
 	TRACE(_T("UDP发送装订参数: frameHeader=0x%04X, launchLon=%d, launchLat=%d, launchAlt=%d\n"),
 		packet.frameHeader, packet.launchLongitude, packet.launchLatitude, packet.launchAltitude);
-	TRACE(_T("UDP发送: 结构体大小=%d字节, 校验和=0x%02X\n"), sizeof(UdpSendDataPacket_Data), packet.checksum);
+	TRACE(_T("UDP发送: 结构体大小=%d字节, 校验和=0x%02X\n"), sizeof(DataSendPacket_s), packet.checksum);
 	
 	// 调试输出：显示原始字节（用于诊断，只显示前32字节）
 	BYTE* pBytes = (BYTE*)&packet;
 	TRACE(_T("UDP发送原始字节[前32字节]: "));
-	int nBytesToShow = (sizeof(UdpSendDataPacket_Data) < 32) ? sizeof(UdpSendDataPacket_Data) : 32;
+	int nBytesToShow = (sizeof(DataSendPacket_s) < 32) ? sizeof(DataSendPacket_s) : 32;
 	for (int i = 0; i < nBytesToShow; i++)
 	{
 		TRACE(_T("%02X "), pBytes[i]);
