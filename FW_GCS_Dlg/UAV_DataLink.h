@@ -102,14 +102,14 @@ typedef struct {
     uint8_t  alarmStatus_D4;       // 空速异常报警标志           / 0xAA          顶层图层中央横幅报警5
     uint8_t  alarmStatus_D5;       // GPS定位精度低报警标志      / 0xAA          顶层图层中央横幅报警6
 
-    uint8_t  switchStatus_D0;      // 发动机并网状态             / 0xAA         Canvas组3 协议(3-1)
-    uint8_t  switchStatus_D1;      // 发动机启动状态             / 0xAA         Canvas组3 协议(1-1)
+    uint8_t  switchStatus_D0;      // 发动机并网状态             / 0xAA          Canvas组3 协议(3-1)
+    uint8_t  switchStatus_D1;      // 发动机启动状态             / 0xAA          Canvas组3 协议(1-1)
     uint8_t  switchStatus_D2;      // 盘旋状态                  / 0xAA          Canvas组3 协议(2-1)      
     uint8_t  switchStatus_D3;      // 归航状态                  / 0xAA          Canvas组3 协议(2-2)
     uint8_t  switchStatus_D4;      // 关车状态                  / 0xAA          Canvas组3 协议(1-2)
-    uint8_t  switchStatus_D5;      // 起落架收放状态             / 0xAA         Canvas组3 协议(4-1)
+    uint8_t  switchStatus_D5;      // 起落架收放状态             / 0xAA          Canvas组3 协议(4-1)
     uint8_t  switchStatus_D6;      // 开伞状态                  / 0xAA          Canvas组3 协议(3-2)
-    uint8_t  switchStatus_D7;      // 夜航灯开关状态             / 0xAA         Canvas组3 协议(4-2)
+    uint8_t  switchStatus_D7;      // 夜航灯开关状态             / 0xAA          Canvas组3 协议(4-2)
 
     int32_t  targetLongitude;     // 目标经度               deg x10000000       绘图层 地图目标标识位置1
     int32_t  targetLatitude;      // 目标纬度               deg x10000000       绘图层 地图目标标识位置2
@@ -119,13 +119,13 @@ typedef struct {
 
     uint16_t  FCS_Report_Flag;         // 飞控状态回报字段
         //正常工作状态： 0x0000 上电准备阶段（等待任务设置参数） 0x0001 上电自检状态
-        //             0xCC01 传感器自检状态                0xCC02 舵面测试状态         0xCC03 发动机测试状态   
+        //             0xCC01 传感器自检状态
         //             0xAA01 进入发控流程，等待任务参数      0xAA02 等待参数装订指令     0xAA03 等待发射指令(准备好)    0xAA04 离架飞行状态    0xAA05 开伞状态
-        //             0xBB01 进入地测流程，待定  
+        //             0xBB01 进入地测流程，等待测试指令      0xCC02 舵面测试状态         0xCC03 发动机测试状态   
         //异常工作状态： 0xEE01 自检失败终止状态，等待下电
 
-    uint8_t   DataLink_CmdResult;      // 数据链指令接收结果         // 0xAA 确认接收解析        0x00为无回报
-    uint8_t   DataLink_DataResult;     // 数据链数据接收结果         // 0xAA 确认接收解析        0x00为无回报
+    uint8_t   DataLink_CmdResult;      // 数据链指令接收结果         // 0xAA 确认接收解析 3s内        0x00为无回报
+    uint8_t   DataLink_DataResult;     // 数据链数据接收结果         // 0xAA 确认接收解析 3s内        0x00为无回报
 
     // int32_t  reserved1;           // 预留1             
     // int32_t  reserved2;           // 预留2
@@ -152,8 +152,8 @@ struct CmdSendPacket_s{                   // 地面站发送数据包结构    �
     uint8_t missionCommand_D7;         // 0xAA 为激活            0x00 为未激活                         IMU精度检查指令
     uint8_t missionCommand_D8;         // 0xAA 为激活            0x00 为未激活                         卫星收星检查指令
     uint8_t missionCommand_D9;         // 0xAA 为激活            0x00 为未激活                         卫星定位精度检查指令
-    int8_t elevatorCmd;                // 控制指令 俯仰舵偏指令        / 待定
-    int8_t aileronCmd;                 // 控制指令 滚转舵偏指令        / 待定
+    int8_t elevatorCmd;                // 控制指令 俯仰舵偏指令        [+—30]     
+    int8_t aileronCmd;                 // 控制指令 滚转舵偏指令        [+—30]
     uint8_t checksum;                  // 校验和 
 };
 #pragma pack(pop)  // 恢复默认字节对齐

@@ -138,6 +138,8 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_missionCommand_D7 = 0x00;     // IMU精度检查（未激活）
 	m_missionCommand_D8 = 0x00;     // 卫星收星检查（未激活）
 	m_missionCommand_D9 = 0x00;     // 卫星定位精度检查（未激活）
+	m_bPendingCmdAck = FALSE;
+	m_bPendingDataAck = FALSE;
 	
 	// 串口初始化
 	m_hSerialPort = INVALID_HANDLE_VALUE;       // 串口句柄初始化为无效值
@@ -1295,6 +1297,7 @@ void CFWGCSDlgDlg::DisconnectUdp()
 
 	m_bUdpConnected = FALSE;
 	::KillTimer(GetSafeHwnd(), 1);
+	ClearDataLinkAckWaits();
 
 #if FW_GCS_WITH_WEBVIEW2
 	if (m_webView != nullptr)
@@ -1432,7 +1435,7 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			if (fromAddr.sin_addr.s_addr == pDlg->m_udpRemoteAddr.sin_addr.s_addr &&
 				fromAddr.sin_port == pDlg->m_udpRemoteAddr.sin_port)
 			{
-				TRACE(_T("UDP接收线程: 数据包来自配置的远程地址\n"));
+				//TRACE(_T("UDP接收线程: 数据包来自配置的远程地址\n"));
 			}
 			else
 			{
@@ -1543,7 +1546,7 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 	return 0;
 }
 
-// 定时器：检查 UDP 收包超时，触发通信丢包中央横幅报警
+// 定时器：检查 UDP 收包超时，触发通信丢包中央横幅报警；以及飞控对指令/装订数据的 3s 确认超时
 void CFWGCSDlgDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == 1 && m_bUdpConnected)
@@ -1561,6 +1564,26 @@ void CFWGCSDlgDlg::OnTimer(UINT_PTR nIDEvent)
 			if (m_webView != nullptr)
 				m_webView->PostWebMessageAsJson(L"{\"command\":\"showPacketLossAlarm\"}");
 #endif
+		}
+	}
+	else if (nIDEvent == TIMER_ID_DATALINK_CMD_ACK)
+	{
+		KillTimer(TIMER_ID_DATALINK_CMD_ACK);
+		if (m_bPendingCmdAck)  //未回报反馈
+		{
+			m_bPendingCmdAck = FALSE;
+			MessageBox(_T("未收到飞控对控制指令的确认\nDataLink_CmdResult≠0xAA"),
+				_T("数据链指令回报"), MB_OK | MB_ICONWARNING | MB_TOPMOST);
+		}
+	}
+	else if (nIDEvent == TIMER_ID_DATALINK_DATA_ACK)
+	{
+		KillTimer(TIMER_ID_DATALINK_DATA_ACK);
+		if (m_bPendingDataAck)
+		{
+			m_bPendingDataAck = FALSE;
+			MessageBox(_T("未收到飞控对装订参数数据的确认\nDataLink_DataResult≠0xAA"),
+				_T("数据链数据回报"), MB_OK | MB_ICONWARNING | MB_TOPMOST);
 		}
 	}
 	CDialogEx::OnTimer(nIDEvent);
@@ -1589,6 +1612,9 @@ LRESULT CFWGCSDlgDlg::OnUdpDataReceivedMsg(WPARAM wParam, LPARAM lParam)
 				delete pOldPacket;  // 释放旧数据包内存
 			}
 		}
+
+		// 飞控回报字段：须在 UI 节流之前处理，否则丢弃的包会漏掉 DataLink_CmdResult / DataLink_DataResult
+		CheckDataLinkAckFields(pPacket);
 
 		// ============================================================
 		// 处理接收到的数据包（更新UI显示）
@@ -2327,6 +2353,8 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const DataLinkRecvDataPacket_s* pPa
 		TRACE(_T("ProcessSerialReceivedData: 数据包指针为空！\n"));
 		return;
 	}
+
+	CheckDataLinkAckFields(pPacket);
 
 	// 将关键数据推送给 WebView2，用于 HUD 渲染
 	SendHudMessage(pPacket);
@@ -5354,7 +5382,60 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	}
 
 	TRACE(_T("控制指令发送完成：成功 %d/%d 次\n"), nSuccessCount, nSendCount);
+	if (nSuccessCount > 0)
+		BeginCmdAckWait();
 	return (nSuccessCount > 0);
+}
+
+void CFWGCSDlgDlg::ClearDataLinkAckWaits()
+{
+	if (GetSafeHwnd() != NULL)
+	{
+		KillTimer(TIMER_ID_DATALINK_CMD_ACK);
+		KillTimer(TIMER_ID_DATALINK_DATA_ACK);
+	}
+	m_bPendingCmdAck = FALSE;
+	m_bPendingDataAck = FALSE;
+}
+
+void CFWGCSDlgDlg::BeginCmdAckWait()
+{
+	if (GetSafeHwnd() == NULL || !m_bUdpConnected)
+		return;
+	KillTimer(TIMER_ID_DATALINK_CMD_ACK);
+	m_bPendingCmdAck = TRUE;
+	SetTimer(TIMER_ID_DATALINK_CMD_ACK, 3000, NULL);
+}
+
+void CFWGCSDlgDlg::BeginDataLinkDataAckWait()
+{
+	if (GetSafeHwnd() == NULL || !m_bUdpConnected)
+		return;
+	KillTimer(TIMER_ID_DATALINK_DATA_ACK);
+	m_bPendingDataAck = TRUE;
+	SetTimer(TIMER_ID_DATALINK_DATA_ACK, 3000, NULL);
+}
+
+void CFWGCSDlgDlg::CheckDataLinkAckFields(const DataLinkRecvDataPacket_s* pPacket)
+{
+	if (pPacket == NULL)
+		return;
+	if (m_bPendingCmdAck && pPacket->DataLink_CmdResult == 0xAA)
+	{
+		m_bPendingCmdAck = FALSE;
+		if (GetSafeHwnd() != NULL)
+			KillTimer(TIMER_ID_DATALINK_CMD_ACK);
+		//MessageBox(_T("控制指令已接收并解析!\nDataLink_CmdResult=0xAA"),
+			//_T("数据链指令回报"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+	}
+	if (m_bPendingDataAck && pPacket->DataLink_DataResult == 0xAA)
+	{
+		m_bPendingDataAck = FALSE;
+		if (GetSafeHwnd() != NULL)
+			KillTimer(TIMER_ID_DATALINK_DATA_ACK);
+		MessageBox(_T("装订参数数据飞控已确认接收并解析\nDataLink_DataResult=0xAA。"),
+			_T("数据链数据回报"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+	}
 }
 
 // 从注册表加载UDP配置（未实现，当前使用宏默认值）

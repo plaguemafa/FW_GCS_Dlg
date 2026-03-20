@@ -242,6 +242,14 @@ protected:
 	BOOL SendHandshake();                  // 发送握手数据包
 	BOOL SendControlCommand();             // 发送控制指令（CmdSendPacket_s）
 	void ProcessReceivedData(const DataLinkRecvDataPacket_s* pPacket);  // 处理接收到的数据包
+	// 飞控对 CmdSendPacket_s / DataSendPacket_s 的异步确认（3s 内 DataLink_*Result==0xAA），用定时器实现不阻塞 UI
+	void BeginCmdAckWait();
+	void ClearDataLinkAckWaits();
+	void CheckDataLinkAckFields(const DataLinkRecvDataPacket_s* pPacket);
+	static constexpr UINT_PTR TIMER_ID_DATALINK_CMD_ACK = 2;
+	static constexpr UINT_PTR TIMER_ID_DATALINK_DATA_ACK = 3;
+	BOOL m_bPendingCmdAck;
+	BOOL m_bPendingDataAck;
 	static UINT UdpRecvThread(LPVOID pParam);  // UDP接收线程函数（静态）
 	void UpdateControlText(UINT nID, const CString& strText);  // 辅助函数：更新控件文本（优先在子对话框中查找）
 	void ClearAllDisplayData();  // 断开UDP后清除所有显示控件及JS端数据为0
@@ -333,6 +341,8 @@ public:
 public:
 	// 提供给子对话框安全调用的UDP发送封装
 	BOOL SendUdpDataPublic(const void* pData, int nSize) { return SendUdpData(pData, nSize); }
+	// Page2 发送 DataSendPacket_s 成功后调用：启动 3s 内检测 DataLink_DataResult（非阻塞）
+	void BeginDataLinkDataAckWait();
 	// 供 Page2 将装订数据加载到地图：向 WebView2 发送 JSON 消息
 	void PostMapMessageFromPage2(const CStringA& jsonA);
 

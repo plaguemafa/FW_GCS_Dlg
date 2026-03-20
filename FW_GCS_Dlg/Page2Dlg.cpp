@@ -599,21 +599,22 @@ void CPage2Dlg::OnBnClickedButtonSendData()
 		MessageBox(_T("UDP未连接或所有发送都失败，请检查连接后重试。"), _T("发送失败"), MB_OK | MB_ICONERROR | MB_TOPMOST);
 		return;
 	}
+
+	// 已发出装订包：主界面异步等待飞控 DataLink_DataResult（3s 定时器，不阻塞本对话框）
+	m_pMainDlg->BeginDataLinkDataAckWait();
 	
 	// 至少有一次发送成功
 	if (nFailCount > 0)
 	{
 		// 部分成功，显示警告
 		CString strMsg;
-		strMsg.Format(_T("UDP数据发送完成（成功 %d 次，失败 %d 次）。\n\n建议：如果频繁失败，请检查网络连接。"), 
+		strMsg.Format(_T("UDP数据发送完成（成功 %d 次，失败 %d 次）。\n\n建议：如果频繁失败，请检查网络连接。\n\n正在等待飞控确认装订数据（最多 3 秒）…"), 
 			nSuccessCount, nFailCount);
 		MessageBox(strMsg, _T("发送部分成功"), MB_OK | MB_ICONWARNING | MB_TOPMOST);
 	}
 	else
 	{
-		// 全部成功
-		TRACE(_T("UDP数据发送成功（全部 %d 次都成功）。\n"), nSuccessCount);
-		MessageBox(_T("UDP数据发送成功\n（已发送3包次，间隔10ms）。"), _T("发送成功"), MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+		TRACE(_T("UDP数据已从地面站发出（全部 %d 次成功），等待飞控 DataLink_DataResult 回报（3s 内弹窗）。\n"), nSuccessCount);
 	}
 }
 
