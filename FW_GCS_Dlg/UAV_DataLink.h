@@ -65,7 +65,7 @@ typedef struct {
     uint8_t  machNumber;           // 马赫数                   / x100         Canvas组1 协议(10)
     uint16_t radioAltitude;        // 无线电高度               / x10          Canvas组1 协议(11)
 
-    uint8_t  navStatus;            // 导航状态                 / 待定           Canvas组2 协议(4-1)
+    uint8_t  navStatus;            // 导航状态                 / 待定         Canvas组2 协议(4-1)
     uint8_t  gpsHour;              // GPS时                    h x1         绘图层 主界面底部信息栏 1-3.1
     uint8_t  gpsMinute;            // GPS分                  min x1         绘图层 主界面底部信息栏 1-3.2
     uint8_t  gpsSecond;            // GPS秒                    s x1         绘图层 主界面底部信息栏 1-3.3
@@ -80,7 +80,7 @@ typedef struct {
     uint8_t  commandTime;          // 应飞时间                  s x1         Canvas组2 协议(8-1)
     uint8_t  payloadType;          // 载荷类型                  / x1         Canvas组2 协议(8-2)
     uint8_t  ammoRemaining;        // 剩余弹量                  / x1         Canvas组2 协议(9-1)
-    uint8_t  selfTestResult;       // 自检结果                  / 0xAA         Canvas组2 协议(9-2)
+    uint8_t  selfTestResult;       // 自检结果                  / 0xAA       Canvas组2 协议(9-2)
 
     uint8_t  YIS100A_result;       // IMU自检结果               / 0xAA         视窗组9-0 IDC_Display66 扩展协议 pag1
     uint8_t  HP5804_result;        // 气压计自检结果             / 0xAA         视窗组9-1 IDC_Display67 扩展协议 pag1
@@ -117,15 +117,15 @@ typedef struct {
     int8_t   targetSpeed;         // 目标速度               m/s x10             绘图层 地图目标标识速度
     int16_t  targetCourse;        // 目标航向               deg x10             绘图层 地图目标标识方向
 
-    uint16_t   FCS_Report_Flag;         // 飞控状态回报字段
-        //正常工作状态：0x0000 上电准备阶段（等待任务设置参数） 0x0001 上电自检状态
-        //             0xCC01 传感器自检状态     0xCC02 舵面测试状态    0xCC03 发动机测试状态   
-        //             0xAA01 进入发控流程，等待任务参数     0xAA02 等待参数装订指令     0xAA03 等待发射指令    0xAA04 离架飞行状态    0xAA05 开伞状态
-        //             0xBB01 进入地测流程，等待参数  
+    uint16_t  FCS_Report_Flag;         // 飞控状态回报字段
+        //正常工作状态： 0x0000 上电准备阶段（等待任务设置参数） 0x0001 上电自检状态
+        //             0xCC01 传感器自检状态                0xCC02 舵面测试状态         0xCC03 发动机测试状态   
+        //             0xAA01 进入发控流程，等待任务参数      0xAA02 等待参数装订指令     0xAA03 等待发射指令(准备好)    0xAA04 离架飞行状态    0xAA05 开伞状态
+        //             0xBB01 进入地测流程，待定  
         //异常工作状态： 0xEE01 自检失败终止状态，等待下电
 
-    uint8_t   DataLint_CmdResult;      // 数据链指令接收结果         // 0xAA 确认接收解析        0x00为无回报
-    uint8_t   DataLint_DataResult;     // 数据链数据接收结果         // 0xAA 确认接收解析        0x00为无回报
+    uint8_t   DataLink_CmdResult;      // 数据链指令接收结果         // 0xAA 确认接收解析        0x00为无回报
+    uint8_t   DataLink_DataResult;     // 数据链数据接收结果         // 0xAA 确认接收解析        0x00为无回报
 
     // int32_t  reserved1;           // 预留1             
     // int32_t  reserved2;           // 预留2
@@ -142,19 +142,19 @@ typedef struct {
 struct CmdSendPacket_s{                   // 地面站发送数据包结构    地面站帧头作为隐形msg_id使用
     uint16_t frameHeader;                       // 固定值0xAAAA
     // 任务指令  
-    uint8_t missionCommand_D0;                  // 0xAA 为发射流程指令     0x00 为地面测试流程指令
-    uint8_t missionCommand_D1;                  // 0xAA 为激活            0x00 为未激活                                 自检指令
-    uint8_t missionCommand_D2;                  // 0xAA 为激活            0x00 为未激活                                 任务参数装订指令
-    uint8_t missionCommand_D3;                  // 0xAA 为激活            0x00 为未激活                                 舵面检查指令
-    uint8_t missionCommand_D4;                  // 0xAA 为激活            0x00 为未激活                                 发动机检查指令
-    uint8_t missionCommand_D5;                  // 0xAA 为激活            0x00 为未激活                                 发射指令
-    uint8_t missionCommand_D6;                  // 0xAA 为全自主          0xFF 为半自主           0x00 为手动遥控        控制模式  
-    uint8_t missionCommand_D7;                  // 0xAA 为激活            0x00 为未激活                                 IMU精度检查指令
-    uint8_t missionCommand_D8;                  // 0xAA 为激活            0x00 为未激活                                 卫星收星检查指令
-    uint8_t missionCommand_D9;                  // 0xAA 为激活            0x00 为未激活                                 卫星定位精度检查指令
-    int8_t elevatorCmd;                         // 控制指令 俯仰舵偏指令        / 待定          IDC_Display_EditData26
-    int8_t aileronCmd;                          // 控制指令 滚转舵偏指令        / 待定          IDC_Display_EditData27
-    uint8_t checksum;                           // 校验和 
+    uint8_t missionCommand_D0;         // 0xAA 为发射流程指令     0x00 为地面测试流程指令
+    uint8_t missionCommand_D1;         // 0xAA 为激活            0x00 为未激活                         自检指令
+    uint8_t missionCommand_D2;         // 0xAA 为激活            0x00 为未激活                         任务参数装订指令
+    uint8_t missionCommand_D3;         // 0xAA 为激活            0x00 为未激活                         舵面检查指令
+    uint8_t missionCommand_D4;         // 0xAA 为激活            0x00 为未激活                         发动机检查指令
+    uint8_t missionCommand_D5;         // 0xAA 为激活            0x00 为未激活                         发射指令
+    uint8_t missionCommand_D6;         // 0xAA 为全自主       0xFF 为半自主        0x00 为手动遥控       控制模式  
+    uint8_t missionCommand_D7;         // 0xAA 为激活            0x00 为未激活                         IMU精度检查指令
+    uint8_t missionCommand_D8;         // 0xAA 为激活            0x00 为未激活                         卫星收星检查指令
+    uint8_t missionCommand_D9;         // 0xAA 为激活            0x00 为未激活                         卫星定位精度检查指令
+    int8_t elevatorCmd;                // 控制指令 俯仰舵偏指令        / 待定
+    int8_t aileronCmd;                 // 控制指令 滚转舵偏指令        / 待定
+    uint8_t checksum;                  // 校验和 
 };
 #pragma pack(pop)  // 恢复默认字节对齐
 

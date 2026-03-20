@@ -11,6 +11,8 @@
 #include "FW_GCS_DlgDlg.h"
 #include "Page2Dlg.h"
 #include "UAV_DataLink.h"
+//#include "UavDataLinkAdapter.h"
+#include <algorithm>
 #include "DemReader.h"
 
 #ifdef _DEBUG

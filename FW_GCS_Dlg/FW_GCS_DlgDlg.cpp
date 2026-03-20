@@ -134,7 +134,10 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_missionCommand_D3 = 0x00;  // 舵面检查指令（未激活）
 	m_missionCommand_D4 = 0x00;  // 发动机检查指令（未激活）
 	m_missionCommand_D5 = 0x00;  // 发射指令（未激活）
-	m_controlMode_B0 = 0x00;     // 0x00=手动遥控，0xFF=半自主，0xAA=全自主
+	m_missionCommand_D6 = 0x00;     // 0x00=手动遥控，0xFF=半自主，0xAA=全自主
+	m_missionCommand_D7 = 0x00;     // IMU精度检查（未激活）
+	m_missionCommand_D8 = 0x00;     // 卫星收星检查（未激活）
+	m_missionCommand_D9 = 0x00;     // 卫星定位精度检查（未激活）
 	
 	// 串口初始化
 	m_hSerialPort = INVALID_HANDLE_VALUE;       // 串口句柄初始化为无效值
@@ -271,6 +274,9 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_COMMAND(ID_MENU_MISSION_LAUNCH_CMD, &CFWGCSDlgDlg::OnMenuMissionLaunchCmd)
 	// 自检指令菜单项
 	ON_COMMAND(ID_MENU_CHECK_SELF, &CFWGCSDlgDlg::OnMenuCheckSelf)
+	ON_COMMAND(ID_MENU_CHECK_IMU, &CFWGCSDlgDlg::OnMenuCheckImu)
+	ON_COMMAND(ID_MENU_CHECK_GPS_Starring, &CFWGCSDlgDlg::OnMenuCheckGpsStarring)
+	ON_COMMAND(ID_MENU_CHECK_GPS_Accuracy, &CFWGCSDlgDlg::OnMenuCheckGpsAccuracy)
 	ON_COMMAND(ID_MENU_CHECK_SURFACE, &CFWGCSDlgDlg::OnMenuCheckSurface)
 	ON_COMMAND(ID_MENU_CHECK_ENGINE, &CFWGCSDlgDlg::OnMenuCheckEngine)
 	ON_COMMAND(ID_MENU_CHECK_DETAIL, &CFWGCSDlgDlg::OnMenuCheckDetail)
@@ -291,6 +297,9 @@ BEGIN_MESSAGE_MAP(CFWGCSDlgDlg, CDialogEx) // 消息映射
 	ON_UPDATE_COMMAND_UI(ID_MENU_MISSION_BIND_PARAM, &CFWGCSDlgDlg::OnUpdateMenuMissionBindParam)
 	ON_UPDATE_COMMAND_UI(ID_MENU_MISSION_LAUNCH_CMD, &CFWGCSDlgDlg::OnUpdateMenuMissionLaunchCmd)
 	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_SELF, &CFWGCSDlgDlg::OnUpdateMenuCheckSelf)
+	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_IMU, &CFWGCSDlgDlg::OnUpdateMenuCheckImu)
+	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_GPS_Starring, &CFWGCSDlgDlg::OnUpdateMenuCheckGpsStarring)
+	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_GPS_Accuracy, &CFWGCSDlgDlg::OnUpdateMenuCheckGpsAccuracy)
 	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_SURFACE, &CFWGCSDlgDlg::OnUpdateMenuCheckSurface)
 	ON_UPDATE_COMMAND_UI(ID_MENU_CHECK_ENGINE, &CFWGCSDlgDlg::OnUpdateMenuCheckEngine)
 	ON_UPDATE_COMMAND_UI(ID_MENU_MAP_MOUSE_COORD, &CFWGCSDlgDlg::OnUpdateMenuMapMouseCoord)
@@ -420,6 +429,9 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 
 			// 自检指令菜单（默认都不选中）
 			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_SELF, _T("自检指令"));
+			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_IMU, _T("IMU精度检查"));
+			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_GPS_Starring, _T("卫星收星检查"));
+			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_GPS_Accuracy, _T("卫星定位精度检查"));
 			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_SURFACE, _T("舵面检查"));
 			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_ENGINE, _T("发动机检查"));
 			menu3.AppendMenu(MF_STRING, ID_MENU_CHECK_DETAIL, _T("详细自检结果"));
@@ -3603,14 +3615,17 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		{
 			// 子菜单项：检查是否需要显示深蓝色（选中/连接状态）
 			BOOL bShouldHighlight = FALSE;
-			if (nMenuID == ID_MENU_CTRL_MODE_MANUAL && m_controlMode_B0 == 0x00) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CTRL_MODE_SEMI && m_controlMode_B0 == 0xFF) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_CTRL_MODE_FULL && m_controlMode_B0 == 0xAA) bShouldHighlight = TRUE;
+			if (nMenuID == ID_MENU_CTRL_MODE_MANUAL && m_missionCommand_D6 == 0x00) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CTRL_MODE_SEMI && m_missionCommand_D6 == 0xFF) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CTRL_MODE_FULL && m_missionCommand_D6 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MISSION_TEST && m_missionCommand_D0 == 0x00) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MISSION_LAUNCH_PROC && m_missionCommand_D0 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MISSION_BIND_PARAM && m_missionCommand_D2 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MISSION_LAUNCH_CMD && m_missionCommand_D5 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_SELF && m_missionCommand_D1 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_IMU && m_missionCommand_D7 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_GPS_Starring && m_missionCommand_D8 == 0xAA) bShouldHighlight = TRUE;
+			else if (nMenuID == ID_MENU_CHECK_GPS_Accuracy && m_missionCommand_D9 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_SURFACE && m_missionCommand_D3 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_ENGINE && m_missionCommand_D4 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MAP_MOUSE_COORD && m_mouseCoordEnabled) bShouldHighlight = TRUE;
@@ -4620,19 +4635,19 @@ void CFWGCSDlgDlg::OnMenuSerialSettings()
 // ============================================================
 void CFWGCSDlgDlg::OnMenuCtrlModeManual()
 {
-	m_controlMode_B0 = 0x00;  // 手动遥控模式（协议：0x00）
+	m_missionCommand_D6 = 0x00;  // 手动遥控模式（协议：0x00）
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuCtrlModeSemi()
 {
-	m_controlMode_B0 = 0xFF;  // 半自主模式（协议：0xFF）
+	m_missionCommand_D6 = 0xFF;  // 半自主模式（协议：0xFF）
 	SendControlCommand();
 }
 
 void CFWGCSDlgDlg::OnMenuCtrlModeFull()
 {
-	m_controlMode_B0 = 0xAA;  // 全自主模式（协议：0xAA）
+	m_missionCommand_D6 = 0xAA;  // 全自主模式（协议：0xAA）
 	SendControlCommand();
 }
 
@@ -4666,12 +4681,11 @@ void CFWGCSDlgDlg::OnMenuMissionLaunchCmd()
 }
 
 // ============================================================
-// 自检指令菜单项处理函数（B1, B3, B4 切换逻辑：点击已激活项取消激活，点击未激活项激活并互斥其他项）
+// 自检指令菜单项处理函数（D1/D3/D4/D7/D8/D9 互斥：点击已激活项取消激活，否则激活并清除其余检查项）
 // ============================================================
 void CFWGCSDlgDlg::OnMenuCheckSelf()
 {
-	// 自检指令：如果当前已激活（B1=1），则取消激活（B1=0）
-	// 如果当前未激活（B1=0），则激活（B1=1）并互斥其他项（B3=0, B4=0）
+	// 自检指令：如果当前已激活则取消；否则激活并互斥舵面/发动机/IMU/GPS 检查项
 	if (m_missionCommand_D1 == 0xAA)
 	{
 		m_missionCommand_D1 = 0x00;  // 取消激活
@@ -4680,7 +4694,58 @@ void CFWGCSDlgDlg::OnMenuCheckSelf()
 	{
 		m_missionCommand_D1 = 0xAA;  // 激活
 		m_missionCommand_D3 = 0x00;  // 互斥：取消其他项
-		m_missionCommand_D4 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D4 = 0x00;
+		m_missionCommand_D7 = 0x00;
+		m_missionCommand_D8 = 0x00;
+		m_missionCommand_D9 = 0x00;
+	}
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuCheckImu()
+{
+	if (m_missionCommand_D7 == 0xAA)
+		m_missionCommand_D7 = 0x00;
+	else
+	{
+		m_missionCommand_D7 = 0xAA;
+		m_missionCommand_D1 = 0x00;
+		m_missionCommand_D3 = 0x00;
+		m_missionCommand_D4 = 0x00;
+		m_missionCommand_D8 = 0x00;
+		m_missionCommand_D9 = 0x00;
+	}
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuCheckGpsStarring()
+{
+	if (m_missionCommand_D8 == 0xAA)
+		m_missionCommand_D8 = 0x00;
+	else
+	{
+		m_missionCommand_D8 = 0xAA;
+		m_missionCommand_D1 = 0x00;
+		m_missionCommand_D3 = 0x00;
+		m_missionCommand_D4 = 0x00;
+		m_missionCommand_D7 = 0x00;
+		m_missionCommand_D9 = 0x00;
+	}
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::OnMenuCheckGpsAccuracy()
+{
+	if (m_missionCommand_D9 == 0xAA)
+		m_missionCommand_D9 = 0x00;
+	else
+	{
+		m_missionCommand_D9 = 0xAA;
+		m_missionCommand_D1 = 0x00;
+		m_missionCommand_D3 = 0x00;
+		m_missionCommand_D4 = 0x00;
+		m_missionCommand_D7 = 0x00;
+		m_missionCommand_D8 = 0x00;
 	}
 	SendControlCommand();
 }
@@ -4698,6 +4763,9 @@ void CFWGCSDlgDlg::OnMenuCheckSurface()
 		m_missionCommand_D3 = 0xAA;  // 激活
 		m_missionCommand_D1 = 0x00;  // 互斥：取消其他项
 		m_missionCommand_D4 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D7 = 0x00;
+		m_missionCommand_D8 = 0x00;
+		m_missionCommand_D9 = 0x00;
 	}
 	SendControlCommand();
 }
@@ -4715,6 +4783,9 @@ void CFWGCSDlgDlg::OnMenuCheckEngine()
 		m_missionCommand_D4 = 0xAA;  // 激活
 		m_missionCommand_D1 = 0x00;  // 互斥：取消其他项
 		m_missionCommand_D3 = 0x00;  // 互斥：取消其他项
+		m_missionCommand_D7 = 0x00;
+		m_missionCommand_D8 = 0x00;
+		m_missionCommand_D9 = 0x00;
 	}
 	SendControlCommand();
 }
@@ -4764,17 +4835,17 @@ void CFWGCSDlgDlg::OnMenuMapWaypointPickConnect()
 // ============================================================
 void CFWGCSDlgDlg::OnUpdateMenuCtrlModeManual(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_controlMode_B0 == 0x00);
+	pCmdUI->SetCheck(m_missionCommand_D6 == 0x00);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCtrlModeSemi(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_controlMode_B0 == 0xFF);
+	pCmdUI->SetCheck(m_missionCommand_D6 == 0xFF);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCtrlModeFull(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_controlMode_B0 == 0xAA);
+	pCmdUI->SetCheck(m_missionCommand_D6 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionTest(CCmdUI* pCmdUI)
@@ -4800,6 +4871,21 @@ void CFWGCSDlgDlg::OnUpdateMenuMissionLaunchCmd(CCmdUI* pCmdUI)
 void CFWGCSDlgDlg::OnUpdateMenuCheckSelf(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetCheck(m_missionCommand_D1 == 0xAA);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuCheckImu(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_D7 == 0xAA);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuCheckGpsStarring(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_D8 == 0xAA);
+}
+
+void CFWGCSDlgDlg::OnUpdateMenuCheckGpsAccuracy(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_missionCommand_D9 == 0xAA);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCheckSurface(CCmdUI* pCmdUI)
@@ -5230,10 +5316,10 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	packet.missionCommand_D3 = m_missionCommand_D3;
 	packet.missionCommand_D4 = m_missionCommand_D4;
 	packet.missionCommand_D5 = m_missionCommand_D5;
-	packet.missionCommand_D6 = m_controlMode_B0;
-	packet.missionCommand_D7 = 0;
-	packet.missionCommand_D8 = 0;
-	packet.missionCommand_D9 = 0;
+	packet.missionCommand_D6 = m_missionCommand_D6;
+	packet.missionCommand_D7 = m_missionCommand_D7;
+	packet.missionCommand_D8 = m_missionCommand_D8;
+	packet.missionCommand_D9 = m_missionCommand_D9;
 	packet.elevatorCmd = 0;
 	packet.aileronCmd = 0;
 

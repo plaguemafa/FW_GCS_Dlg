@@ -195,25 +195,28 @@
 #define ID_MENU_MISSION_BIND_PARAM      32779
 #define ID_MENU_MISSION_LAUNCH_CMD      32780
 #define ID_MENU_CHECK_SELF              32781
-#define ID_MENU_CHECK_SURFACE           32782
-#define ID_MENU_CHECK_ENGINE            32783
-#define ID_MENU_MAP_MOUSE_COORD         32784
-#define ID_MENU_MAP_TARGET_PICK         32785
-#define ID_MENU_MAP_PARACHUTE_PICK      32786
-#define ID_MENU_MAP_LAUNCH_PICK         32787
-#define ID_MENU_SHOW_PAGE2              32788
-#define ID_MENU_CHECK_DETAIL            32789
-#define ID_MENU_UDP_LINK                32790
-#define ID_MENU_SERIAL_LINK             32791
-#define ID_MENU_MAP_WAYPOINT_PICK       32792
-#define ID_MENU_MAP_WAYPOINT_PICK_CONNECT 32793
+#define ID_MENU_CHECK_IMU               32782
+#define ID_MENU_CHECK_GPS_Starring      32783
+#define ID_MENU_CHECK_GPS_Accuracy      32784
+#define ID_MENU_CHECK_SURFACE           32785
+#define ID_MENU_CHECK_ENGINE            32786
+#define ID_MENU_MAP_MOUSE_COORD         32787
+#define ID_MENU_MAP_TARGET_PICK         32788
+#define ID_MENU_MAP_PARACHUTE_PICK      32789
+#define ID_MENU_MAP_LAUNCH_PICK         32790
+#define ID_MENU_SHOW_PAGE2              32791
+#define ID_MENU_CHECK_DETAIL            32792
+#define ID_MENU_UDP_LINK                32793
+#define ID_MENU_SERIAL_LINK             32794
+#define ID_MENU_MAP_WAYPOINT_PICK       32795
+#define ID_MENU_MAP_WAYPOINT_PICK_CONNECT 32796
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        147
-#define _APS_NEXT_COMMAND_VALUE         32793
+#define _APS_NEXT_COMMAND_VALUE         32797
 #define _APS_NEXT_CONTROL_VALUE         1170
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

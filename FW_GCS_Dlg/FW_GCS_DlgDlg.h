@@ -75,7 +75,10 @@ protected:
 	uint8_t m_missionCommand_D3;            // 舵面检查指令
 	uint8_t m_missionCommand_D4;            // 发动机检查指令
 	uint8_t m_missionCommand_D5;            // 发射指令
-	uint8_t m_controlMode_B0;               // 0=手动遥控, 1=半自主, 2=全自主
+	uint8_t m_missionCommand_D6;               // 0=手动遥控, 1=半自主, 2=全自主
+	uint8_t m_missionCommand_D7;            // IMU精度检查指令
+	uint8_t m_missionCommand_D8;            // 卫星收星检查指令
+	uint8_t m_missionCommand_D9;            // 卫星定位精度检查指令
 
 	// UDP通信相关成员变量
 	SOCKET m_udpSocket;                    // UDP Socket句柄
@@ -100,7 +103,7 @@ protected:
 	
 	// 串口配置参数（运行时配置，优先于宏定义）
 	CString m_strSerialPortName;          // 串口名称（例如 "COM21"）
-	int     m_nSerialBaudRate;            // 串口波特率（例如 115200）
+	int     m_nSerialBaudRate;            // 串口波特率（例如 115200）CPage2Dlg
 	
 	// 串口通信相关成员变量
 	HANDLE m_hSerialPort;                  // 串口句柄
@@ -281,6 +284,9 @@ protected:
 	afx_msg void OnMenuMissionLaunchCmd(); // 发射指令
 	// 自检指令菜单项
 	afx_msg void OnMenuCheckSelf();        // 自检指令
+	afx_msg void OnMenuCheckImu();         // IMU精度检查
+	afx_msg void OnMenuCheckGpsStarring(); // 卫星收星检查
+	afx_msg void OnMenuCheckGpsAccuracy(); // 卫星定位精度检查
 	afx_msg void OnMenuCheckSurface();     // 舵面检查
 	afx_msg void OnMenuCheckEngine();      // 发动机检查
 	afx_msg void OnMenuCheckDetail();      // 详细自检结果：呼出 Page1 对话框
@@ -301,6 +307,9 @@ protected:
 	afx_msg void OnUpdateMenuMissionBindParam(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuMissionLaunchCmd(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCheckSelf(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuCheckImu(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuCheckGpsStarring(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateMenuCheckGpsAccuracy(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCheckSurface(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuCheckEngine(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateMenuMapMouseCoord(CCmdUI* pCmdUI); // 更新鼠标经纬度菜单勾选状态
@@ -311,12 +320,6 @@ protected:
 	afx_msg void OnUpdateMenuMapLaunchPick(CCmdUI* pCmdUI);    // 更新发射点选点菜单状态
 	afx_msg void OnNcPaint();
 	afx_msg void OnInitMenuPopup(CMenu* pPopupMenu, UINT nIndex, BOOL bSysMenu);
-	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
-	afx_msg void OnBnClickedMenuBtn1();
-	afx_msg void OnBnClickedMenuBtn2();
-	afx_msg void OnBnClickedMenuBtn3();
-	afx_msg void OnBnClickedMenuBtn4();
-	afx_msg void OnBnClickedMenuBtn5();
 	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);  // 拦截只读 Radio Button 的点击
 	virtual BOOL PreTranslateMessage(MSG* pMsg);  // 拦截鼠标消息，阻止只读 Radio Button 的点击
 	afx_msg LRESULT OnMapPickTargetResult(WPARAM wParam, LPARAM lParam);       // 目标点选点结果（写入 EditData17/18）
