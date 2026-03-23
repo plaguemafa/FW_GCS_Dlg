@@ -4206,6 +4206,7 @@ CString CFWGCSDlgDlg::BuildMapHtml() const
 	{
 		status = "const statusText='Offline Map Loaded';";
 	}
+	//C++端实现，statusText传参参，JS绘制
 
 	// 替换占位符
 	CStringA html = htmlTemplate;
