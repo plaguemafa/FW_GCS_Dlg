@@ -134,10 +134,13 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_missionCommand_D3 = 0x00;  // 舵面检查指令（未激活）
 	m_missionCommand_D4 = 0x00;  // 发动机检查指令（未激活）
 	m_missionCommand_D5 = 0x00;  // 发射指令（未激活）
-	m_missionCommand_D6 = 0x00;     // 0x00=手动遥控，0xFF=半自主，0xAA=全自主
+	m_missionCommand_D6 = 0xAA;     // 0x00=手动遥控，0xFF=半自主，0xAA=全自主
 	m_missionCommand_D7 = 0x00;     // IMU精度检查（未激活）
 	m_missionCommand_D8 = 0x00;     // 卫星收星检查（未激活）
 	m_missionCommand_D9 = 0x00;     // 卫星定位精度检查（未激活）
+	m_fcsLaunchReadyConsecutiveCount = 0; // 初始未满足“连续3包 0xAA03”
+	m_fcsBindReadyConsecutiveCount = 0; // 初始未满足“连续3包 0xAA02”
+	m_fcsGroundTestReadyConsecutiveCount = 0; // 初始未满足“连续3包 0xBB01”
 	m_bPendingCmdAck = FALSE;
 	m_bPendingDataAck = FALSE;
 	
@@ -491,7 +494,7 @@ BOOL CFWGCSDlgDlg::OnInitDialog()
 			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_TARGET_PICK, _T("目标点：地图选点"));
 			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_PARACHUTE_PICK, _T("开伞点：地图选点"));
 			menu4.AppendMenu(MF_STRING, ID_MENU_MAP_LAUNCH_PICK, _T("发射点：地图选点"));
-			menu4.AppendMenu(MF_STRING, ID_MENU_SHOW_PAGE2, _T("装订数据"));
+			menu4.AppendMenu(MF_STRING, ID_MENU_SHOW_PAGE2, _T("发送装订数据"));
 			
 			menu5.AppendMenu(MF_STRING, ID_MENU_UDP_SETTINGS, _T("UDP通信设置"));
 			menu5.AppendMenu(MF_STRING, ID_MENU_SERIAL_SETTINGS, _T("422串口通信设置"));
@@ -1729,7 +1732,7 @@ void CFWGCSDlgDlg::SendHudMessage(const DataLinkRecvDataPacket_s* pPacket)
 
  // 将数据添加到JSON格式字符串中
 	CStringA json;
-	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_D0":%u,"alarmStatus_D1":%u,"alarmStatus_D2":%u,"alarmStatus_D3":%u,"alarmStatus_D4":%u,"alarmStatus_D5":%u,"throttle":%u,"batteryVoltage":%u,"fuelRemaining":%u,"engineTemp":%.1f,"satelitesNum":%u,"gpsStatus":%u,"navStatus":%u,"targetWaypoint":%u,"distanceToGo":%.1f,"crossTrackError":%.1f,"commandHeading":%u,"courseDeviation":%.1f,"commandSpeed":%.1f,"commandAltitude":%.1f,"commandTime":%u,"payloadType":%u,"ammoRemaining":%u,"selfTestResult":%u,"switchStatus_D1":%u,"switchStatus_D4":%u,"switchStatus_D2":%u,"switchStatus_D3":%u,"switchStatus_D0":%u,"switchStatus_D6":%u,"switchStatus_D5":%u,"switchStatus_D7":%u})",
+	json.Format(R"({"pitch":%.3f,"roll":%.3f,"yaw":%.3f,"ias":%.3f,"tas":%.3f,"alt":%.3f,"mach":%.3f,"aoa":%.3f,"g":%.3f,"rpm":%.1f,"longitude":%.6f,"latitude":%.6f,"gpsCourse":%.2f,"gpsGroundSpeed":%.1f,"gpsVerticalSpeed":%.1f,"gpsHour":%u,"gpsMinute":%u,"gpsSecond":%u,"targetLongitude":%.6f,"targetLatitude":%.6f,"targetCourse":%.2f,"alarmStatus_D0":%u,"alarmStatus_D1":%u,"alarmStatus_D2":%u,"alarmStatus_D3":%u,"alarmStatus_D4":%u,"alarmStatus_D5":%u,"throttle":%u,"batteryVoltage":%u,"fuelRemaining":%u,"engineTemp":%.1f,"satelitesNum":%u,"gpsStatus":%u,"navStatus":%u,"targetWaypoint":%u,"distanceToGo":%.1f,"crossTrackError":%.1f,"commandHeading":%u,"courseDeviation":%.1f,"commandSpeed":%.1f,"commandAltitude":%.1f,"commandTime":%u,"payloadType":%u,"ammoRemaining":%u,"selfTestResult":%u,"switchStatus_D1":%u,"switchStatus_D4":%u,"switchStatus_D2":%u,"switchStatus_D3":%u,"switchStatus_D0":%u,"switchStatus_D6":%u,"switchStatus_D5":%u,"switchStatus_D7":%u,"fcsReportFlag":%u})",
 		pitch, roll, yaw, ias, tas, alt, mach, aoa, g, rpm, longitude, latitude, gpsCourse, 
 		gpsGroundSpeed, gpsVerticalSpeed, gpsHour, gpsMinute, gpsSecond,
 		targetLongitude, targetLatitude, targetCourse,
@@ -1739,11 +1742,55 @@ void CFWGCSDlgDlg::SendHudMessage(const DataLinkRecvDataPacket_s* pPacket)
 		distanceToGo, crossTrackError, commandHeading, courseDeviation,
 		commandSpeed, commandAltitude, commandTime, payloadType, ammoRemaining, selfTestResult,
 		switchStatus_D1, switchStatus_D4, switchStatus_D2, switchStatus_D3, switchStatus_D0,
-		switchStatus_D6, switchStatus_D5, switchStatus_D7);
+		switchStatus_D6, switchStatus_D5, switchStatus_D7, (unsigned int)pPacket->FCS_Report_Flag);
 
 	std::wstring jsonW(CA2W(json.GetString()));
 	m_webView->PostWebMessageAsJson(jsonW.c_str());
 #endif
+}
+
+void CFWGCSDlgDlg::UpdateFcsLaunchReadyState(const DataLinkRecvDataPacket_s* pPacket)
+{
+	if (pPacket == NULL)
+	{
+		return;
+	}
+
+	if (pPacket->FCS_Report_Flag == 0xAA03)
+	{
+		if (m_fcsLaunchReadyConsecutiveCount < 3)
+		{
+			++m_fcsLaunchReadyConsecutiveCount;
+		}
+	}
+	else
+	{
+		m_fcsLaunchReadyConsecutiveCount = 0;
+	}
+
+	if (pPacket->FCS_Report_Flag == 0xAA02)
+	{
+		if (m_fcsBindReadyConsecutiveCount < 3)
+		{
+			++m_fcsBindReadyConsecutiveCount;
+		}
+	}
+	else
+	{
+		m_fcsBindReadyConsecutiveCount = 0;
+	}
+
+	if (pPacket->FCS_Report_Flag == 0xBB01)
+	{
+		if (m_fcsGroundTestReadyConsecutiveCount < 3)
+		{
+			++m_fcsGroundTestReadyConsecutiveCount;
+		}
+	}
+	else
+	{
+		m_fcsGroundTestReadyConsecutiveCount = 0;
+	}
 }
 
 // 处理接收到的数据包
@@ -1754,6 +1801,8 @@ void CFWGCSDlgDlg::ProcessReceivedData(const DataLinkRecvDataPacket_s* pPacket)
 		TRACE(_T("ProcessReceivedData: 数据包指针为空！\n"));
 		return;
 	}
+
+	UpdateFcsLaunchReadyState(pPacket);
 
 	// 直接推送 HUD 数据（已移除传统控件/子对话框显示）
 	SendHudMessage(pPacket);
@@ -2353,6 +2402,8 @@ void CFWGCSDlgDlg::ProcessSerialReceivedData(const DataLinkRecvDataPacket_s* pPa
 		TRACE(_T("ProcessSerialReceivedData: 数据包指针为空！\n"));
 		return;
 	}
+
+	UpdateFcsLaunchReadyState(pPacket);
 
 	CheckDataLinkAckFields(pPacket);
 
@@ -3649,7 +3700,6 @@ void CFWGCSDlgDlg::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 			else if (nMenuID == ID_MENU_MISSION_TEST && m_missionCommand_D0 == 0x00) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MISSION_LAUNCH_PROC && m_missionCommand_D0 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_MISSION_BIND_PARAM && m_missionCommand_D2 == 0xAA) bShouldHighlight = TRUE;
-			else if (nMenuID == ID_MENU_MISSION_LAUNCH_CMD && m_missionCommand_D5 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_SELF && m_missionCommand_D1 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_IMU && m_missionCommand_D7 == 0xAA) bShouldHighlight = TRUE;
 			else if (nMenuID == ID_MENU_CHECK_GPS_Starring && m_missionCommand_D8 == 0xAA) bShouldHighlight = TRUE;
@@ -4697,6 +4747,12 @@ void CFWGCSDlgDlg::OnMenuMissionLaunchProc()
 
 void CFWGCSDlgDlg::OnMenuMissionBindParam()
 {
+	if (m_fcsBindReadyConsecutiveCount < 3)
+	{
+		AfxMessageBox(_T("飞控未进入参数装订准备状态，禁止发送参数装订指令！"), MB_ICONWARNING | MB_OK);
+		return;
+	}
+
 	// 参数装订指令（切换状态）
 	m_missionCommand_D2 = (m_missionCommand_D2 == 0x00) ? 0xAA : 0x00;
 	SendControlCommand();
@@ -4704,9 +4760,31 @@ void CFWGCSDlgDlg::OnMenuMissionBindParam()
 
 void CFWGCSDlgDlg::OnMenuMissionLaunchCmd()
 {
-	// 发射指令（切换状态）
-	m_missionCommand_D5 = (m_missionCommand_D5 == 0x00) ? 0xAA : 0x00;
+	// 前置校验1：地面测试流程下禁止发射
+	if (m_missionCommand_D0 == 0x00)
+	{
+		AfxMessageBox(_T("错误：当前飞控处于地面测试流程，发射非法！"), MB_ICONWARNING | MB_OK);
+		return;
+	}
+
+	// 前置校验2：仅当连续3拍的数据包的 FCS_Report_Flag 都是 0xAA03 才允许发射
+	if (m_fcsLaunchReadyConsecutiveCount < 3)
+	{
+		AfxMessageBox(_T("错误：当前飞控未进入准备发射状态，禁止发射！"), MB_ICONWARNING | MB_OK);
+		return;
+	}
+
+	// 发射指令二次确认：仅在确认窗口点击“确定”(IDOK)后才执行
+	CDialogEx confirmDlg(IDD_CONFIRM_LAUNCH, this);
+	if (confirmDlg.DoModal() != IDOK)
+	{
+		return;
+	}
+
+	// 发射指令：确认后仅发送一次 0xAA，发送后立即恢复为 0x00
+	m_missionCommand_D5 = 0xAA;
 	SendControlCommand();
+	m_missionCommand_D5 = 0x00;
 }
 
 // ============================================================
@@ -4781,8 +4859,14 @@ void CFWGCSDlgDlg::OnMenuCheckGpsAccuracy()
 
 void CFWGCSDlgDlg::OnMenuCheckSurface()
 {
-	// 舵面检查指令：如果当前已激活（B3=1），则取消激活（B3=0）
-	// 如果当前未激活（B3=0），则激活（B3=1）并互斥其他项（B1=0, B4=0）
+	if (m_fcsGroundTestReadyConsecutiveCount < 3)
+	{
+		AfxMessageBox(_T("飞控未进入地面测试就绪状态，禁止发送舵面检查指令！"), MB_ICONWARNING | MB_OK);
+		return;
+	}
+
+	// 舵面检查指令：如果当前已激活（D3=1），则取消激活（D3=0）
+	// 如果当前未激活（D3=0），则激活（D3=1）并互斥其他项（D1=0, D4=0）
 	if (m_missionCommand_D3 == 0xAA)
 	{
 		m_missionCommand_D3 = 0x00;  // 取消激活
@@ -4801,8 +4885,14 @@ void CFWGCSDlgDlg::OnMenuCheckSurface()
 
 void CFWGCSDlgDlg::OnMenuCheckEngine()
 {
-	// 发动机检查指令：如果当前已激活（B4=1），则取消激活（B4=0）
-	// 如果当前未激活（B4=0），则激活（B4=1）并互斥其他项（B1=0, B3=0）
+	if (m_fcsGroundTestReadyConsecutiveCount < 3)
+	{
+		AfxMessageBox(_T("飞控未进入地面测试就绪状态，禁止发送发动机检查指令！"), MB_ICONWARNING | MB_OK);
+		return;
+	}
+
+	// 发动机检查指令：如果当前已激活（D4=1），则取消激活（D4=0）
+	// 如果当前未激活（D4=0），则激活（D4=1）并互斥其他项（D1=0, D3=0）
 	if (m_missionCommand_D4 == 0xAA)
 	{
 		m_missionCommand_D4 = 0x00;  // 取消激活
@@ -4894,7 +4984,8 @@ void CFWGCSDlgDlg::OnUpdateMenuMissionBindParam(CCmdUI* pCmdUI)
 
 void CFWGCSDlgDlg::OnUpdateMenuMissionLaunchCmd(CCmdUI* pCmdUI)
 {
-	pCmdUI->SetCheck(m_missionCommand_D5 == 0xAA);
+	// 发射指令为一次性触发项，不显示激活/非激活状态
+	pCmdUI->SetCheck(FALSE);
 }
 
 void CFWGCSDlgDlg::OnUpdateMenuCheckSelf(CCmdUI* pCmdUI)

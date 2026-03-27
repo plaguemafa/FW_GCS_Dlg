@@ -79,6 +79,9 @@ protected:
 	uint8_t m_missionCommand_D7;            // IMU精度检查指令
 	uint8_t m_missionCommand_D8;            // 卫星收星检查指令
 	uint8_t m_missionCommand_D9;            // 卫星定位精度检查指令
+	int m_fcsLaunchReadyConsecutiveCount = 0; // FCS_Report_Flag 连续命中 0xAA03 的计数
+	int m_fcsBindReadyConsecutiveCount = 0; // FCS_Report_Flag 连续命中 0xAA02 的计数
+	int m_fcsGroundTestReadyConsecutiveCount = 0; // FCS_Report_Flag 连续命中 0xBB01 的计数
 
 	// UDP通信相关成员变量
 	SOCKET m_udpSocket;                    // UDP Socket句柄
@@ -391,4 +394,5 @@ private:
 	bool GetTileFromLocalMaps(int zoom, int x, int y, std::vector<unsigned char>& outData, CString& outMimeType, bool& outIsGzip);  // 从局部地图获取瓦片
 	static bool TileToLngLat(int zoom, int x, int y, double& lng, double& lat);  // 瓦片坐标转经纬度（瓦片中心点）
 	void SendHudMessage(const DataLinkRecvDataPacket_s* pPacket);  // 向 WebView2 推送 HUD 数据
+	void UpdateFcsLaunchReadyState(const DataLinkRecvDataPacket_s* pPacket); // 更新连续3包发射准备状态计数
 };

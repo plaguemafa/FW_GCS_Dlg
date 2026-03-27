@@ -9,6 +9,7 @@
 // DOM 获取
 const mapEl = document.getElementById('map');      // 地图容器（瓦片背景）
 const statusEl = document.getElementById('status'); // 状态提示
+const fcsStatusLogEl = document.getElementById('fcsStatusLog'); // FCS 状态历史日志
 const mouseCoordTipEl = document.getElementById('mouseCoordTip'); // 鼠标位置经纬度提示
 const hudCanvas = document.getElementById('hud');   // HUD 画布
 const hudCtx = hudCanvas ? hudCanvas.getContext('2d') : null;
@@ -57,6 +58,32 @@ let hudState = {
     mach: 0, aoa: 0, g: 1.0,       // 马赫/攻角/过载
     rpm: 0                          // 发动机转速
 };
+
+// FCS_Report_Flag map (all Chinese text uses \uXXXX escapes)
+const FCS_REPORT_FLAG_TEXT = {
+    0x0001: '\u4e0a\u7535\u81ea\u68c0\u72b6\u6001',
+    0x0002: '\u81ea\u68c0',
+    0x0003: '\u51c6\u5907\u9636\u6bb5\uff08\u7b49\u5f85\u4efb\u52a1\u8bbe\u7f6e\u53c2\u6570\uff0c\u5b8c\u6210\u81ea\u68c0\uff09',
+    0xAA01: '\u8fdb\u5165\u53d1\u63a7\u6d41\u7a0b\uff0c\u7b49\u5f85\u4efb\u52a1\u53c2\u6570',
+    0xAA02: '\u7b49\u5f85\u53c2\u6570\u88c5\u8ba2\u6307\u4ee4',
+    0xAA03: '\u7b49\u5f85\u53d1\u5c04\u6307\u4ee4(\u51c6\u5907\u597d)',
+    0xAA04: '\u79bb\u67b6\u98de\u884c\u72b6\u6001',
+    0xAA05: '\u5f00\u4f1e\u72b6\u6001',
+    0xBB01: '\u8fdb\u5165\u5730\u6d4b\u6d41\u7a0b\uff0c\u7b49\u5f85\u6d4b\u8bd5\u6307\u4ee4',
+    0xBB02: '\u8235\u9762\u6d4b\u8bd5\u72b6\u6001',
+    0xBB03: '\u53d1\u52a8\u673a\u6d4b\u8bd5\u72b6\u6001',
+    0xEE01: '\u81ea\u68c0\u5931\u8d25\u7ec8\u6b62\u72b6\u6001\uff0c\u7b49\u5f85\u4e0b\u7535'
+};
+let lastFcsReportFlag = null;
+let fcsReportFlagHistory = [];
+
+function formatFcsReportFlagLine(flag) {
+    const f = Number(flag);
+    const hex = '0x' + f.toString(16).toUpperCase().padStart(4, '0');
+    const text = FCS_REPORT_FLAG_TEXT[f];
+    if (!text) return `${hex} \u672a\u77e5\u72b6\u6001`;
+    return `${hex} ${text}`;
+}
 
 // HUD层 主界面底部信息栏数据（根据 UdpData.h 中的协议定义）
 let hudBottomInfoData = {
@@ -157,6 +184,11 @@ if (!mapEl) {
     console.error('Map element not found!');
 } else {
     statusEl.textContent = statusText; // 注入的状态文本
+}
+
+if (fcsStatusLogEl) {
+    // 先只做空初始化，避免后续逐步引入逻辑时出现 JS 运行时报错导致黑屏
+    fcsStatusLogEl.textContent = '';
 }
 
 // 瓦片相关（地图背景）
@@ -953,6 +985,12 @@ if (window.chrome && window.chrome.webview) {
             hudBottomInfoData = { gpsGroundSpeed: 0, gpsVerticalSpeed: 0, gpsHour: 0, gpsMinute: 0, gpsSecond: 0 };
             hudGroup2Data = { throttle: 0, batteryVoltage: 0, fuelRemaining: 0, engineTemp: 0, satelitesNum: 0, gpsStatus: 0, navStatus: 0, targetWaypoint: 0, distanceToGo: 0, crossTrackError: 0, commandHeading: 0, courseDeviation: 0, commandSpeed: 0, commandAltitude: 0, commandTime: 0, payloadType: 0, ammoRemaining: 0, selfTestResult: 0 };
             hudGroup3Data = { switchStatus_D1: 0, switchStatus_D4: 0, switchStatus_D2: 0, switchStatus_D3: 0, switchStatus_D0: 0, switchStatus_D6: 0, switchStatus_D5: 0, switchStatus_D7: 0 };
+            lastFcsReportFlag = null;
+            fcsReportFlagHistory = [];
+            if (fcsStatusLogEl) {
+                fcsStatusLogEl.textContent = '';
+                fcsStatusLogEl.scrollTop = 0;
+            }
             aircraftData = { longitude: null, latitude: null, course: null };
             targetData = { longitude: null, latitude: null, course: null };
             aircraftTrail = [];
@@ -1046,6 +1084,18 @@ if (window.chrome && window.chrome.webview) {
 
         // 其余视为 HUD / 地图数据
         hudState = receivedData;
+        if (receivedData.fcsReportFlag !== undefined) {
+            const cur = Number(receivedData.fcsReportFlag);
+            if (lastFcsReportFlag === null || cur !== lastFcsReportFlag) {
+                lastFcsReportFlag = cur;
+                fcsReportFlagHistory.push(formatFcsReportFlagLine(cur));
+                if (fcsStatusLogEl) {
+                    fcsStatusLogEl.textContent = fcsReportFlagHistory.join('\n');
+                    // 自动滚动到最底部，确保无人工操作时始终显示最新行
+                    fcsStatusLogEl.scrollTop = fcsStatusLogEl.scrollHeight;
+                }
+            }
+        }
         
         // 更新底部信息栏数据
         if (receivedData.gpsGroundSpeed !== undefined) {
