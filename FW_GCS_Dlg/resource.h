@@ -3,6 +3,11 @@
 // π© FWGCSDlg.rc  π”√
 //
 #define IDI_APPICON                     1
+#define IDC_Elevator_Check              3
+#define IDC_Aileron_Check               4
+#define IDC_Auto_Surface_Check          5
+#define IDC_Aileron_Check2              6
+#define IDC_ReSet                       6
 #define IDD_FW_GCS_DLG_DIALOG           102
 #define IDR_MAINFRAME                   128
 #define IDD_PAGE1_DIALOG                130
@@ -13,8 +18,8 @@
 #define IDR_CANVAS_HTML                 140
 #define IDR_SCRIPT_JS                   141
 #define IDD_WP_CLEAR_DIALOG             145
-#define IDD_DIALOG1                     147
 #define IDD_CONFIRM_LAUNCH              147
+#define IDD_SURFACE_CHECK               149
 #define IDC_UDPlink                     1000
 #define IDC_SerialLink                  1001
 #define IDC_Display                     1017
@@ -23,7 +28,10 @@
 #define IDC_Display28                   1019
 #define IDC_Display44                   1020
 #define IDC_Display1                    1022
+#define IDC_Display_rudder              1022
+#define IDC_Display_Elevator            1022
 #define IDC_Display2                    1023
+#define IDC_Display_Aileron             1023
 #define IDC_Display3                    1024
 #define IDC_Display4                    1025
 #define IDC_BTN_PAGE1                   1026
@@ -186,6 +194,9 @@
 #define ID_WP_GoOn                      1168
 #define ID_WP_Gn                        1168
 #define IDC_BUTTON_LoadData2GUI         1169
+#define IDC_Check_Mode_Auto             1172
+#define IDC_RADIO2                      1173
+#define IDC_Check_Mode_Manual           1174
 #define ID_MENU_OP_PLACEHOLDER          32771
 #define ID_MENU_UDP_SETTINGS            32772
 #define ID_MENU_SERIAL_SETTINGS         32773
@@ -217,9 +228,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        149
+#define _APS_NEXT_RESOURCE_VALUE        151
 #define _APS_NEXT_COMMAND_VALUE         32797
-#define _APS_NEXT_CONTROL_VALUE         1170
+#define _APS_NEXT_CONTROL_VALUE         1175
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

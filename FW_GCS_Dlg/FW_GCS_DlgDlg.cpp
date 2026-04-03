@@ -13,6 +13,7 @@
 #include "afxdialogex.h"
 #include "Page1Dlg.h"
 #include "Page2Dlg.h"
+#include "SurfaceCheckDlg.h"
 #include "DemReader.h"
 #include <objbase.h>
 #include <atlbase.h>  // 用于CRegKey注册表操作
@@ -34,6 +35,180 @@
 
 namespace
 {
+	std::wstring GetExeDir()
+	{
+		wchar_t exePath[MAX_PATH] = {};
+		::GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+		wchar_t* lastSlash = wcsrchr(exePath, L'\\');
+		if (lastSlash)
+		{
+			*(lastSlash + 1) = L'\0';
+		}
+		return std::wstring(exePath);
+	}
+
+	std::wstring GetCwd()
+	{
+		wchar_t cwd[MAX_PATH] = {};
+		DWORD len = ::GetCurrentDirectoryW(_countof(cwd), cwd);
+		if (len == 0 || len >= _countof(cwd))
+		{
+			return L"";
+		}
+		if (cwd[wcslen(cwd) - 1] != L'\\')
+		{
+			wcscat_s(cwd, L"\\");
+		}
+		return std::wstring(cwd);
+	}
+
+	bool IsUdpDiagEnabled()
+	{
+		static int s_cached = -1;
+		if (s_cached != -1)
+		{
+			return s_cached != 0;
+		}
+
+		wchar_t enabled[8] = {};
+		DWORD len = ::GetEnvironmentVariableW(L"FW_GCS_UDP_DIAG", enabled, _countof(enabled));
+		if (len > 0 && (enabled[0] == L'1' || enabled[0] == L'y' || enabled[0] == L'Y' || enabled[0] == L't' || enabled[0] == L'T'))
+		{
+			s_cached = 1;
+			return true;
+		}
+
+		// 支持在 exe 同目录或当前工作目录放一个空文件来开启：enable_udp_diag.txt
+		const std::wstring markerName = L"enable_udp_diag.txt";
+		std::wstring exeMarker = GetExeDir() + markerName;
+		std::wstring cwdMarker = GetCwd() + markerName;
+
+		DWORD attrExe = ::GetFileAttributesW(exeMarker.c_str());
+		DWORD attrCwd = ::GetFileAttributesW(cwdMarker.c_str());
+		s_cached = (attrExe != INVALID_FILE_ATTRIBUTES || attrCwd != INVALID_FILE_ATTRIBUTES) ? 1 : 0;
+		return s_cached != 0;
+	}
+
+	std::wstring WsaErrorToString(DWORD error)
+	{
+		wchar_t* message = nullptr;
+		DWORD flags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
+		DWORD langId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
+		::FormatMessageW(flags, nullptr, error, langId, (LPWSTR)&message, 0, nullptr);
+		std::wstring result = message ? message : L"";
+		if (message)
+		{
+			::LocalFree(message);
+		}
+		// 去掉末尾换行
+		while (!result.empty() && (result.back() == L'\r' || result.back() == L'\n' || result.back() == L' '))
+		{
+			result.pop_back();
+		}
+		return result;
+	}
+
+	void AppendUdpLogFileLine(const wchar_t* line)
+	{
+		if (!IsUdpDiagEnabled())
+		{
+			return;
+		}
+
+		std::wstring logPath = GetExeDir() + L"gcs_udp.log";
+
+		HANDLE hFile = ::CreateFileW(
+			logPath.c_str(),
+			FILE_APPEND_DATA,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			nullptr,
+			OPEN_ALWAYS,
+			FILE_ATTRIBUTE_NORMAL,
+			nullptr);
+		if (hFile == INVALID_HANDLE_VALUE)
+		{
+			// exe 目录不可写时，降级写到 %TEMP%
+			wchar_t tempPath[MAX_PATH] = {};
+			DWORD n = ::GetTempPathW(_countof(tempPath), tempPath);
+			if (n == 0 || n >= _countof(tempPath))
+			{
+				return;
+			}
+			std::wstring tempLog = std::wstring(tempPath) + L"gcs_udp.log";
+			hFile = ::CreateFileW(
+				tempLog.c_str(),
+				FILE_APPEND_DATA,
+				FILE_SHARE_READ | FILE_SHARE_WRITE,
+				nullptr,
+				OPEN_ALWAYS,
+				FILE_ATTRIBUTE_NORMAL,
+				nullptr);
+			if (hFile == INVALID_HANDLE_VALUE)
+			{
+				return;
+			}
+		}
+
+		SYSTEMTIME st = {};
+		::GetLocalTime(&st);
+		wchar_t prefix[64] = {};
+		_snwprintf_s(prefix, _countof(prefix), _TRUNCATE, L"%04u-%02u-%02u %02u:%02u:%02u.%03u ",
+			st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+		std::wstring out = std::wstring(prefix) + line + L"\r\n";
+		DWORD bytesToWrite = (DWORD)(out.size() * sizeof(wchar_t));
+		DWORD written = 0;
+		::WriteFile(hFile, out.data(), bytesToWrite, &written, nullptr);
+		::CloseHandle(hFile);
+	}
+
+	void LogUdp(const wchar_t* format, ...)
+	{
+		if (!IsUdpDiagEnabled())
+		{
+			return;
+		}
+
+		wchar_t buffer[1400] = {};
+		va_list args;
+		va_start(args, format);
+		_vsnwprintf_s(buffer, _countof(buffer), _TRUNCATE, format, args);
+		va_end(args);
+
+		::OutputDebugStringW(buffer);
+		::OutputDebugStringW(L"\r\n");
+		AppendUdpLogFileLine(buffer);
+	}
+
+	void LogUdpHintOnce(const wchar_t* contextTag)
+	{
+		static LONG s_hintPrinted = 0;
+		if (::InterlockedCompareExchange(&s_hintPrinted, 1, 0) != 0)
+		{
+			return;
+		}
+
+		const std::wstring markerName = L"enable_udp_diag.txt";
+		const std::wstring exeMarker = GetExeDir() + markerName;
+		const std::wstring cwdMarker = GetCwd() + markerName;
+		wchar_t env[64] = {};
+		DWORD envLen = ::GetEnvironmentVariableW(L"FW_GCS_UDP_DIAG", env, _countof(env));
+
+		wchar_t msg[1200] = {};
+		_snwprintf_s(msg, _countof(msg), _TRUNCATE,
+			L"[UDP] diag disabled (%s). Enable by setting env FW_GCS_UDP_DIAG=1 OR create empty file:\r\n"
+			L"  - %s\r\n"
+			L"  - %s\r\n"
+			L"(env FW_GCS_UDP_DIAG currently: %s)",
+			contextTag,
+			exeMarker.c_str(),
+			cwdMarker.c_str(),
+			(envLen > 0) ? env : L"<unset>");
+
+		::OutputDebugStringW(msg);
+		::OutputDebugStringW(L"\r\n");
+	}
+
 	void LogMap(const wchar_t* format, ...)
 	{
 		wchar_t buffer[1024] = {};
@@ -138,6 +313,11 @@ CFWGCSDlgDlg::CFWGCSDlgDlg(CWnd* pParent /*=nullptr*/)
 	m_missionCommand_D7 = 0x00;     // IMU精度检查（未激活）
 	m_missionCommand_D8 = 0x00;     // 卫星收星检查（未激活）
 	m_missionCommand_D9 = 0x00;     // 卫星定位精度检查（未激活）
+	m_surfaceCheckMode = 0x0A;      // 舵面检查默认自动模式（协议 0x0A）
+	m_surfaceAutoCheck = 0x00;      // 默认不触发自动舵面检查
+	m_elevatorCmd = 0;              // 默认舵面指令为 0°
+	m_aileronCmd = 0;               // 默认舵面指令为 0°
+	m_pSurfaceCheckDlg = nullptr;
 	m_fcsLaunchReadyConsecutiveCount = 0; // 初始未满足“连续3包 0xAA03”
 	m_fcsBindReadyConsecutiveCount = 0; // 初始未满足“连续3包 0xAA02”
 	m_fcsGroundTestReadyConsecutiveCount = 0; // 初始未满足“连续3包 0xBB01”
@@ -1055,12 +1235,19 @@ BOOL CFWGCSDlgDlg::InitUdpSocket()
 		m_udpSocket = INVALID_SOCKET;
 	}
 
+	LogUdp(L"[UDP] InitUdpSocket: local=%s:%d remote=%s:%d",
+		(const wchar_t*)CStringW(m_strUdpLocalIP),
+		m_nUdpLocalPort,
+		(const wchar_t*)CStringW(m_strUdpRemoteIP),
+		m_nUdpRemotePort);
+
 	// 创建UDP Socket
 	m_udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (m_udpSocket == INVALID_SOCKET)
 	{
 		int nError = WSAGetLastError();
 		TRACE(_T("UDP Socket创建失败，错误代码: %d\n"), nError);
+		LogUdp(L"[UDP] socket(AF_INET,SOCK_DGRAM) failed: %d (%s)", nError, WsaErrorToString(nError).c_str());
 		return FALSE;
 	}
 
@@ -1070,6 +1257,7 @@ BOOL CFWGCSDlgDlg::InitUdpSocket()
 	{
 		int nError = WSAGetLastError();
 		TRACE(_T("UDP Socket设置非阻塞模式失败，错误代码: %d\n"), nError);
+		LogUdp(L"[UDP] ioctlsocket(FIONBIO) failed: %d (%s)", nError, WsaErrorToString(nError).c_str());
 		// 继续执行，但sendto可能会阻塞
 	}
 
@@ -1097,12 +1285,30 @@ BOOL CFWGCSDlgDlg::InitUdpSocket()
 	{
 		int nError = WSAGetLastError();
 		TRACE(_T("UDP端口绑定失败 (端口%d)，错误代码: %d\n"), m_nUdpLocalPort, nError);
+		LogUdp(L"[UDP] bind(%s:%d) failed: %d (%s)",
+			(const wchar_t*)CStringW(m_strUdpLocalIP),
+			m_nUdpLocalPort,
+			nError,
+			WsaErrorToString(nError).c_str());
 		// 如果端口被占用，尝试不绑定（UDP可以发送但不一定能接收）
 		// 这里不返回错误，继续执行，但接收可能失败
 	}
 	else
 	{
 		TRACE(_T("UDP Socket初始化成功，本地端口: %d\n"), m_nUdpLocalPort);
+		sockaddr_in actual = {};
+		int actualLen = sizeof(actual);
+		if (getsockname(m_udpSocket, (sockaddr*)&actual, &actualLen) == 0)
+		{
+			wchar_t ip[INET_ADDRSTRLEN] = {};
+			::InetNtopW(AF_INET, &actual.sin_addr, ip, _countof(ip));
+			LogUdp(L"[UDP] bind OK: actual=%s:%d", ip, ntohs(actual.sin_port));
+		}
+		else
+		{
+			int nError = WSAGetLastError();
+			LogUdp(L"[UDP] getsockname failed: %d (%s)", nError, WsaErrorToString(nError).c_str());
+		}
 	}
 
 	return TRUE;
@@ -1114,6 +1320,21 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	if (m_bUdpConnected)
 	{
 		return TRUE;  // 已经连接
+	}
+
+	if (!IsUdpDiagEnabled())
+	{
+		LogUdpHintOnce(L"ConnectUdp");
+	}
+
+	// 典型错误：远程是局域网 IP，但本地绑定在 127.0.0.1，只能收发本机回环
+	if (m_strUdpRemoteIP.Left(4) != _T("127.") &&
+		m_strUdpRemoteIP.CompareNoCase(_T("localhost")) != 0 &&
+		m_strUdpLocalIP.Left(4) == _T("127."))
+	{
+		LogUdp(L"[UDP] WARNING: remote=%s but local bind is loopback=%s. Consider local IP=0.0.0.0 or NIC IP.",
+			(const wchar_t*)CStringW(m_strUdpRemoteIP),
+			(const wchar_t*)CStringW(m_strUdpLocalIP));
 	}
 
 	// 初始化Socket（如果还未初始化）
@@ -1139,7 +1360,14 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	{
 		// IP地址转换失败
 		TRACE(_T("UDP连接失败: IP地址转换失败 (%s)\n"), m_strUdpRemoteIP);
+		LogUdp(L"[UDP] inet_pton(remote=%s) failed", (const wchar_t*)CStringW(m_strUdpRemoteIP));
 		return FALSE;
+	}
+
+	{
+		wchar_t remoteIpW[INET_ADDRSTRLEN] = {};
+		::InetNtopW(AF_INET, &m_udpRemoteAddr.sin_addr, remoteIpW, _countof(remoteIpW));
+		LogUdp(L"[UDP] ConnectUdp: remote set to %s:%d", remoteIpW, m_nUdpRemotePort);
 	}
 
 	// 重置响应标志
@@ -1165,6 +1393,7 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	if (!SendHandshake())
 	{
 		TRACE(_T("UDP连接失败: 握手包发送失败\n"));
+		LogUdp(L"[UDP] ConnectUdp: handshake send failed (see SendUdpData logs)");
 		m_bUdpThreadRunning = FALSE;
 		if (m_udpSocket != INVALID_SOCKET)
 		{
@@ -1183,6 +1412,7 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	int nCheckCount = 0;
 
 	TRACE(_T("ConnectUdp: 开始等待远程地址响应，最多等待 %d 毫秒\n"), nWaitTimeMs);
+	LogUdp(L"[UDP] waiting for first inbound packet (timeout=%dms)...", nWaitTimeMs);
 
 	while ((GetTickCount64() - dwStartTime) < nWaitTimeMs)
 	{
@@ -1252,6 +1482,7 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 		DWORD dwElapsed = GetTickCount64() - dwStartTime;
 		TRACE(_T("UDP连接失败: 等待远程地址响应超时 (%s:%d)，已等待 %d 毫秒，响应标志=%d\n"), 
 			UDP_REMOTE_IP, UDP_REMOTE_PORT, dwElapsed, m_bUdpRemoteResponded);
+		LogUdp(L"[UDP] ConnectUdp timeout: no inbound packet from remote within %dms. If ping works, check: FC sending port, GCS local bind IP/port, firewall, NAT.", nWaitTimeMs);
 		m_bUdpThreadRunning = FALSE;
 		if (m_udpSocket != INVALID_SOCKET)
 		{
@@ -1269,6 +1500,7 @@ BOOL CFWGCSDlgDlg::ConnectUdp()
 	m_bPacketLossAlarmShown = FALSE;
 	::SetTimer(GetSafeHwnd(), 1, 400, NULL);  // 400ms 检查一次是否超时未收包，用于通信丢包报警
 	TRACE(_T("UDP连接成功: 已收到远程地址响应 (%s:%d)\n"), UDP_REMOTE_IP, UDP_REMOTE_PORT);
+	LogUdp(L"[UDP] connected: first inbound packet received; recv thread running");
 
 	return TRUE;
 }
@@ -1362,6 +1594,7 @@ BOOL CFWGCSDlgDlg::SendUdpData(const void* pData, int nSize)
 	if (m_udpSocket == INVALID_SOCKET)
 	{
 		TRACE(_T("SendUdpData: Socket无效\n"));
+		LogUdp(L"[UDP] SendUdpData(%d) failed: invalid socket", nSize);
 		return FALSE;
 	}
 	
@@ -1377,10 +1610,15 @@ BOOL CFWGCSDlgDlg::SendUdpData(const void* pData, int nSize)
 		if (nError == WSAEWOULDBLOCK)
 		{
 			TRACE(_T("SendUdpData: 发送缓冲区满，数据未发送\n"));
+			LogUdp(L"[UDP] sendto would block (buffer full). size=%d", nSize);
 		}
 		else
 		{
 			TRACE(_T("SendUdpData: 发送失败，错误代码: %d\n"), nError);
+			wchar_t remoteIpW[INET_ADDRSTRLEN] = {};
+			::InetNtopW(AF_INET, &m_udpRemoteAddr.sin_addr, remoteIpW, _countof(remoteIpW));
+			LogUdp(L"[UDP] sendto(%s:%d) failed: %d (%s) size=%d",
+				remoteIpW, ntohs(m_udpRemoteAddr.sin_port), nError, WsaErrorToString(nError).c_str(), nSize);
 		}
 		return FALSE;
 	}
@@ -1388,6 +1626,7 @@ BOOL CFWGCSDlgDlg::SendUdpData(const void* pData, int nSize)
 	if (nSent != nSize)
 	{
 		TRACE(_T("SendUdpData: 部分发送，期望 %d 字节，实际发送 %d 字节\n"), nSize, nSent);
+		LogUdp(L"[UDP] sendto partial? expected=%d sent=%d", nSize, nSent);
 		return FALSE;
 	}
 
@@ -1426,6 +1665,7 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 				pDlg->m_bUdpRemoteResponded = TRUE;
 				TRACE(_T("UDP接收线程: [首次]检测到数据接收，设置响应标志=TRUE（来源: %s:%d）\n"), 
 					CString(szIpAddr), ntohs(fromAddr.sin_port));
+				LogUdp(L"[UDP] first inbound packet: from=%hs:%d size=%d", szIpAddr, ntohs(fromAddr.sin_port), nReceived);
 			}
 			else
 			{
@@ -1444,6 +1684,10 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			{
 				// 如果数据包来自其他地址，更新远程地址（适应动态IP场景）
 				TRACE(_T("UDP接收线程: 数据包来自新地址，更新远程地址信息\n"));
+				LogUdp(L"[UDP] inbound from new address, updating remote: from=%hs:%d (was %s:%d)",
+					szIpAddr, ntohs(fromAddr.sin_port),
+					(const wchar_t*)CStringW(CStringW(pDlg->m_strUdpRemoteIP)),
+					pDlg->m_nUdpRemotePort);
 				pDlg->m_udpRemoteAddr.sin_addr.s_addr = fromAddr.sin_addr.s_addr;
 				pDlg->m_udpRemoteAddr.sin_port = fromAddr.sin_port;
 			}
@@ -1534,15 +1778,24 @@ UINT CFWGCSDlgDlg::UdpRecvThread(LPVOID pParam)
 			{
 				TRACE(_T("UDP接收: 数据包大小不匹配！期望 %d 字节，实际收到 %d 字节\n"), 
 					sizeof(DataLinkRecvDataPacket_s), nReceived);
+				static LONG s_mismatchCount = 0;
+				if (::InterlockedIncrement(&s_mismatchCount) <= 5)
+				{
+					LogUdp(L"[UDP] size mismatch: expected=%d got=%d from=%hs:%d",
+						(int)sizeof(DataLinkRecvDataPacket_s), nReceived, szIpAddr, ntohs(fromAddr.sin_port));
+				}
 			}
 		}
 		else if (nReceived == SOCKET_ERROR)
 		{
 			// Socket错误，可能是Socket已关闭
-			if (WSAGetLastError() != WSAEWOULDBLOCK)
+			int nError = WSAGetLastError();
+			if (nError != WSAEWOULDBLOCK)
 			{
+				LogUdp(L"[UDP] recvfrom failed: %d (%s) -> thread exit", nError, WsaErrorToString(nError).c_str());
 				break;  // 退出线程
 			}
+			::Sleep(2); // 非阻塞模式下避免空转占用CPU
 		}
 	}
 
@@ -3441,6 +3694,17 @@ void CFWGCSDlgDlg::ShowPage(int nPage)
 // 销毁子对话框
 void CFWGCSDlgDlg::DestroyChildDialogs()
 {
+	if (m_pSurfaceCheckDlg != nullptr)
+	{
+		if (m_pSurfaceCheckDlg->GetSafeHwnd() != nullptr)
+			m_pSurfaceCheckDlg->DestroyWindow();
+		else
+		{
+			delete m_pSurfaceCheckDlg;
+			m_pSurfaceCheckDlg = nullptr;
+		}
+	}
+
 	if (m_pPage1Dlg != NULL)
 	{
 		if (m_pPage1Dlg->GetSafeHwnd() != NULL)
@@ -3460,6 +3724,79 @@ void CFWGCSDlgDlg::DestroyChildDialogs()
 		delete m_pPage2Dlg;
 		m_pPage2Dlg = NULL;
 	}
+}
+
+void CFWGCSDlgDlg::EnsureSurfaceCheckDialog()
+{
+	if (m_pSurfaceCheckDlg != nullptr && m_pSurfaceCheckDlg->GetSafeHwnd() != nullptr)
+	{
+		m_pSurfaceCheckDlg->SyncRadiosFromMain();
+		m_pSurfaceCheckDlg->ShowWindow(SW_SHOW);
+		m_pSurfaceCheckDlg->SetForegroundWindow();
+		return;
+	}
+
+	CSurfaceCheckDlg* pDlg = new CSurfaceCheckDlg(this);
+	if (!pDlg->Create(IDD_SURFACE_CHECK, this))
+	{
+		delete pDlg;
+		return;
+	}
+	m_pSurfaceCheckDlg = pDlg;
+	m_pSurfaceCheckDlg->SyncRadiosFromMain();
+	m_pSurfaceCheckDlg->ShowWindow(SW_SHOW);
+}
+
+void CFWGCSDlgDlg::CloseSurfaceCheckDialog()
+{
+	if (m_pSurfaceCheckDlg == nullptr)
+		return;
+	if (m_pSurfaceCheckDlg->GetSafeHwnd() != nullptr)
+		m_pSurfaceCheckDlg->DestroyWindow();
+	else
+	{
+		delete m_pSurfaceCheckDlg;
+		m_pSurfaceCheckDlg = nullptr;
+	}
+}
+
+void CFWGCSDlgDlg::ApplySurfaceCheckMode(uint8_t mode)
+{
+	m_surfaceCheckMode = mode;
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::NotifySurfaceCheckDlgClosed()
+{
+	m_pSurfaceCheckDlg = nullptr;
+}
+
+void CFWGCSDlgDlg::TriggerSurfaceAutoCheck()
+{
+	// 触发一次自动舵面检查：发送 surface_auto_check=0x0A，然后恢复为 0x00
+	m_surfaceAutoCheck = 0x0A;
+	SendControlCommand();
+	m_surfaceAutoCheck = 0x00;
+}
+
+void CFWGCSDlgDlg::UpdateElevatorCmd(int8_t cmd)
+{
+	m_elevatorCmd = cmd;
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::UpdateAileronCmd(int8_t cmd)
+{
+	m_aileronCmd = cmd;
+	SendControlCommand();
+}
+
+void CFWGCSDlgDlg::ResetSurfaceCommands()
+{
+	m_elevatorCmd = 0;
+	m_aileronCmd = 0;
+	m_surfaceAutoCheck = 0x00;
+	SendControlCommand();
 }
 
 // 菜单“详细自检结果”：呼出 Page1 对话框（IDD_PAGE1_DIALOG）
@@ -4869,7 +5206,7 @@ void CFWGCSDlgDlg::OnMenuCheckSurface()
 	// 如果当前未激活（D3=0），则激活（D3=1）并互斥其他项（D1=0, D4=0）
 	if (m_missionCommand_D3 == 0xAA)
 	{
-		m_missionCommand_D3 = 0x00;  // 取消激活
+		m_missionCommand_D3 = 0x00;  // 取消激活（SendControlCommand 内会关闭舵面检查窗口）
 	}
 	else
 	{
@@ -4881,6 +5218,8 @@ void CFWGCSDlgDlg::OnMenuCheckSurface()
 		m_missionCommand_D9 = 0x00;
 	}
 	SendControlCommand();
+	if (m_missionCommand_D3 == 0xAA)
+		EnsureSurfaceCheckDialog();
 }
 
 void CFWGCSDlgDlg::OnMenuCheckEngine()
@@ -5418,6 +5757,9 @@ LRESULT CFWGCSDlgDlg::OnMapPickWaypointResult(WPARAM wParam, LPARAM lParam)
 // ============================================================
 BOOL CFWGCSDlgDlg::SendControlCommand()
 {
+	if (m_missionCommand_D3 != 0xAA)
+		CloseSurfaceCheckDialog();
+
 	if (!m_bUdpConnected)
 	{
 		TRACE(_T("SendControlCommand: UDP未连接，无法发送控制指令\n"));
@@ -5440,8 +5782,10 @@ BOOL CFWGCSDlgDlg::SendControlCommand()
 	packet.missionCommand_D7 = m_missionCommand_D7;
 	packet.missionCommand_D8 = m_missionCommand_D8;
 	packet.missionCommand_D9 = m_missionCommand_D9;
-	packet.elevatorCmd = 0;
-	packet.aileronCmd = 0;
+	packet.surface_check_mode = m_surfaceCheckMode;
+	packet.surface_auto_check = m_surfaceAutoCheck;
+	packet.elevatorCmd = m_elevatorCmd;
+	packet.aileronCmd = m_aileronCmd;
 
 	// 计算整个结构体的校验和
 	packet.checksum = 0;

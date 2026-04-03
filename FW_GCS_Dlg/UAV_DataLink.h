@@ -151,8 +151,11 @@ struct CmdSendPacket_s{                   // 地面站发送数据包结构    �
     uint8_t missionCommand_D7;         // 0xAA 为激活            0x00 为未激活                         IMU精度检查指令
     uint8_t missionCommand_D8;         // 0xAA 为激活            0x00 为未激活                         卫星收星检查指令
     uint8_t missionCommand_D9;         // 0xAA 为激活            0x00 为未激活                         卫星定位精度检查指令
+    uint8_t surface_check_mode;         // 舵面检查模式 0xA 进入自动检查模式  0xF 手动检查模式
+    uint8_t surface_auto_check;        // 舵面自动检查指令
     int8_t elevatorCmd;                // 控制指令 俯仰舵偏指令        [+—30]     
     int8_t aileronCmd;                 // 控制指令 滚转舵偏指令        [+—30]
+
     uint8_t checksum;                  // 校验和 
 };
 #pragma pack(pop)  // 恢复默认字节对齐

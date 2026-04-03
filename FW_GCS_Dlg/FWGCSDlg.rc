@@ -219,6 +219,28 @@ BEGIN
     LTEXT           "确认发射？",IDC_STATIC,82,20,39,8
 END
 
+IDD_SURFACE_CHECK DIALOGEX 0, 0, 310, 178
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_STATICEDGE
+CAPTION "Dialog"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "手动-升降舵偏舵",IDC_Elevator_Check,162,105,121,14
+    DEFPUSHBUTTON   "手动-倾斜舵偏舵",IDC_Aileron_Check,162,121,121,14
+    EDITTEXT        IDC_Display_Aileron,78,121,70,14,ES_AUTOHSCROLL,WS_EX_STATICEDGE
+    EDITTEXT        IDC_Display_Elevator,78,105,70,14,ES_AUTOHSCROLL,WS_EX_STATICEDGE
+    LTEXT           "自动偏舵测试",IDC_STATIC,22,34,47,8
+    LTEXT           "手动偏舵测试",IDC_STATIC,20,75,47,8
+    LTEXT           "升降舵指令值",IDC_STATIC,19,108,47,8
+    LTEXT           "倾斜舵指令值",IDC_STATIC,19,125,47,8
+    LTEXT           "指令值随按钮下压计数自动变更",IDC_STATIC,75,75,112,8
+    LTEXT           "指令值随计时器时间自动变更",IDC_STATIC,76,34,108,8
+    DEFPUSHBUTTON   "自动偏舵",IDC_Auto_Surface_Check,161,53,121,14
+    DEFPUSHBUTTON   "舵面复位",IDC_ReSet,64,147,190,13
+    CONTROL         "自动模式",IDC_Check_Mode_Auto,"Button",BS_AUTORADIOBUTTON,97,15,46,10
+    CONTROL         "手动模式",IDC_Check_Mode_Manual,"Button",BS_AUTORADIOBUTTON,159,15,46,10
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -321,6 +343,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 59
     END
+
+    IDD_SURFACE_CHECK, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 303
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 171
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -361,6 +391,11 @@ BEGIN
 END
 
 IDD_CONFIRM_LAUNCH AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_SURFACE_CHECK AFX_DIALOG_LAYOUT
 BEGIN
     0
 END

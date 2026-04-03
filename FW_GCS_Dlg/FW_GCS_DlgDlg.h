@@ -20,6 +20,8 @@
 #include <wrl.h>
 #include <vector>
 
+class CSurfaceCheckDlg;
+
 #if defined(__has_include)
 #if __has_include(<WebView2.h>)
 #include <WebView2.h>
@@ -79,6 +81,10 @@ protected:
 	uint8_t m_missionCommand_D7;            // IMU精度检查指令
 	uint8_t m_missionCommand_D8;            // 卫星收星检查指令
 	uint8_t m_missionCommand_D9;            // 卫星定位精度检查指令
+	uint8_t m_surfaceCheckMode;               // 舵面检查模式：0x0A 自动，0x0F 手动（见 CmdSendPacket_s.surface_check_mode）
+	uint8_t m_surfaceAutoCheck;               // 舵面自动检查指令：0x0A 触发一次自动舵面检查，0x00 空闲
+	int8_t  m_elevatorCmd;                    // 当前俯仰舵偏指令（CmdSendPacket_s.elevatorCmd）
+	int8_t  m_aileronCmd;                     // 当前滚转舵偏指令（CmdSendPacket_s.aileronCmd）
 	int m_fcsLaunchReadyConsecutiveCount = 0; // FCS_Report_Flag 连续命中 0xAA03 的计数
 	int m_fcsBindReadyConsecutiveCount = 0; // FCS_Report_Flag 连续命中 0xAA02 的计数
 	int m_fcsGroundTestReadyConsecutiveCount = 0; // FCS_Report_Flag 连续命中 0xBB01 的计数
@@ -228,12 +234,15 @@ protected:
 	// 子对话框（分页）
 	CPage1Dlg* m_pPage1Dlg;                // 第一页子对话框指针
 	CPage2Dlg* m_pPage2Dlg;                // 第二页子对话框指针
+	CSurfaceCheckDlg* m_pSurfaceCheckDlg;  // 舵面检查（IDD_SURFACE_CHECK）非模态对话框
 	int m_nCurrentPage;                    // 当前显示的页面（0=第一页，1=第二页）
 	
 	// 子对话框管理函数
 	BOOL CreateChildDialogs();             // 创建子对话框
 	void ShowPage(int nPage);              // 显示指定页面，隐藏其他页面
 	void DestroyChildDialogs();            // 销毁子对话框
+	void EnsureSurfaceCheckDialog();       // 创建/显示舵面检查对话框（D3 已激活时）
+	void CloseSurfaceCheckDialog();        // 关闭舵面检查对话框
 
 	uint8_t calculateChecksum(const void* data, size_t len);  // 计算校验和函数
 	
@@ -344,6 +353,13 @@ public:
 public:
 	// 提供给子对话框安全调用的UDP发送封装
 	BOOL SendUdpDataPublic(const void* pData, int nSize) { return SendUdpData(pData, nSize); }
+	uint8_t GetSurfaceCheckMode() const { return m_surfaceCheckMode; }
+	void ApplySurfaceCheckMode(uint8_t mode);
+	void NotifySurfaceCheckDlgClosed();
+	void TriggerSurfaceAutoCheck();              // 自动舵面检查：surface_auto_check=0x0A 发送一次后清零
+	void UpdateElevatorCmd(int8_t cmd);          // 更新俯仰舵偏指令并发送
+	void UpdateAileronCmd(int8_t cmd);           // 更新滚转舵偏指令并发送
+	void ResetSurfaceCommands();                 // 舵面复位：两路指令清零并发送
 	// Page2 发送 DataSendPacket_s 成功后调用：启动 3s 内检测 DataLink_DataResult（非阻塞）
 	void BeginDataLinkDataAckWait();
 	// 供 Page2 将装订数据加载到地图：向 WebView2 发送 JSON 消息
